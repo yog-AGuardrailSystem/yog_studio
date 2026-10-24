@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import type { AnalyzeResponse, Tool } from './api/types'
+import type { AnalyzeResponse, PolicyDraft, Tool } from './api/types'
 
 // App-wide state that has to survive page navigation. Mirrored to sessionStorage so a refresh keeps the demo state.
 interface AppState {
@@ -11,6 +11,9 @@ interface AppState {
   /** The English rules the user has typed. */
   rules: string[]
   setRules: (r: string[]) => void
+  /** Latest generated draft (not approved until the Review page says so). */
+  draft: PolicyDraft | null
+  setDraft: (d: PolicyDraft | null) => void
 }
 
 const Ctx = createContext<AppState | null>(null)
@@ -40,7 +43,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [analysis, setAnalysis] = usePersisted<AnalyzeResponse | null>('yog.analysis', null)
   const [tools, setTools] = usePersisted<Tool[]>('yog.tools', [])
   const [rules, setRules] = usePersisted<string[]>('yog.rules', [''])
-  return <Ctx.Provider value={{ analysis, setAnalysis, tools, setTools, rules, setRules }}>{children}</Ctx.Provider>
+  const [draft, setDraft] = usePersisted<PolicyDraft | null>('yog.draft', null)
+  return (
+    <Ctx.Provider value={{ analysis, setAnalysis, tools, setTools, rules, setRules, draft, setDraft }}>
+      {children}
+    </Ctx.Provider>
+  )
 }
 
 export function useAppState(): AppState {

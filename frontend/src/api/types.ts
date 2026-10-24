@@ -27,3 +27,12 @@ export interface AnalyzeResponse {
   tools: Tool[]
   candidates: Tool[]
 }
+
+export interface PolicyDraft {
+  english_rules: string[]
+  yog_source: string
+  retrieved_examples: string[]
+  attempts: number
+  valid: boolean
+  errors: string[]
+}
