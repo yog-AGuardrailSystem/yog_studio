@@ -18,6 +18,7 @@ from app.translate.translator import decision_name, format_tools, render
 
 CONTEXT_PREDS = ("hour", "day", "arg")
 HOURS = [0, 3, 12, 23]
+MAX_PER_ACTION = 14
 
 
 class Scenario(BaseModel):
@@ -127,7 +128,13 @@ def characterization(adapter: EngineAdapter, policy: str) -> tuple[list[Scenario
         if k not in seen:
             seen.add(k)
             uniq.append(s)
-    return uniq, sorted(set(warnings))
+    # keep the table readable: at most MAX_PER_ACTION probes per decision predicate (no-context rows come first)
+    kept, count = [], {}
+    for sc in uniq:
+        count[sc.action] = count.get(sc.action, 0) + 1
+        if count[sc.action] <= MAX_PER_ACTION:
+            kept.append(sc)
+    return kept, sorted(set(warnings))
 
 
 # ----------------------------------------------------------------- LLM (independent)

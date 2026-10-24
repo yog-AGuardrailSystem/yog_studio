@@ -1,4 +1,5 @@
 import json
+from app.core.config import EXAMPLES_DIR
 
 import pytest
 from fastapi.testclient import TestClient
@@ -171,3 +172,9 @@ def test_api_evaluate_and_approve_stores_server_side_evaluation(tmp_path):
         assert rec["evaluation"]["summary"]["unconfirmed"] > 0
     finally:
         app.dependency_overrides.clear()
+
+
+def test_probe_count_is_capped_per_action():
+    scen, _ = characterization(adapter, (EXAMPLES_DIR / "policies" / "demo_smart_home.yog").read_text(encoding="utf-8"))
+    from collections import Counter
+    assert max(Counter(s.action for s in scen).values()) <= 14 and len(scen) < 100
