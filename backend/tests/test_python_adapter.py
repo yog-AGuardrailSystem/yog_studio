@@ -110,3 +110,11 @@ def test_program_info_shape(adapter):
     kinds = [c["kind"] for c in info["clauses"]]
     assert kinds.count("allow") == 2 and kinds.count("deny") == 1 and kinds.count("rule") == 1
     assert info["facts"][0]["pred"] == "role"
+
+
+def test_engine_type_error_fails_closed(adapter):
+    # regression: docs/engine_issues.md #7 -- int vs name comparison crashed the engine
+    pol = ("fact role(a, bot)\nfact arg(t, p, 0)\nallow can_x(A, R):\n    role(A, bot)\n"
+           "    arg(t, p, V)\n    V < usd\n")
+    r = adapter.check(pol, "a", "can_x", "r")
+    assert r.decision == "DENY" and "failing closed" in r.reason
