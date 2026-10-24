@@ -1,0 +1,181 @@
+# Finance tools. source: claude-draft (needs team review).
+- id: fin-transfer-cap
+  english: The finance bot may transfer at most 10000 per transaction.
+  tools_context: [transfer_funds(from_account, to_account, amount, currency)]
+  source: claude-draft
+  gold_yog: |
+    fact role(finbot, bot)
+    fact arg(placeholder, placeholder, 0)
+    allow can_transfer_funds(Actor, Account):
+        role(Actor, bot)
+        arg(transfer_funds, amount, N)
+        N <= 10000
+  scenarios:
+    - {actor: finbot, action: can_transfer_funds, resource: acct_1, context: ["arg(transfer_funds, amount, 5000)"], expected: ALLOW}
+    - {actor: finbot, action: can_transfer_funds, resource: acct_1, context: ["arg(transfer_funds, amount, 10000)"], expected: ALLOW}
+    - {actor: finbot, action: can_transfer_funds, resource: acct_1, context: ["arg(transfer_funds, amount, 10001)"], expected: DENY}
+    - {actor: finbot, action: can_transfer_funds, resource: acct_1, context: [], expected: DENY}
+
+- id: fin-large-needs-approval
+  english: Transfers above 10000 need a human approval; smaller ones do not.
+  tools_context: [transfer_funds(from_account, to_account, amount, currency)]
+  source: claude-draft
+  gold_yog: |
+    fact role(finbot, bot)
+    fact arg(placeholder, placeholder, 0)
+    fact approved(placeholder, no)
+    allow can_transfer_funds(Actor, Account):
+        role(Actor, bot)
+        arg(transfer_funds, amount, N)
+        N <= 10000
+    allow can_transfer_funds(Actor, Account):
+        role(Actor, bot)
+        arg(transfer_funds, amount, N)
+        N > 10000
+        approved(txn, yes)
+  scenarios:
+    - {actor: finbot, action: can_transfer_funds, resource: acct_1, context: ["arg(transfer_funds, amount, 500)"], expected: ALLOW}
+    - {actor: finbot, action: can_transfer_funds, resource: acct_1, context: ["arg(transfer_funds, amount, 50000)"], expected: DENY}
+    - {actor: finbot, action: can_transfer_funds, resource: acct_1, context: ["arg(transfer_funds, amount, 50000)", "approved(txn, yes)"], expected: ALLOW}
+    - {actor: finbot, action: can_transfer_funds, resource: acct_1, context: ["arg(transfer_funds, amount, 50000)", "approved(txn, no)"], expected: DENY}
+
+- id: fin-frozen-accounts
+  english: Never transfer money out of a frozen account.
+  tools_context: [transfer_funds(from_account, to_account, amount, currency)]
+  source: claude-draft
+  gold_yog: |
+    fact role(finbot, bot)
+    fact frozen(acct_9)
+    allow can_transfer_funds(Actor, Account):
+        role(Actor, bot)
+    deny can_transfer_funds(Actor, Account):
+        frozen(Account)
+  scenarios:
+    - {actor: finbot, action: can_transfer_funds, resource: acct_9, context: [], expected: DENY}
+    - {actor: finbot, action: can_transfer_funds, resource: acct_1, context: [], expected: ALLOW}
+
+- id: fin-weekend-freeze
+  english: No transfers on Saturday or Sunday.
+  tools_context: [transfer_funds(from_account, to_account, amount, currency)]
+  source: claude-draft
+  gold_yog: |
+    fact role(finbot, bot)
+    fact day(placeholder, none)
+    allow can_transfer_funds(Actor, Account):
+        role(Actor, bot)
+    deny can_transfer_funds(Actor, Account):
+        day(now, D)
+        D == sat
+    deny can_transfer_funds(Actor, Account):
+        day(now, D)
+        D == sun
+  scenarios:
+    - {actor: finbot, action: can_transfer_funds, resource: acct_1, context: ["day(now, sat)"], expected: DENY}
+    - {actor: finbot, action: can_transfer_funds, resource: acct_1, context: ["day(now, sun)"], expected: DENY}
+    - {actor: finbot, action: can_transfer_funds, resource: acct_1, context: ["day(now, tue)"], expected: ALLOW}
+
+- id: fin-balance-anyone
+  english: Anyone on staff can check a balance, but only tellers may transfer money.
+  tools_context: [get_balance(account_id), transfer_funds(from_account, to_account, amount, currency)]
+  source: claude-draft
+  gold_yog: |
+    fact role(sam, staff)
+    fact role(tina, teller)
+    allow can_get_balance(Actor, Account):
+        role(Actor, staff)
+    allow can_get_balance(Actor, Account):
+        role(Actor, teller)
+    allow can_transfer_funds(Actor, Account):
+        role(Actor, teller)
+  scenarios:
+    - {actor: sam, action: can_get_balance, resource: acct_1, context: [], expected: ALLOW}
+    - {actor: sam, action: can_transfer_funds, resource: acct_1, context: [], expected: DENY}
+    - {actor: tina, action: can_transfer_funds, resource: acct_1, context: [], expected: ALLOW}
+    - {actor: stranger, action: can_get_balance, resource: acct_1, context: [], expected: DENY}
+
+- id: fin-currency-whitelist
+  english: Transfers may only be made in USD or EUR.
+  tools_context: [transfer_funds(from_account, to_account, amount, currency)]
+  source: claude-draft
+  gold_yog: |
+    fact role(finbot, bot)
+    fact arg(placeholder, placeholder, 0)
+    allow can_transfer_funds(Actor, Account):
+        role(Actor, bot)
+        arg(transfer_funds, currency, C)
+        C == usd
+    allow can_transfer_funds(Actor, Account):
+        role(Actor, bot)
+        arg(transfer_funds, currency, C)
+        C == eur
+  scenarios:
+    - {actor: finbot, action: can_transfer_funds, resource: acct_1, context: ["arg(transfer_funds, currency, usd)"], expected: ALLOW}
+    - {actor: finbot, action: can_transfer_funds, resource: acct_1, context: ["arg(transfer_funds, currency, eur)"], expected: ALLOW}
+    - {actor: finbot, action: can_transfer_funds, resource: acct_1, context: ["arg(transfer_funds, currency, btc)"], expected: DENY}
+
+- id: fin-approved-beneficiaries
+  english: Transfers may only go to approved beneficiary accounts.
+  tools_context: [transfer_funds(from_account, to_account, amount, currency)]
+  source: claude-draft
+  gold_yog: |
+    fact role(finbot, bot)
+    fact beneficiary(acct_77)
+    fact beneficiary(acct_78)
+    allow can_transfer_funds(Actor, Target):
+        role(Actor, bot)
+        beneficiary(Target)
+  scenarios:
+    - {actor: finbot, action: can_transfer_funds, resource: acct_77, context: [], expected: ALLOW}
+    - {actor: finbot, action: can_transfer_funds, resource: acct_99, context: [], expected: DENY}
+
+- id: fin-daily-limit
+  english: The finance bot may not transfer once it has already moved 50000 today.
+  tools_context: [transfer_funds(from_account, to_account, amount, currency)]
+  source: claude-draft
+  gold_yog: |
+    fact role(finbot, bot)
+    fact spent_today(placeholder, 0)
+    allow can_transfer_funds(Actor, Account):
+        role(Actor, bot)
+    deny can_transfer_funds(Actor, Account):
+        spent_today(Actor, Total)
+        Total >= 50000
+  scenarios:
+    - {actor: finbot, action: can_transfer_funds, resource: acct_1, context: ["spent_today(finbot, 50000)"], expected: DENY}
+    - {actor: finbot, action: can_transfer_funds, resource: acct_1, context: ["spent_today(finbot, 49999)"], expected: ALLOW}
+    - {actor: finbot, action: can_transfer_funds, resource: acct_1, context: [], expected: ALLOW}
+
+- id: fin-receipt-internal
+  english: Receipt emails may only go to customers, never to internal staff addresses.
+  tools_context: [send_receipt_email(to, body)]
+  source: claude-draft
+  gold_yog: |
+    fact role(finbot, bot)
+    fact customer(carl)
+    fact staff_address(sam)
+    allow can_send_receipt_email(Actor, To):
+        role(Actor, bot)
+        customer(To)
+    deny can_send_receipt_email(Actor, To):
+        staff_address(To)
+  scenarios:
+    - {actor: finbot, action: can_send_receipt_email, resource: carl, context: [], expected: ALLOW}
+    - {actor: finbot, action: can_send_receipt_email, resource: sam, context: [], expected: DENY}
+    - {actor: finbot, action: can_send_receipt_email, resource: unknown_person, context: [], expected: DENY}
+
+- id: fin-refund-small-auto
+  english: Refunds up to 100 are automatic; larger refunds are not allowed for the bot.
+  tools_context: [refund_payment(payment_id, amount)]
+  source: claude-draft
+  gold_yog: |
+    fact role(finbot, bot)
+    fact arg(placeholder, placeholder, 0)
+    allow can_refund_payment(Actor, Payment):
+        role(Actor, bot)
+    deny can_refund_payment(Actor, Payment):
+        arg(refund_payment, amount, N)
+        N > 100
+  scenarios:
+    - {actor: finbot, action: can_refund_payment, resource: pay_1, context: ["arg(refund_payment, amount, 100)"], expected: ALLOW}
+    - {actor: finbot, action: can_refund_payment, resource: pay_1, context: ["arg(refund_payment, amount, 101)"], expected: DENY}
+    - {actor: finbot, action: can_refund_payment, resource: pay_1, context: ["arg(refund_payment, amount, 20)"], expected: ALLOW}

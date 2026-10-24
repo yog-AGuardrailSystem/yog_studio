@@ -8,6 +8,9 @@ interface AppState {
   /** Tools the policy will be written against: detected tools, or the hand-picked candidates. */
   tools: Tool[]
   setTools: (t: Tool[]) => void
+  /** The English rules the user has typed. */
+  rules: string[]
+  setRules: (r: string[]) => void
 }
 
 const Ctx = createContext<AppState | null>(null)
@@ -36,7 +39,8 @@ function usePersisted<T>(key: string, initial: T) {
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [analysis, setAnalysis] = usePersisted<AnalyzeResponse | null>('yog.analysis', null)
   const [tools, setTools] = usePersisted<Tool[]>('yog.tools', [])
-  return <Ctx.Provider value={{ analysis, setAnalysis, tools, setTools }}>{children}</Ctx.Provider>
+  const [rules, setRules] = usePersisted<string[]>('yog.rules', [''])
+  return <Ctx.Provider value={{ analysis, setAnalysis, tools, setTools, rules, setRules }}>{children}</Ctx.Provider>
 }
 
 export function useAppState(): AppState {

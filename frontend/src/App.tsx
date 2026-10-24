@@ -1,9 +1,11 @@
 import { NavLink, Route, Routes } from 'react-router-dom'
 import AnalyzePage from './pages/AnalyzePage'
 import CheckPage from './pages/CheckPage'
+import RulesPage from './pages/RulesPage'
 
 const links: [string, string][] = [
   ['/', 'Upload & Tools'],
+  ['/rules', 'Rules'],
   ['/check', 'Check'],
 ]
 
@@ -27,6 +29,7 @@ export default function App() {
       </header>
       <Routes>
         <Route path="/" element={<AnalyzePage />} />
+        <Route path="/rules" element={<RulesPage />} />
         <Route path="/check" element={<CheckPage />} />
       </Routes>
     </div>

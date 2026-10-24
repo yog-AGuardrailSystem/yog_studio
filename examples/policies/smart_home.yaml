@@ -1,0 +1,225 @@
+# English <-> YOG pairs: smart-home tools. source: claude-draft (needs team review).
+# Conventions: docs/conventions.md
+- id: sh-night-lock
+  english: The agent may never unlock the door between 11pm and 6am.
+  tools_context: [unlock_door(door_id, pin)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact hour(placeholder, 0)
+    allow can_unlock_door(Actor, Door):
+        role(Actor, assistant)
+    deny can_unlock_door(Actor, Door):
+        hour(now, H)
+        H >= 23
+    deny can_unlock_door(Actor, Door):
+        hour(now, H)
+        H < 6
+  scenarios:
+    - {actor: agent, action: can_unlock_door, resource: front_door, context: ["hour(now, 3)"], expected: DENY}
+    - {actor: agent, action: can_unlock_door, resource: front_door, context: ["hour(now, 23)"], expected: DENY}
+    - {actor: agent, action: can_unlock_door, resource: front_door, context: ["hour(now, 6)"], expected: ALLOW}
+    - {actor: agent, action: can_unlock_door, resource: front_door, context: ["hour(now, 14)"], expected: ALLOW}
+    - {actor: agent, action: can_unlock_door, resource: front_door, context: ["hour(now, 22)"], expected: ALLOW}
+    - {actor: stranger, action: can_unlock_door, resource: front_door, context: ["hour(now, 14)"], expected: DENY}
+
+- id: sh-thermostat-range
+  english: Thermostat must stay between 16 and 28 degrees.
+  tools_context: [set_thermostat(zone, temperature)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact arg(placeholder, placeholder, 0)
+    allow can_set_thermostat(Actor, Zone):
+        role(Actor, assistant)
+        arg(set_thermostat, temperature, T)
+        T >= 16
+        T <= 28
+  scenarios:
+    - {actor: agent, action: can_set_thermostat, resource: living_room, context: ["arg(set_thermostat, temperature, 21)"], expected: ALLOW}
+    - {actor: agent, action: can_set_thermostat, resource: living_room, context: ["arg(set_thermostat, temperature, 16)"], expected: ALLOW}
+    - {actor: agent, action: can_set_thermostat, resource: living_room, context: ["arg(set_thermostat, temperature, 28)"], expected: ALLOW}
+    - {actor: agent, action: can_set_thermostat, resource: living_room, context: ["arg(set_thermostat, temperature, 15)"], expected: DENY}
+    - {actor: agent, action: can_set_thermostat, resource: living_room, context: ["arg(set_thermostat, temperature, 29)"], expected: DENY}
+    - {actor: agent, action: can_set_thermostat, resource: living_room, context: [], expected: DENY}
+
+- id: sh-valve-max-open
+  english: The agent may not open a valve more than 50 percent.
+  tools_context: [open_valve(valve_id, percent)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact arg(placeholder, placeholder, 0)
+    allow can_open_valve(Actor, Valve):
+        role(Actor, assistant)
+    deny can_open_valve(Actor, Valve):
+        arg(open_valve, percent, P)
+        P > 50
+  scenarios:
+    - {actor: agent, action: can_open_valve, resource: water_main, context: ["arg(open_valve, percent, 50)"], expected: ALLOW}
+    - {actor: agent, action: can_open_valve, resource: water_main, context: ["arg(open_valve, percent, 51)"], expected: DENY}
+    - {actor: agent, action: can_open_valve, resource: water_main, context: ["arg(open_valve, percent, 100)"], expected: DENY}
+    - {actor: agent, action: can_open_valve, resource: water_main, context: ["arg(open_valve, percent, 10)"], expected: ALLOW}
+
+- id: sh-lock-always
+  english: The agent may always lock any door.
+  tools_context: [lock_door(door_id)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    allow can_lock_door(Actor, Door):
+        role(Actor, assistant)
+  scenarios:
+    - {actor: agent, action: can_lock_door, resource: front_door, context: [], expected: ALLOW}
+    - {actor: agent, action: can_lock_door, resource: back_door, context: [], expected: ALLOW}
+    - {actor: stranger, action: can_lock_door, resource: back_door, context: [], expected: DENY}
+
+- id: sh-front-door-only
+  english: The agent may only unlock the front door.
+  tools_context: [unlock_door(door_id, pin)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    allow can_unlock_door(Actor, Door):
+        role(Actor, assistant)
+        Door == front_door
+  scenarios:
+    - {actor: agent, action: can_unlock_door, resource: front_door, context: [], expected: ALLOW}
+    - {actor: agent, action: can_unlock_door, resource: back_door, context: [], expected: DENY}
+    - {actor: agent, action: can_unlock_door, resource: garage_door, context: [], expected: DENY}
+
+- id: sh-never-back-door
+  english: Never unlock the back door.
+  tools_context: [unlock_door(door_id, pin)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    allow can_unlock_door(Actor, Door):
+        role(Actor, assistant)
+    deny can_unlock_door(Actor, Door):
+        Door == back_door
+  scenarios:
+    - {actor: agent, action: can_unlock_door, resource: back_door, context: [], expected: DENY}
+    - {actor: agent, action: can_unlock_door, resource: front_door, context: [], expected: ALLOW}
+
+- id: sh-no-water-main
+  english: The agent must never touch the water main valve.
+  tools_context: [open_valve(valve_id, percent)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    allow can_open_valve(Actor, Valve):
+        role(Actor, assistant)
+    deny can_open_valve(Actor, Valve):
+        Valve == water_main
+  scenarios:
+    - {actor: agent, action: can_open_valve, resource: water_main, context: [], expected: DENY}
+    - {actor: agent, action: can_open_valve, resource: garden_tap, context: [], expected: ALLOW}
+
+- id: sh-bedroom-evening-only
+  english: The bedroom thermostat may only be changed between 8pm and 8am.
+  tools_context: [set_thermostat(zone, temperature)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact hour(placeholder, 0)
+    allow can_set_thermostat(Actor, Zone):
+        role(Actor, assistant)
+        Zone != bedroom
+    allow can_set_thermostat(Actor, Zone):
+        role(Actor, assistant)
+        Zone == bedroom
+        hour(now, H)
+        H >= 20
+    allow can_set_thermostat(Actor, Zone):
+        role(Actor, assistant)
+        Zone == bedroom
+        hour(now, H)
+        H < 8
+  scenarios:
+    - {actor: agent, action: can_set_thermostat, resource: bedroom, context: ["hour(now, 21)"], expected: ALLOW}
+    - {actor: agent, action: can_set_thermostat, resource: bedroom, context: ["hour(now, 7)"], expected: ALLOW}
+    - {actor: agent, action: can_set_thermostat, resource: bedroom, context: ["hour(now, 12)"], expected: DENY}
+    - {actor: agent, action: can_set_thermostat, resource: bedroom, context: [], expected: DENY}
+    - {actor: agent, action: can_set_thermostat, resource: kitchen, context: ["hour(now, 12)"], expected: ALLOW}
+
+- id: sh-unlock-only-when-home
+  english: The agent may unlock a door only when someone is home.
+  tools_context: [unlock_door(door_id, pin)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact occupied(placeholder, no)
+    allow can_unlock_door(Actor, Door):
+        role(Actor, assistant)
+        occupied(home, yes)
+  scenarios:
+    - {actor: agent, action: can_unlock_door, resource: front_door, context: ["occupied(home, yes)"], expected: ALLOW}
+    - {actor: agent, action: can_unlock_door, resource: front_door, context: ["occupied(home, no)"], expected: DENY}
+    - {actor: agent, action: can_unlock_door, resource: front_door, context: [], expected: DENY}
+
+- id: sh-night-heat-cap
+  english: After 10pm and before 6am the thermostat may not be set above 22 degrees.
+  tools_context: [set_thermostat(zone, temperature)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact hour(placeholder, 0)
+    fact arg(placeholder, placeholder, 0)
+    allow can_set_thermostat(Actor, Zone):
+        role(Actor, assistant)
+    deny can_set_thermostat(Actor, Zone):
+        hour(now, H)
+        H >= 22
+        arg(set_thermostat, temperature, T)
+        T > 22
+    deny can_set_thermostat(Actor, Zone):
+        hour(now, H)
+        H < 6
+        arg(set_thermostat, temperature, T)
+        T > 22
+  scenarios:
+    - {actor: agent, action: can_set_thermostat, resource: hall, context: ["hour(now, 23)", "arg(set_thermostat, temperature, 25)"], expected: DENY}
+    - {actor: agent, action: can_set_thermostat, resource: hall, context: ["hour(now, 2)", "arg(set_thermostat, temperature, 23)"], expected: DENY}
+    - {actor: agent, action: can_set_thermostat, resource: hall, context: ["hour(now, 2)", "arg(set_thermostat, temperature, 22)"], expected: ALLOW}
+    - {actor: agent, action: can_set_thermostat, resource: hall, context: ["hour(now, 15)", "arg(set_thermostat, temperature, 27)"], expected: ALLOW}
+
+- id: sh-vacation-mode
+  english: While the house is in vacation mode the agent may not unlock doors or change the thermostat.
+  tools_context: [unlock_door(door_id, pin), set_thermostat(zone, temperature)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact mode(placeholder, none)
+    allow can_unlock_door(Actor, Door):
+        role(Actor, assistant)
+    allow can_set_thermostat(Actor, Zone):
+        role(Actor, assistant)
+    deny can_unlock_door(Actor, Door):
+        mode(house, vacation)
+    deny can_set_thermostat(Actor, Zone):
+        mode(house, vacation)
+  scenarios:
+    - {actor: agent, action: can_unlock_door, resource: front_door, context: ["mode(house, vacation)"], expected: DENY}
+    - {actor: agent, action: can_set_thermostat, resource: hall, context: ["mode(house, vacation)"], expected: DENY}
+    - {actor: agent, action: can_unlock_door, resource: front_door, context: ["mode(house, home)"], expected: ALLOW}
+    - {actor: agent, action: can_set_thermostat, resource: hall, context: [], expected: ALLOW}
+
+- id: sh-admin-valve-assistant-status
+  english: Only the admin may open valves; the assistant may only read device status.
+  tools_context: [open_valve(valve_id, percent), get_status(device_id)]
+  source: claude-draft
+  gold_yog: |
+    fact role(alice, admin)
+    fact role(agent, assistant)
+    allow can_open_valve(Actor, Valve):
+        role(Actor, admin)
+    allow can_get_status(Actor, Device):
+        role(Actor, admin)
+    allow can_get_status(Actor, Device):
+        role(Actor, assistant)
+  scenarios:
+    - {actor: alice, action: can_open_valve, resource: water_main, context: [], expected: ALLOW}
+    - {actor: agent, action: can_open_valve, resource: water_main, context: [], expected: DENY}
+    - {actor: agent, action: can_get_status, resource: front_door, context: [], expected: ALLOW}
+    - {actor: stranger, action: can_get_status, resource: front_door, context: [], expected: DENY}

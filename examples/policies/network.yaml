@@ -1,0 +1,125 @@
+# Email / network / user-data tools. source: claude-draft (needs team review).
+- id: net-email-internal-only
+  english: The agent may only send email to internal addresses.
+  tools_context: [send_email(to, subject, body)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact internal(alice_corp)
+    fact internal(bob_corp)
+    allow can_send_email(Actor, To):
+        role(Actor, assistant)
+        internal(To)
+  scenarios:
+    - {actor: agent, action: can_send_email, resource: alice_corp, context: [], expected: ALLOW}
+    - {actor: agent, action: can_send_email, resource: stranger_gmail, context: [], expected: DENY}
+
+- id: net-email-blocklist
+  english: The agent may send email to anyone except addresses on the blocklist.
+  tools_context: [send_email(to, subject, body)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact blocked(spammer_x)
+    allow can_send_email(Actor, To):
+        role(Actor, assistant)
+    deny can_send_email(Actor, To):
+        blocked(To)
+  scenarios:
+    - {actor: agent, action: can_send_email, resource: spammer_x, context: [], expected: DENY}
+    - {actor: agent, action: can_send_email, resource: carl, context: [], expected: ALLOW}
+
+- id: net-email-recipient-cap
+  english: An email may not have more than 5 recipients.
+  tools_context: [send_email(to, subject, body, recipient_count)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact arg(placeholder, placeholder, 0)
+    allow can_send_email(Actor, To):
+        role(Actor, assistant)
+        arg(send_email, recipient_count, N)
+        N <= 5
+  scenarios:
+    - {actor: agent, action: can_send_email, resource: carl, context: ["arg(send_email, recipient_count, 5)"], expected: ALLOW}
+    - {actor: agent, action: can_send_email, resource: carl, context: ["arg(send_email, recipient_count, 6)"], expected: DENY}
+    - {actor: agent, action: can_send_email, resource: carl, context: ["arg(send_email, recipient_count, 1)"], expected: ALLOW}
+
+- id: net-email-no-attachments
+  english: The agent may not send emails with attachments.
+  tools_context: [send_email(to, subject, body, attachments)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact arg(placeholder, placeholder, 0)
+    allow can_send_email(Actor, To):
+        role(Actor, assistant)
+    deny can_send_email(Actor, To):
+        arg(send_email, attachments, N)
+        N > 0
+  scenarios:
+    - {actor: agent, action: can_send_email, resource: carl, context: ["arg(send_email, attachments, 0)"], expected: ALLOW}
+    - {actor: agent, action: can_send_email, resource: carl, context: ["arg(send_email, attachments, 2)"], expected: DENY}
+
+- id: net-email-working-hours
+  english: Emails may only be sent between 8am and 8pm.
+  tools_context: [send_email(to, subject, body)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact hour(placeholder, 0)
+    allow can_send_email(Actor, To):
+        role(Actor, assistant)
+        hour(now, H)
+        H >= 8
+        H < 20
+  scenarios:
+    - {actor: agent, action: can_send_email, resource: carl, context: ["hour(now, 8)"], expected: ALLOW}
+    - {actor: agent, action: can_send_email, resource: carl, context: ["hour(now, 19)"], expected: ALLOW}
+    - {actor: agent, action: can_send_email, resource: carl, context: ["hour(now, 20)"], expected: DENY}
+    - {actor: agent, action: can_send_email, resource: carl, context: ["hour(now, 2)"], expected: DENY}
+
+- id: net-http-allowlist
+  english: The agent may only fetch URLs from approved hosts.
+  tools_context: [http_get(url)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact approved_host(docs_example_com)
+    fact approved_host(api_internal)
+    allow can_http_get(Actor, Host):
+        role(Actor, assistant)
+        approved_host(Host)
+  scenarios:
+    - {actor: agent, action: can_http_get, resource: docs_example_com, context: [], expected: ALLOW}
+    - {actor: agent, action: can_http_get, resource: evil_site, context: [], expected: DENY}
+
+- id: net-delete-user-data-admin
+  english: Only admins may delete user data, and never a hard delete.
+  tools_context: [delete_user_data(user_id, hard_delete)]
+  source: claude-draft
+  gold_yog: |
+    fact role(alice, admin)
+    fact arg(placeholder, placeholder, 0)
+    allow can_delete_user_data(Actor, User):
+        role(Actor, admin)
+    deny can_delete_user_data(Actor, User):
+        arg(delete_user_data, hard_delete, H)
+        H == 1
+  scenarios:
+    - {actor: alice, action: can_delete_user_data, resource: user_5, context: ["arg(delete_user_data, hard_delete, 0)"], expected: ALLOW}
+    - {actor: alice, action: can_delete_user_data, resource: user_5, context: ["arg(delete_user_data, hard_delete, 1)"], expected: DENY}
+    - {actor: bob, action: can_delete_user_data, resource: user_5, context: ["arg(delete_user_data, hard_delete, 0)"], expected: DENY}
+
+- id: net-delete-user-self-only
+  english: A user may delete only their own data.
+  tools_context: [delete_user_data(user_id, hard_delete)]
+  source: claude-draft
+  gold_yog: |
+    fact account_owner(user_5, ann)
+    fact account_owner(user_6, ben)
+    allow can_delete_user_data(Actor, User):
+        account_owner(User, Actor)
+  scenarios:
+    - {actor: ann, action: can_delete_user_data, resource: user_5, context: [], expected: ALLOW}
+    - {actor: ann, action: can_delete_user_data, resource: user_6, context: [], expected: DENY}

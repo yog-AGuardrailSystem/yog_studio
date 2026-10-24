@@ -1,0 +1,247 @@
+# Generic access-control patterns. source: claude-draft (needs team review).
+- id: gen-admin-all
+  english: Admins can do everything; everyone else can only read documents.
+  tools_context: [read_document(doc), edit_document(doc), share_document(doc)]
+  source: claude-draft
+  gold_yog: |
+    fact role(alice, admin)
+    fact role(bob, viewer)
+    allow can_read_document(Actor, Doc):
+        role(Actor, admin)
+    allow can_edit_document(Actor, Doc):
+        role(Actor, admin)
+    allow can_share_document(Actor, Doc):
+        role(Actor, admin)
+    allow can_read_document(Actor, Doc):
+        role(Actor, viewer)
+  scenarios:
+    - {actor: alice, action: can_edit_document, resource: doc1, context: [], expected: ALLOW}
+    - {actor: bob, action: can_read_document, resource: doc1, context: [], expected: ALLOW}
+    - {actor: bob, action: can_edit_document, resource: doc1, context: [], expected: DENY}
+    - {actor: bob, action: can_share_document, resource: doc1, context: [], expected: DENY}
+
+- id: gen-owner-only-edit
+  english: Only the owner of a document may edit it.
+  tools_context: [edit_document(doc)]
+  source: claude-draft
+  gold_yog: |
+    fact owner(doc1, alice)
+    fact owner(doc2, bob)
+    allow can_edit_document(Actor, Doc):
+        owner(Doc, Actor)
+  scenarios:
+    - {actor: alice, action: can_edit_document, resource: doc1, context: [], expected: ALLOW}
+    - {actor: alice, action: can_edit_document, resource: doc2, context: [], expected: DENY}
+
+- id: gen-suspended-users
+  english: Suspended users are blocked from everything.
+  tools_context: [read_document(doc), edit_document(doc)]
+  source: claude-draft
+  gold_yog: |
+    fact role(alice, member)
+    fact role(bob, member)
+    fact suspended(bob)
+    allow can_read_document(Actor, Doc):
+        role(Actor, member)
+    allow can_edit_document(Actor, Doc):
+        role(Actor, member)
+    deny can_read_document(Actor, Doc):
+        suspended(Actor)
+    deny can_edit_document(Actor, Doc):
+        suspended(Actor)
+  scenarios:
+    - {actor: alice, action: can_read_document, resource: doc1, context: [], expected: ALLOW}
+    - {actor: bob, action: can_read_document, resource: doc1, context: [], expected: DENY}
+    - {actor: bob, action: can_edit_document, resource: doc1, context: [], expected: DENY}
+    - {actor: alice, action: can_edit_document, resource: doc1, context: [], expected: ALLOW}
+
+- id: gen-clearance-levels
+  english: A user may read a document only if their clearance level is at least the document's level.
+  tools_context: [read_document(doc)]
+  source: claude-draft
+  gold_yog: |
+    fact clearance(alice, 3)
+    fact clearance(bob, 1)
+    fact level(public_doc, 1)
+    fact level(secret_doc, 3)
+    allow can_read_document(Actor, Doc):
+        clearance(Actor, C)
+        level(Doc, L)
+        C >= L
+  scenarios:
+    - {actor: alice, action: can_read_document, resource: secret_doc, context: [], expected: ALLOW}
+    - {actor: bob, action: can_read_document, resource: secret_doc, context: [], expected: DENY}
+    - {actor: bob, action: can_read_document, resource: public_doc, context: [], expected: ALLOW}
+
+- id: gen-deny-overrides-allow
+  english: Managers can export data, except confidential datasets, which nobody may export.
+  tools_context: [export_data(dataset)]
+  source: claude-draft
+  gold_yog: |
+    fact role(mia, manager)
+    fact confidential(payroll)
+    allow can_export_data(Actor, Dataset):
+        role(Actor, manager)
+    deny can_export_data(Actor, Dataset):
+        confidential(Dataset)
+  scenarios:
+    - {actor: mia, action: can_export_data, resource: sales, context: [], expected: ALLOW}
+    - {actor: mia, action: can_export_data, resource: payroll, context: [], expected: DENY}
+    - {actor: stranger, action: can_export_data, resource: sales, context: [], expected: DENY}
+
+- id: gen-deploy-not-friday
+  english: Services may be deployed by engineers on any day except Friday.
+  tools_context: [deploy_service(service)]
+  source: claude-draft
+  gold_yog: |
+    fact role(eli, engineer)
+    fact day(placeholder, none)
+    allow can_deploy_service(Actor, Service):
+        role(Actor, engineer)
+    deny can_deploy_service(Actor, Service):
+        day(now, D)
+        D == fri
+  scenarios:
+    - {actor: eli, action: can_deploy_service, resource: web, context: ["day(now, fri)"], expected: DENY}
+    - {actor: eli, action: can_deploy_service, resource: web, context: ["day(now, wed)"], expected: ALLOW}
+    - {actor: nobody, action: can_deploy_service, resource: web, context: ["day(now, wed)"], expected: DENY}
+
+- id: gen-restart-production-approval
+  english: Restarting a production server requires approval; development servers can be restarted freely by engineers.
+  tools_context: [restart_server(server)]
+  source: claude-draft
+  gold_yog: |
+    fact role(eli, engineer)
+    fact environment(web_prod, production)
+    fact environment(web_dev, development)
+    fact approved(placeholder, no)
+    allow can_restart_server(Actor, Server):
+        role(Actor, engineer)
+        environment(Server, development)
+    allow can_restart_server(Actor, Server):
+        role(Actor, engineer)
+        environment(Server, production)
+        approved(change, yes)
+  scenarios:
+    - {actor: eli, action: can_restart_server, resource: web_dev, context: [], expected: ALLOW}
+    - {actor: eli, action: can_restart_server, resource: web_prod, context: [], expected: DENY}
+    - {actor: eli, action: can_restart_server, resource: web_prod, context: ["approved(change, yes)"], expected: ALLOW}
+
+- id: gen-group-membership-rule
+  english: Members of the finance team may view invoices.
+  tools_context: [view_invoice(invoice)]
+  source: claude-draft
+  gold_yog: |
+    fact member(fay, finance)
+    fact member(gus, finance)
+    fact member(hal, sales)
+    rule in_finance(U):
+        member(U, finance)
+    allow can_view_invoice(Actor, Invoice):
+        in_finance(Actor)
+  scenarios:
+    - {actor: fay, action: can_view_invoice, resource: inv_1, context: [], expected: ALLOW}
+    - {actor: hal, action: can_view_invoice, resource: inv_1, context: [], expected: DENY}
+
+- id: gen-grant-access-two-roles
+  english: Only admins or security officers may grant access to others.
+  tools_context: [grant_access(user, resource)]
+  source: claude-draft
+  gold_yog: |
+    fact role(alice, admin)
+    fact role(sue, security)
+    fact role(bob, viewer)
+    allow can_grant_access(Actor, Target):
+        role(Actor, admin)
+    allow can_grant_access(Actor, Target):
+        role(Actor, security)
+  scenarios:
+    - {actor: alice, action: can_grant_access, resource: bob, context: [], expected: ALLOW}
+    - {actor: sue, action: can_grant_access, resource: bob, context: [], expected: ALLOW}
+    - {actor: bob, action: can_grant_access, resource: bob, context: [], expected: DENY}
+
+- id: gen-no-self-grant
+  english: Nobody may grant access to themselves, even admins.
+  tools_context: [grant_access(user, resource)]
+  source: claude-draft
+  gold_yog: |
+    fact role(alice, admin)
+    allow can_grant_access(Actor, Target):
+        role(Actor, admin)
+    deny can_grant_access(Actor, Target):
+        Actor == Target
+  scenarios:
+    - {actor: alice, action: can_grant_access, resource: bob, context: [], expected: ALLOW}
+    - {actor: alice, action: can_grant_access, resource: alice, context: [], expected: DENY}
+
+- id: gen-maintenance-window
+  english: Servers may only be restarted during the maintenance window from 2am to 4am.
+  tools_context: [restart_server(server)]
+  source: claude-draft
+  gold_yog: |
+    fact role(eli, engineer)
+    fact hour(placeholder, 0)
+    allow can_restart_server(Actor, Server):
+        role(Actor, engineer)
+        hour(now, H)
+        H >= 2
+        H < 4
+  scenarios:
+    - {actor: eli, action: can_restart_server, resource: web, context: ["hour(now, 2)"], expected: ALLOW}
+    - {actor: eli, action: can_restart_server, resource: web, context: ["hour(now, 3)"], expected: ALLOW}
+    - {actor: eli, action: can_restart_server, resource: web, context: ["hour(now, 4)"], expected: DENY}
+    - {actor: eli, action: can_restart_server, resource: web, context: ["hour(now, 15)"], expected: DENY}
+
+- id: gen-share-external-ban
+  english: Documents marked internal can be shared only with employees, never with contractors.
+  tools_context: [share_document(doc)]
+  source: claude-draft
+  gold_yog: |
+    fact role(emp1, employee)
+    fact role(con1, contractor)
+    fact classification(handbook, internal)
+    allow can_share_document(Actor, Doc):
+        role(Actor, employee)
+    allow can_share_document(Actor, Doc):
+        role(Actor, contractor)
+    deny can_share_document(Actor, Doc):
+        classification(Doc, internal)
+        role(Actor, contractor)
+  scenarios:
+    - {actor: emp1, action: can_share_document, resource: handbook, context: [], expected: ALLOW}
+    - {actor: con1, action: can_share_document, resource: handbook, context: [], expected: DENY}
+    - {actor: con1, action: can_share_document, resource: brochure, context: [], expected: ALLOW}
+
+- id: gen-rate-limit
+  english: An agent that has already made 100 calls this hour is blocked.
+  tools_context: [call_api(endpoint)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact calls_this_hour(placeholder, 0)
+    allow can_call_api(Actor, Endpoint):
+        role(Actor, assistant)
+    deny can_call_api(Actor, Endpoint):
+        calls_this_hour(Actor, N)
+        N >= 100
+  scenarios:
+    - {actor: agent, action: can_call_api, resource: search, context: ["calls_this_hour(agent, 100)"], expected: DENY}
+    - {actor: agent, action: can_call_api, resource: search, context: ["calls_this_hour(agent, 99)"], expected: ALLOW}
+    - {actor: agent, action: can_call_api, resource: search, context: [], expected: ALLOW}
+
+- id: gen-default-deny-explicit
+  english: Reading public documents is allowed for everyone who is registered; nothing else is allowed.
+  tools_context: [read_document(doc), edit_document(doc)]
+  source: claude-draft
+  gold_yog: |
+    fact registered(alice)
+    fact registered(bob)
+    fact public(faq)
+    allow can_read_document(Actor, Doc):
+        registered(Actor)
+        public(Doc)
+  scenarios:
+    - {actor: alice, action: can_read_document, resource: faq, context: [], expected: ALLOW}
+    - {actor: alice, action: can_read_document, resource: salaries, context: [], expected: DENY}
+    - {actor: stranger, action: can_read_document, resource: faq, context: [], expected: DENY}
+    - {actor: alice, action: can_edit_document, resource: faq, context: [], expected: DENY}

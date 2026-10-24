@@ -1,0 +1,195 @@
+# File-operation tools. source: claude-draft (needs team review).
+- id: fs-read-any
+  english: The agent may read any file but may not write or delete anything.
+  tools_context: [read_file(path), write_file(path, content), delete_file(path)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    allow can_read_file(Actor, Path):
+        role(Actor, assistant)
+    deny can_write_file(Actor, Path):
+        role(Actor, assistant)
+    deny can_delete_file(Actor, Path):
+        role(Actor, assistant)
+  scenarios:
+    - {actor: agent, action: can_read_file, resource: notes_txt, context: [], expected: ALLOW}
+    - {actor: agent, action: can_write_file, resource: notes_txt, context: [], expected: DENY}
+    - {actor: agent, action: can_delete_file, resource: notes_txt, context: [], expected: DENY}
+
+- id: fs-never-delete
+  english: The agent must never delete files.
+  tools_context: [delete_file(path)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact role(alice, admin)
+    allow can_delete_file(Actor, Path):
+        role(Actor, admin)
+    deny can_delete_file(Actor, Path):
+        role(Actor, assistant)
+  scenarios:
+    - {actor: agent, action: can_delete_file, resource: report_pdf, context: [], expected: DENY}
+    - {actor: alice, action: can_delete_file, resource: report_pdf, context: [], expected: ALLOW}
+
+- id: fs-write-sandbox-only
+  english: The agent may only write to files inside the sandbox folder.
+  tools_context: [write_file(path, content)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact location(notes_txt, sandbox)
+    fact location(passwd, system)
+    fact location(report_pdf, documents)
+    allow can_write_file(Actor, Path):
+        role(Actor, assistant)
+        location(Path, sandbox)
+  scenarios:
+    - {actor: agent, action: can_write_file, resource: notes_txt, context: [], expected: ALLOW}
+    - {actor: agent, action: can_write_file, resource: passwd, context: [], expected: DENY}
+    - {actor: agent, action: can_write_file, resource: report_pdf, context: [], expected: DENY}
+
+- id: fs-system-files-protected
+  english: Nobody, not even an admin, may write or delete system files.
+  tools_context: [write_file(path, content), delete_file(path)]
+  source: claude-draft
+  gold_yog: |
+    fact role(alice, admin)
+    fact location(passwd, system)
+    fact location(notes_txt, sandbox)
+    rule is_system(P):
+        location(P, system)
+    allow can_write_file(Actor, Path):
+        role(Actor, admin)
+    allow can_delete_file(Actor, Path):
+        role(Actor, admin)
+    deny can_write_file(Actor, Path):
+        is_system(Path)
+    deny can_delete_file(Actor, Path):
+        is_system(Path)
+  scenarios:
+    - {actor: alice, action: can_write_file, resource: passwd, context: [], expected: DENY}
+    - {actor: alice, action: can_delete_file, resource: passwd, context: [], expected: DENY}
+    - {actor: alice, action: can_write_file, resource: notes_txt, context: [], expected: ALLOW}
+    - {actor: alice, action: can_delete_file, resource: notes_txt, context: [], expected: ALLOW}
+
+- id: fs-delete-temp-only
+  english: The agent may only delete files in the temp folder.
+  tools_context: [delete_file(path)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact location(cache_tmp, temp)
+    fact location(report_pdf, documents)
+    allow can_delete_file(Actor, Path):
+        role(Actor, assistant)
+        location(Path, temp)
+  scenarios:
+    - {actor: agent, action: can_delete_file, resource: cache_tmp, context: [], expected: ALLOW}
+    - {actor: agent, action: can_delete_file, resource: report_pdf, context: [], expected: DENY}
+
+- id: fs-write-size-limit
+  english: The agent may not write more than 1024 KB in a single write.
+  tools_context: [write_file(path, content, size_kb)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact arg(placeholder, placeholder, 0)
+    allow can_write_file(Actor, Path):
+        role(Actor, assistant)
+    deny can_write_file(Actor, Path):
+        arg(write_file, size_kb, S)
+        S > 1024
+  scenarios:
+    - {actor: agent, action: can_write_file, resource: notes_txt, context: ["arg(write_file, size_kb, 1024)"], expected: ALLOW}
+    - {actor: agent, action: can_write_file, resource: notes_txt, context: ["arg(write_file, size_kb, 1025)"], expected: DENY}
+    - {actor: agent, action: can_write_file, resource: notes_txt, context: ["arg(write_file, size_kb, 5)"], expected: ALLOW}
+
+- id: fs-env-files-secret
+  english: The agent may not read or write files that hold secrets, such as .env files.
+  tools_context: [read_file(path), write_file(path, content)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact secret(prod_env)
+    fact secret(api_keys)
+    allow can_read_file(Actor, Path):
+        role(Actor, assistant)
+    allow can_write_file(Actor, Path):
+        role(Actor, assistant)
+    deny can_read_file(Actor, Path):
+        secret(Path)
+    deny can_write_file(Actor, Path):
+        secret(Path)
+  scenarios:
+    - {actor: agent, action: can_read_file, resource: prod_env, context: [], expected: DENY}
+    - {actor: agent, action: can_write_file, resource: api_keys, context: [], expected: DENY}
+    - {actor: agent, action: can_read_file, resource: readme_md, context: [], expected: ALLOW}
+    - {actor: agent, action: can_write_file, resource: readme_md, context: [], expected: ALLOW}
+
+- id: fs-readonly-config
+  english: Files marked read-only must never be modified.
+  tools_context: [write_file(path, content)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact readonly(config_yaml)
+    allow can_write_file(Actor, Path):
+        role(Actor, assistant)
+    deny can_write_file(Actor, Path):
+        readonly(Path)
+  scenarios:
+    - {actor: agent, action: can_write_file, resource: config_yaml, context: [], expected: DENY}
+    - {actor: agent, action: can_write_file, resource: notes_txt, context: [], expected: ALLOW}
+
+- id: fs-business-hours-write
+  english: The agent may write files only during business hours, 9am to 5pm.
+  tools_context: [write_file(path, content)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact hour(placeholder, 0)
+    allow can_write_file(Actor, Path):
+        role(Actor, assistant)
+        hour(now, H)
+        H >= 9
+        H < 17
+  scenarios:
+    - {actor: agent, action: can_write_file, resource: notes_txt, context: ["hour(now, 9)"], expected: ALLOW}
+    - {actor: agent, action: can_write_file, resource: notes_txt, context: ["hour(now, 16)"], expected: ALLOW}
+    - {actor: agent, action: can_write_file, resource: notes_txt, context: ["hour(now, 17)"], expected: DENY}
+    - {actor: agent, action: can_write_file, resource: notes_txt, context: ["hour(now, 3)"], expected: DENY}
+
+- id: fs-owner-edits
+  english: Users may only delete files they own.
+  tools_context: [delete_file(path)]
+  source: claude-draft
+  gold_yog: |
+    fact owner(alice_doc, alice)
+    fact owner(bob_doc, bob)
+    allow can_delete_file(Actor, Path):
+        owner(Path, Actor)
+  scenarios:
+    - {actor: alice, action: can_delete_file, resource: alice_doc, context: [], expected: ALLOW}
+    - {actor: alice, action: can_delete_file, resource: bob_doc, context: [], expected: DENY}
+    - {actor: bob, action: can_delete_file, resource: bob_doc, context: [], expected: ALLOW}
+
+- id: fs-list-directory-public
+  english: Anyone with a staff role may list directories, but only managers may list the private directory.
+  tools_context: [list_directory(path)]
+  source: claude-draft
+  gold_yog: |
+    fact role(sam, staff)
+    fact role(mia, manager)
+    fact private(secret_dir)
+    allow can_list_directory(Actor, Path):
+        role(Actor, staff)
+    allow can_list_directory(Actor, Path):
+        role(Actor, manager)
+    deny can_list_directory(Actor, Path):
+        private(Path)
+        not role(Actor, manager)
+  scenarios:
+    - {actor: sam, action: can_list_directory, resource: public_dir, context: [], expected: ALLOW}
+    - {actor: sam, action: can_list_directory, resource: secret_dir, context: [], expected: DENY}
+    - {actor: mia, action: can_list_directory, resource: secret_dir, context: [], expected: ALLOW}
+    - {actor: nobody, action: can_list_directory, resource: public_dir, context: [], expected: DENY}

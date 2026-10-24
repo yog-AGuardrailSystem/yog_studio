@@ -1,0 +1,182 @@
+# Database-admin tools. source: claude-draft (needs team review).
+- id: db-readers-query
+  english: Readers may run queries but may not drop tables.
+  tools_context: [run_query(sql, limit), drop_table(table)]
+  source: claude-draft
+  gold_yog: |
+    fact role(rita, reader)
+    allow can_run_query(Actor, Db):
+        role(Actor, reader)
+    deny can_drop_table(Actor, Table):
+        role(Actor, reader)
+  scenarios:
+    - {actor: rita, action: can_run_query, resource: sales_db, context: [], expected: ALLOW}
+    - {actor: rita, action: can_drop_table, resource: orders, context: [], expected: DENY}
+    - {actor: nobody, action: can_run_query, resource: sales_db, context: [], expected: DENY}
+
+- id: db-never-drop
+  english: Nobody may ever drop a table, but DBAs may still run queries.
+  tools_context: [drop_table(table), run_query(sql, limit)]
+  source: claude-draft
+  gold_yog: |
+    fact role(dana, dba)
+    allow can_drop_table(Actor, Table):
+        role(Actor, dba)
+    deny can_drop_table(Actor, Table):
+        role(Actor, dba)
+    allow can_run_query(Actor, Db):
+        role(Actor, dba)
+  scenarios:
+    - {actor: dana, action: can_run_query, resource: sales_db, context: [], expected: ALLOW}
+    - {actor: dana, action: can_drop_table, resource: orders, context: [], expected: DENY}
+    - {actor: nobody, action: can_drop_table, resource: orders, context: [], expected: DENY}
+
+- id: db-drop-not-production
+  english: Only a DBA may drop a table, and never in a production database.
+  tools_context: [drop_table(table)]
+  source: claude-draft
+  gold_yog: |
+    fact role(dana, dba)
+    fact environment(orders_prod, production)
+    fact environment(orders_dev, development)
+    allow can_drop_table(Actor, Table):
+        role(Actor, dba)
+    deny can_drop_table(Actor, Table):
+        environment(Table, production)
+  scenarios:
+    - {actor: dana, action: can_drop_table, resource: orders_dev, context: [], expected: ALLOW}
+    - {actor: dana, action: can_drop_table, resource: orders_prod, context: [], expected: DENY}
+    - {actor: rita, action: can_drop_table, resource: orders_dev, context: [], expected: DENY}
+
+- id: db-query-row-limit
+  english: Queries may return at most 1000 rows.
+  tools_context: [run_query(sql, limit)]
+  source: claude-draft
+  gold_yog: |
+    fact role(rita, reader)
+    fact arg(placeholder, placeholder, 0)
+    allow can_run_query(Actor, Db):
+        role(Actor, reader)
+        arg(run_query, limit, L)
+        L <= 1000
+  scenarios:
+    - {actor: rita, action: can_run_query, resource: sales_db, context: ["arg(run_query, limit, 1000)"], expected: ALLOW}
+    - {actor: rita, action: can_run_query, resource: sales_db, context: ["arg(run_query, limit, 1001)"], expected: DENY}
+    - {actor: rita, action: can_run_query, resource: sales_db, context: ["arg(run_query, limit, 10)"], expected: ALLOW}
+    - {actor: rita, action: can_run_query, resource: sales_db, context: [], expected: DENY}
+
+- id: db-backup-night-window
+  english: Backups may only run between 1am and 5am.
+  tools_context: [backup_database(dest, compress)]
+  source: claude-draft
+  gold_yog: |
+    fact role(dana, dba)
+    fact hour(placeholder, 0)
+    allow can_backup_database(Actor, Dest):
+        role(Actor, dba)
+        hour(now, H)
+        H >= 1
+        H < 5
+  scenarios:
+    - {actor: dana, action: can_backup_database, resource: s3_bucket, context: ["hour(now, 1)"], expected: ALLOW}
+    - {actor: dana, action: can_backup_database, resource: s3_bucket, context: ["hour(now, 4)"], expected: ALLOW}
+    - {actor: dana, action: can_backup_database, resource: s3_bucket, context: ["hour(now, 5)"], expected: DENY}
+    - {actor: dana, action: can_backup_database, resource: s3_bucket, context: ["hour(now, 13)"], expected: DENY}
+
+- id: db-prod-readonly-for-agent
+  english: The agent may not run write queries against a production database.
+  tools_context: [run_query(sql, is_write)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact environment(sales_prod, production)
+    fact environment(sales_dev, development)
+    fact arg(placeholder, placeholder, 0)
+    allow can_run_query(Actor, Db):
+        role(Actor, assistant)
+    deny can_run_query(Actor, Db):
+        environment(Db, production)
+        arg(run_query, is_write, W)
+        W == 1
+  scenarios:
+    - {actor: agent, action: can_run_query, resource: sales_prod, context: ["arg(run_query, is_write, 1)"], expected: DENY}
+    - {actor: agent, action: can_run_query, resource: sales_prod, context: ["arg(run_query, is_write, 0)"], expected: ALLOW}
+    - {actor: agent, action: can_run_query, resource: sales_dev, context: ["arg(run_query, is_write, 1)"], expected: ALLOW}
+
+- id: db-sensitive-tables
+  english: Only DBAs may query tables that contain personal data.
+  tools_context: [run_query(sql, limit)]
+  source: claude-draft
+  gold_yog: |
+    fact role(dana, dba)
+    fact role(rita, reader)
+    fact personal_data(users_pii)
+    allow can_run_query(Actor, Table):
+        role(Actor, dba)
+    allow can_run_query(Actor, Table):
+        role(Actor, reader)
+    deny can_run_query(Actor, Table):
+        personal_data(Table)
+        not role(Actor, dba)
+  scenarios:
+    - {actor: rita, action: can_run_query, resource: users_pii, context: [], expected: DENY}
+    - {actor: dana, action: can_run_query, resource: users_pii, context: [], expected: ALLOW}
+    - {actor: rita, action: can_run_query, resource: orders, context: [], expected: ALLOW}
+
+- id: db-backup-approved-destinations
+  english: Backups may only be written to approved destinations.
+  tools_context: [backup_database(dest, compress)]
+  source: claude-draft
+  gold_yog: |
+    fact role(dana, dba)
+    fact approved_dest(backup_bucket)
+    allow can_backup_database(Actor, Dest):
+        role(Actor, dba)
+        approved_dest(Dest)
+  scenarios:
+    - {actor: dana, action: can_backup_database, resource: backup_bucket, context: [], expected: ALLOW}
+    - {actor: dana, action: can_backup_database, resource: personal_drive, context: [], expected: DENY}
+
+- id: db-no-peak-hours-maintenance
+  english: No maintenance, including dropping tables or backups, between 9am and 6pm.
+  tools_context: [drop_table(table), backup_database(dest, compress)]
+  source: claude-draft
+  gold_yog: |
+    fact role(dana, dba)
+    fact hour(placeholder, 0)
+    allow can_drop_table(Actor, Target):
+        role(Actor, dba)
+    allow can_backup_database(Actor, Target):
+        role(Actor, dba)
+    deny can_drop_table(Actor, Target):
+        hour(now, H)
+        H >= 9
+        H < 18
+    deny can_backup_database(Actor, Target):
+        hour(now, H)
+        H >= 9
+        H < 18
+  scenarios:
+    - {actor: dana, action: can_drop_table, resource: tmp_table, context: ["hour(now, 10)"], expected: DENY}
+    - {actor: dana, action: can_backup_database, resource: backup_bucket, context: ["hour(now, 17)"], expected: DENY}
+    - {actor: dana, action: can_drop_table, resource: tmp_table, context: ["hour(now, 22)"], expected: ALLOW}
+    - {actor: dana, action: can_backup_database, resource: backup_bucket, context: ["hour(now, 8)"], expected: ALLOW}
+
+- id: db-dba-two-roles
+  english: Both DBAs and engineers may run queries, but only DBAs may back up.
+  tools_context: [run_query(sql, limit), backup_database(dest, compress)]
+  source: claude-draft
+  gold_yog: |
+    fact role(dana, dba)
+    fact role(eli, engineer)
+    allow can_run_query(Actor, Db):
+        role(Actor, dba)
+    allow can_run_query(Actor, Db):
+        role(Actor, engineer)
+    allow can_backup_database(Actor, Dest):
+        role(Actor, dba)
+  scenarios:
+    - {actor: dana, action: can_run_query, resource: sales_db, context: [], expected: ALLOW}
+    - {actor: eli, action: can_run_query, resource: sales_db, context: [], expected: ALLOW}
+    - {actor: eli, action: can_backup_database, resource: backup_bucket, context: [], expected: DENY}
+    - {actor: dana, action: can_backup_database, resource: backup_bucket, context: [], expected: ALLOW}
