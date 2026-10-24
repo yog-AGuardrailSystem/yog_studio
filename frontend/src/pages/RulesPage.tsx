@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { getDemoPolicy } from '../api/analyze'
 import { retrieve, type Retrieved } from '../api/retrieve'
 import { translate } from '../api/translate'
 import { CodeView } from '../components/CodeView'
@@ -37,6 +38,17 @@ export default function RulesPage() {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function useDemoPolicy() {
+    setError(null)
+    try {
+      const d = await getDemoPolicy()
+      setRules(d.english_rules)
+      setDraft({ english_rules: d.english_rules, yog_source: d.yog_source, retrieved_examples: [], attempts: 0, valid: true, errors: [] })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
     }
   }
 
@@ -100,6 +112,13 @@ export default function RulesPage() {
             className="rounded bg-slate-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
           >
             {busy ? 'Searching…' : 'Find similar examples'}
+          </button>
+          <button
+            onClick={useDemoPolicy}
+            className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm"
+            title="Loads the hand-written smart-home demo policy and its three rules (not LLM generated)"
+          >
+            Use prepared demo policy
           </button>
           <button
             onClick={generate}
