@@ -25,3 +25,11 @@ The engine's decision predicates always take exactly `(Actor, Resource)`. Everyt
 - **DENY > ALLOW > default DENY.** Write a broad `allow`, then narrow it with `deny` clauses.
 - "OR" = several clauses with the same head. "AND" = several lines in one body.
 - No recursion (rule cycles are a compile error).
+
+## Normalising real tool calls (`app/core/facts.py`, copied into `yog_runtime.py`)
+`facts_from_call(tool, args, hour, day)` is the single path from a real call to context facts; the runtime, the device
+simulator and the evaluator all use it (a test asserts the runtime copy equals Studio's):
+- `bool` -> `1`/`0`; `int` kept; `float` -> rounded int (lexer has no decimals); `None` skipped; list/dict -> its length.
+- strings -> lowercase `snake_case` (an Uppercase word would lex as a variable; digits-first get a `v_` prefix).
+- `hour(now,H)` and `day(now,D)` are always added. Resource = first string argument (normalised) or `item`.
+- Door ids etc. must therefore match the policy's constants after normalisation (`front_door`, not `Front Door`).
