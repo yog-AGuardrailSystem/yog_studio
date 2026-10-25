@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import analyze, check, retrieve, samples
+from app.api import analyze, check, retrieve, samples, translate
 
 app = FastAPI(title="YOG Studio")
 
@@ -22,3 +22,4 @@ app.include_router(check.router)
 app.include_router(analyze.router)
 app.include_router(samples.router)
 app.include_router(retrieve.router)
+app.include_router(translate.router)

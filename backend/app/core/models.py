@@ -18,6 +18,15 @@ class Tool(BaseModel):
     side_effect_hints: list[str] = Field(default_factory=list)
 
 
+class PolicyDraft(BaseModel):
+    english_rules: list[str]
+    yog_source: str
+    retrieved_examples: list[str]      # example ids, shown in the UI
+    attempts: int                      # validator retries used
+    valid: bool
+    errors: list[str]
+
+
 class DetectResult(BaseModel):
     kind: Literal["mcp_server", "function_calling_agent", "unknown"]
     confidence: float
