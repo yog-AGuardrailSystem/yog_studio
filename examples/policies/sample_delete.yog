@@ -1,0 +1,18 @@
+# Sample policy: admins may delete; nobody but an admin may touch production.
+fact role(alice, admin)
+fact role(bob, viewer)
+fact environment(db1, production)
+fact environment(db2, staging)
+
+rule is_prod(R):
+    environment(R, production)
+
+allow can_delete(User, Res):
+    role(User, admin)
+
+allow can_delete(User, Res):
+    role(User, viewer)
+
+deny can_delete(User, Res):
+    is_prod(Res)
+    not role(User, admin)
