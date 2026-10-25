@@ -44,7 +44,7 @@ export default function ModifyPage() {
             </ul>
           )}
           <div className="overflow-hidden rounded border border-slate-300">
-            <DiffEditor height="460px" language="python" original={analysis.source} modified={res.patched_source}
+            <DiffEditor height="460px" language="python" keepCurrentOriginalModel keepCurrentModifiedModel original={analysis.source} modified={res.patched_source}
               options={{ readOnly: true, renderSideBySide: true, minimap: { enabled: false }, automaticLayout: true }} />
           </div>
           <div className="flex items-center gap-3">

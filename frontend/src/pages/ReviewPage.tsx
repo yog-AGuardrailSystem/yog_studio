@@ -27,6 +27,11 @@ export default function ReviewPage() {
   const [busy, setBusy] = useState(false)
 
   // re-validate + refresh the readback whenever the text changes (debounced)
+  // a report describes one exact policy text: editing the text invalidates it
+  useEffect(() => {
+    setReport(null)
+  }, [source])
+
   useEffect(() => {
     if (!source.trim()) {
       setInfo(null)
@@ -166,7 +171,8 @@ export default function ReviewPage() {
       <div className="flex items-center gap-3 border-t border-slate-200 pt-4">
         <button
           onClick={doApprove}
-          disabled={!valid || busy}
+          disabled={!valid || busy || !report}
+          title={report ? '' : 'Run the scenarios first: you approve a policy only after seeing how it behaves'}
           className="rounded bg-green-600 px-5 py-2 text-sm font-bold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Approve
