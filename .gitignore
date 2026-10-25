@@ -1,0 +1,20 @@
+  # Python
+  __pycache__/
+  *.pyc
+  .venv/
+  venv/
+  .pytest_cache/
+  *.egg-info/
+
+  # Node
+  node_modules/
+  dist/
+
+  # Secrets
+  .env
+
+  # Editors / OS
+  .vscode/
+  .idea/
+  .DS_Store
+  Thumbs.db
