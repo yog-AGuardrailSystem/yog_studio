@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { evaluate, type EvalReport, type Scenario, type ScenarioResult } from '../api/evaluate'
 import { approve, explain, reject } from '../api/policies'
 import type { ExplainResponse } from '../api/types'
 import { CodeView } from '../components/CodeView'
+import { EvalTable } from '../components/EvalTable'
 import { useAppState } from '../state'
 
 const KIND_STYLE: Record<string, string> = {
@@ -13,7 +15,10 @@ const KIND_STYLE: Record<string, string> = {
 }
 
 export default function ReviewPage() {
-  const { draft, setDraft, approved, setApproved } = useAppState()
+  const { draft, setDraft, approved, setApproved, tools } = useAppState()
+  const [report, setReport] = useState<EvalReport | null>(null)
+  const [userScen, setUserScen] = useState<Scenario[]>([])
+  const [evaluating, setEvaluating] = useState(false)
   const [source, setSource] = useState(draft?.yog_source ?? '')
   const [editing, setEditing] = useState(false)
   const [info, setInfo] = useState<ExplainResponse | null>(null)
@@ -42,6 +47,27 @@ export default function ReviewPage() {
   }
 
   const valid = info?.valid === true
+
+  async function runEval(scen: Scenario[] = userScen) {
+    if (!draft) return
+    setEvaluating(true)
+    setError(null)
+    try {
+      setReport(await evaluate({ yog_source: source, english_rules: draft.english_rules, tools, user_scenarios: scen }))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setEvaluating(false)
+    }
+  }
+
+  function adopt(r: ScenarioResult, flip: boolean) {
+    const expected = flip ? (r.actual === 'ALLOW' ? 'DENY' : 'ALLOW') : (r.actual ?? r.expected)
+    const next = [...userScen, { actor: r.actor, action: r.action, resource: r.resource, context: r.context,
+      expected, source: 'user' as const, unconfirmed: false, note: r.note }]
+    setUserScen(next)
+    void runEval(next)
+  }
 
   async function doApprove() {
     if (!draft) return
@@ -122,6 +148,18 @@ export default function ReviewPage() {
           )}
         </section>
       </div>
+
+      <section>
+        <div className="mb-2 flex items-center gap-3">
+          <h2 className="font-semibold">Scenario evaluation</h2>
+          <button onClick={() => runEval()} disabled={!valid || evaluating}
+            className="rounded bg-slate-700 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40">
+            {evaluating ? 'Running…' : 'Run scenarios'}
+          </button>
+          <span className="text-xs text-slate-500">Probes are unconfirmed until you confirm or flip them.</span>
+        </div>
+        {report && <EvalTable report={report} onConfirm={(r) => adopt(r, false)} onFlip={(r) => adopt(r, true)} />}
+      </section>
 
       {error && <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</div>}
 

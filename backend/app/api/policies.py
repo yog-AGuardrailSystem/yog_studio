@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 from app.api.deps import get_adapter
 from app.engine.adapter import EngineAdapter, EngineError
+from app.evaluate.evaluator import evaluate
 from app.explain.explainer import Readback, explain
 from app.policies.store import PolicyRecord, PolicyStore
 
@@ -40,7 +41,6 @@ class ApproveRequest(BaseModel):
     english_rules: list[str] = Field(default_factory=list)
     retrieved_examples: list[str] = Field(default_factory=list)
     attempts: int = 0
-    evaluation: dict | None = None
 
 
 @router.post("/policies/approve", response_model=PolicyRecord)
@@ -56,8 +56,12 @@ def approve(req: ApproveRequest, adapter: EngineAdapter = Depends(get_adapter),
         raise HTTPException(status_code=422, detail=str(e))
     if not any(c.kind in ("allow", "deny") for c in rb.clauses):
         raise HTTPException(status_code=422, detail="cannot approve a policy with no allow/deny clause")
+    # The server runs the (deterministic) evaluation itself on the exact text being approved; nothing the
+    # client says about evaluation is trusted or stored.
+    rep = evaluate(adapter, req.yog_source)
+    evaluation = {"summary": rep.summary.model_dump(), "warnings": rep.warnings}
     return store.save(req.yog_source, english_rules=req.english_rules, retrieved_examples=req.retrieved_examples,
-                      attempts=req.attempts, evaluation=req.evaluation,
+                      attempts=req.attempts, evaluation=evaluation,
                       readback=[f"line {c.line}: {c.text}" for c in rb.clauses])
 
 

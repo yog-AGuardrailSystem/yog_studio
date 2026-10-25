@@ -80,7 +80,13 @@ class PythonPrototypeAdapter(EngineAdapter):
     def check(self, policy, actor, action, resource, context=None) -> CheckResult:
         engine = self._engine(policy)
         atoms = self._context_atoms(context or [])
-        raw = engine.check(actor, action, resource, atoms)
+        try:
+            raw = engine.check(actor, action, resource, atoms)
+        except TypeError as e:
+            # Engine bug (docs/engine_issues.md #7): ordering comparison between an int and a name crashes.
+            # A guardrail must fail closed, so report DENY rather than propagate a 500.
+            return CheckResult(decision="DENY", trace=[],
+                               reason=f"engine error, failing closed: comparison between incompatible types ({e})")
         return CheckResult(decision=raw["decision"], reason=raw["reason"], trace=list(raw["trace"]))
 
     def validate(self, policy: str) -> list[str]:
