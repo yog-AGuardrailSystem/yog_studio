@@ -24,3 +24,6 @@ Browser walkthrough: `e2e/README.md`. Benchmark: `cd backend ; uv run python -m 
 
 ## Data
 Approved policies are saved to `backend/data/policies/` (git-ignored). The retrieval index is `backend/data/index.npz`.
+
+## Deploying to Render (free)
+See the "Deploy" section in docs/DEPLOY.md.
