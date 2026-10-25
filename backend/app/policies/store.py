@@ -45,6 +45,10 @@ class PolicyStore:
             return None
         return PolicyRecord(**json.loads(f.read_text(encoding="utf-8")))
 
+    def latest(self) -> PolicyRecord | None:
+        recs = self.list()
+        return recs[0] if recs else None
+
     def list(self) -> list[PolicyRecord]:
         if not self.dir.exists():
             return []
