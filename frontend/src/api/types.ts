@@ -28,6 +28,38 @@ export interface AnalyzeResponse {
   candidates: Tool[]
 }
 
+export interface ClauseReadback {
+  kind: string
+  line: number
+  text: string
+}
+
+export interface Readback {
+  actions: { action: string; predicate: string; allow: string[]; deny: string[] }[]
+  definitions: string[]
+  facts: string[]
+  inputs: string[]
+  notes: string[]
+  clauses: ClauseReadback[]
+}
+
+export interface ExplainResponse {
+  valid: boolean
+  errors: string[]
+  readback: Readback | null
+}
+
+export interface PolicyRecord {
+  id: string
+  approved_at: string
+  english_rules: string[]
+  retrieved_examples: string[]
+  attempts: number
+  readback: string[]
+  evaluation: Record<string, unknown> | null
+  yog_source: string
+}
+
 export interface PolicyDraft {
   english_rules: string[]
   yog_source: string
