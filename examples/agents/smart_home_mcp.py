@@ -4,7 +4,7 @@ from mcp.server.fastmcp import FastMCP
 mcp = FastMCP("smart-home")
 
 # Fake in-memory device state (the real simulator lives in Studio).
-DOORS = {"front": "locked", "back": "locked"}
+DOORS = {"front_door": "locked", "back_door": "locked"}
 THERMOSTATS = {"living_room": 21.0}
 VALVES = {"water_main": 0}
 
