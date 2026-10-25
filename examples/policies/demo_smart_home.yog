@@ -1,0 +1,29 @@
+# Prepared demo policy for examples/agents/smart_home_mcp.py (hand-written, NOT LLM generated).
+# Rules: never unlock between 11pm and 6am; thermostat between 16 and 28; valves at most 50 percent.
+fact role(agent, assistant)
+fact hour(placeholder, 0)
+fact arg(placeholder, placeholder, 0)
+
+allow can_unlock_door(Actor, Door):
+    role(Actor, assistant)
+allow can_lock_door(Actor, Door):
+    role(Actor, assistant)
+allow can_set_thermostat(Actor, Zone):
+    role(Actor, assistant)
+    arg(set_thermostat, temperature, T)
+    T >= 16
+    T <= 28
+allow can_open_valve(Actor, Valve):
+    role(Actor, assistant)
+allow can_get_status(Actor, Device):
+    role(Actor, assistant)
+
+deny can_unlock_door(Actor, Door):
+    hour(now, H)
+    H >= 23
+deny can_unlock_door(Actor, Door):
+    hour(now, H)
+    H < 6
+deny can_open_valve(Actor, Valve):
+    arg(open_valve, percent, P)
+    P > 50
