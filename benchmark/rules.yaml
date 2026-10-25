@@ -1,0 +1,511 @@
+# Benchmark set (30). Kept SEPARATE from examples/policies (retrieval) so retrieval cannot leak answers.
+# source: claude-draft -> CLAUDE.md section 11 requires HUMAN-written rules for the final numbers: the team should
+# replace/extend these. Schema = {id, english, tools_context, gold_yog, scenarios}. Conventions: docs/conventions.md
+- id: bm-01
+  english: Keep every door shut from midnight until 5am; the agent must not open any door in those hours.
+  tools_context: [unlock_door(door_id)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact hour(placeholder, 0)
+    allow can_unlock_door(A, D):
+        role(A, assistant)
+    deny can_unlock_door(A, D):
+        hour(now, H)
+        H < 5
+  scenarios:
+    - {actor: agent, action: can_unlock_door, resource: front_door, context: ["hour(now, 0)"], expected: DENY}
+    - {actor: agent, action: can_unlock_door, resource: front_door, context: ["hour(now, 4)"], expected: DENY}
+    - {actor: agent, action: can_unlock_door, resource: front_door, context: ["hour(now, 5)"], expected: ALLOW}
+    - {actor: agent, action: can_unlock_door, resource: front_door, context: ["hour(now, 18)"], expected: ALLOW}
+
+- id: bm-02
+  english: The oven temperature setting can never exceed 250 degrees.
+  tools_context: [set_oven(temperature)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact arg(placeholder, placeholder, 0)
+    allow can_set_oven(A, R):
+        role(A, assistant)
+    deny can_set_oven(A, R):
+        arg(set_oven, temperature, T)
+        T > 250
+  scenarios:
+    - {actor: agent, action: can_set_oven, resource: kitchen_oven, context: ["arg(set_oven, temperature, 250)"], expected: ALLOW}
+    - {actor: agent, action: can_set_oven, resource: kitchen_oven, context: ["arg(set_oven, temperature, 251)"], expected: DENY}
+    - {actor: agent, action: can_set_oven, resource: kitchen_oven, context: ["arg(set_oven, temperature, 180)"], expected: ALLOW}
+
+- id: bm-03
+  english: Only users with the admin role may remove a user account.
+  tools_context: [delete_account(account_id)]
+  source: claude-draft
+  gold_yog: |
+    fact role(alice, admin)
+    fact role(bob, member)
+    allow can_delete_account(A, R):
+        role(A, admin)
+  scenarios:
+    - {actor: alice, action: can_delete_account, resource: acct_9, context: [], expected: ALLOW}
+    - {actor: bob, action: can_delete_account, resource: acct_9, context: [], expected: DENY}
+    - {actor: nobody, action: can_delete_account, resource: acct_9, context: [], expected: DENY}
+
+- id: bm-04
+  english: The agent can read logs, but it can never change or erase them.
+  tools_context: [read_log(name), edit_log(name), erase_log(name)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    allow can_read_log(A, R):
+        role(A, assistant)
+    deny can_edit_log(A, R):
+        role(A, assistant)
+    deny can_erase_log(A, R):
+        role(A, assistant)
+  scenarios:
+    - {actor: agent, action: can_read_log, resource: app_log, context: [], expected: ALLOW}
+    - {actor: agent, action: can_edit_log, resource: app_log, context: [], expected: DENY}
+    - {actor: agent, action: can_erase_log, resource: app_log, context: [], expected: DENY}
+
+- id: bm-05
+  english: Wire transfers above 5000 are not permitted for the agent.
+  tools_context: [wire_transfer(amount)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact arg(placeholder, placeholder, 0)
+    allow can_wire_transfer(A, R):
+        role(A, assistant)
+        arg(wire_transfer, amount, N)
+        N <= 5000
+  scenarios:
+    - {actor: agent, action: can_wire_transfer, resource: acct_1, context: ["arg(wire_transfer, amount, 5000)"], expected: ALLOW}
+    - {actor: agent, action: can_wire_transfer, resource: acct_1, context: ["arg(wire_transfer, amount, 5001)"], expected: DENY}
+    - {actor: agent, action: can_wire_transfer, resource: acct_1, context: ["arg(wire_transfer, amount, 10)"], expected: ALLOW}
+
+- id: bm-06
+  english: The sprinkler may only run in the early morning, 5am to 8am.
+  tools_context: [run_sprinkler(duration)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact hour(placeholder, 0)
+    allow can_run_sprinkler(A, R):
+        role(A, assistant)
+        hour(now, H)
+        H >= 5
+        H < 8
+  scenarios:
+    - {actor: agent, action: can_run_sprinkler, resource: lawn, context: ["hour(now, 5)"], expected: ALLOW}
+    - {actor: agent, action: can_run_sprinkler, resource: lawn, context: ["hour(now, 7)"], expected: ALLOW}
+    - {actor: agent, action: can_run_sprinkler, resource: lawn, context: ["hour(now, 8)"], expected: DENY}
+    - {actor: agent, action: can_run_sprinkler, resource: lawn, context: ["hour(now, 13)"], expected: DENY}
+
+- id: bm-07
+  english: Nobody may shut down a server that is marked critical.
+  tools_context: [shutdown_server(server)]
+  source: claude-draft
+  gold_yog: |
+    fact role(eli, engineer)
+    fact critical(db_primary)
+    allow can_shutdown_server(A, R):
+        role(A, engineer)
+    deny can_shutdown_server(A, R):
+        critical(R)
+  scenarios:
+    - {actor: eli, action: can_shutdown_server, resource: db_primary, context: [], expected: DENY}
+    - {actor: eli, action: can_shutdown_server, resource: web_2, context: [], expected: ALLOW}
+    - {actor: stranger, action: can_shutdown_server, resource: web_2, context: [], expected: DENY}
+
+- id: bm-08
+  english: Messages may be posted only to the public and general channels.
+  tools_context: [post_message(channel, text)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact open_channel(public)
+    fact open_channel(general)
+    allow can_post_message(A, Ch):
+        role(A, assistant)
+        open_channel(Ch)
+  scenarios:
+    - {actor: agent, action: can_post_message, resource: public, context: [], expected: ALLOW}
+    - {actor: agent, action: can_post_message, resource: general, context: [], expected: ALLOW}
+    - {actor: agent, action: can_post_message, resource: executives, context: [], expected: DENY}
+
+- id: bm-09
+  english: Garage door can be opened only if someone is at home.
+  tools_context: [open_garage()]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact home(placeholder, no)
+    allow can_open_garage(A, R):
+        role(A, assistant)
+        home(house, yes)
+  scenarios:
+    - {actor: agent, action: can_open_garage, resource: garage_door, context: ["home(house, yes)"], expected: ALLOW}
+    - {actor: agent, action: can_open_garage, resource: garage_door, context: ["home(house, no)"], expected: DENY}
+    - {actor: agent, action: can_open_garage, resource: garage_door, context: [], expected: DENY}
+
+- id: bm-10
+  english: Reading customer records requires the support or admin role.
+  tools_context: [read_customer(customer_id)]
+  source: claude-draft
+  gold_yog: |
+    fact role(sue, support)
+    fact role(alice, admin)
+    fact role(bob, intern)
+    allow can_read_customer(A, R):
+        role(A, support)
+    allow can_read_customer(A, R):
+        role(A, admin)
+  scenarios:
+    - {actor: sue, action: can_read_customer, resource: cust_1, context: [], expected: ALLOW}
+    - {actor: alice, action: can_read_customer, resource: cust_1, context: [], expected: ALLOW}
+    - {actor: bob, action: can_read_customer, resource: cust_1, context: [], expected: DENY}
+
+- id: bm-11
+  english: Do not let the agent deploy anything on Sundays.
+  tools_context: [deploy_app(version)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact day(placeholder, none)
+    allow can_deploy_app(A, R):
+        role(A, assistant)
+    deny can_deploy_app(A, R):
+        day(now, D)
+        D == sun
+  scenarios:
+    - {actor: agent, action: can_deploy_app, resource: web, context: ["day(now, sun)"], expected: DENY}
+    - {actor: agent, action: can_deploy_app, resource: web, context: ["day(now, mon)"], expected: ALLOW}
+    - {actor: agent, action: can_deploy_app, resource: web, context: ["day(now, sat)"], expected: ALLOW}
+
+- id: bm-12
+  english: The fan speed must stay between 1 and 5 inclusive.
+  tools_context: [set_fan(speed)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact arg(placeholder, placeholder, 0)
+    allow can_set_fan(A, R):
+        role(A, assistant)
+        arg(set_fan, speed, S)
+        S >= 1
+        S <= 5
+  scenarios:
+    - {actor: agent, action: can_set_fan, resource: bedroom_fan, context: ["arg(set_fan, speed, 1)"], expected: ALLOW}
+    - {actor: agent, action: can_set_fan, resource: bedroom_fan, context: ["arg(set_fan, speed, 5)"], expected: ALLOW}
+    - {actor: agent, action: can_set_fan, resource: bedroom_fan, context: ["arg(set_fan, speed, 0)"], expected: DENY}
+    - {actor: agent, action: can_set_fan, resource: bedroom_fan, context: ["arg(set_fan, speed, 6)"], expected: DENY}
+
+- id: bm-13
+  english: Files in the archive folder are read-only for everyone.
+  tools_context: [read_file(path), write_file(path)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact folder(old_report, archive)
+    fact folder(draft, work)
+    allow can_read_file(A, R):
+        role(A, assistant)
+    allow can_write_file(A, R):
+        role(A, assistant)
+    deny can_write_file(A, R):
+        folder(R, archive)
+  scenarios:
+    - {actor: agent, action: can_write_file, resource: old_report, context: [], expected: DENY}
+    - {actor: agent, action: can_read_file, resource: old_report, context: [], expected: ALLOW}
+    - {actor: agent, action: can_write_file, resource: draft, context: [], expected: ALLOW}
+
+- id: bm-14
+  english: Only the person who created a ticket may close it.
+  tools_context: [close_ticket(ticket_id)]
+  source: claude-draft
+  gold_yog: |
+    fact created_by(t1, ann)
+    fact created_by(t2, ben)
+    allow can_close_ticket(A, R):
+        created_by(R, A)
+  scenarios:
+    - {actor: ann, action: can_close_ticket, resource: t1, context: [], expected: ALLOW}
+    - {actor: ann, action: can_close_ticket, resource: t2, context: [], expected: DENY}
+    - {actor: ben, action: can_close_ticket, resource: t2, context: [], expected: ALLOW}
+
+- id: bm-15
+  english: Block all purchases for accounts that are on hold.
+  tools_context: [make_purchase(item, price)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact on_hold(acct_7)
+    allow can_make_purchase(A, R):
+        role(A, assistant)
+    deny can_make_purchase(A, R):
+        on_hold(R)
+  scenarios:
+    - {actor: agent, action: can_make_purchase, resource: acct_7, context: [], expected: DENY}
+    - {actor: agent, action: can_make_purchase, resource: acct_8, context: [], expected: ALLOW}
+
+- id: bm-16
+  english: The heater may not be switched on between 9am and 5pm when nobody is home.
+  tools_context: [heater_on()]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact hour(placeholder, 0)
+    fact home(placeholder, no)
+    allow can_heater_on(A, R):
+        role(A, assistant)
+    deny can_heater_on(A, R):
+        hour(now, H)
+        H >= 9
+        H < 17
+        home(house, no)
+  scenarios:
+    - {actor: agent, action: can_heater_on, resource: heater, context: ["hour(now, 12)", "home(house, no)"], expected: DENY}
+    - {actor: agent, action: can_heater_on, resource: heater, context: ["hour(now, 12)", "home(house, yes)"], expected: ALLOW}
+    - {actor: agent, action: can_heater_on, resource: heater, context: ["hour(now, 20)", "home(house, no)"], expected: ALLOW}
+
+- id: bm-17
+  english: Sending SMS is allowed only to numbers on the approved list.
+  tools_context: [send_sms(number, text)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact approved_number(n_1001)
+    fact approved_number(n_1002)
+    allow can_send_sms(A, R):
+        role(A, assistant)
+        approved_number(R)
+  scenarios:
+    - {actor: agent, action: can_send_sms, resource: n_1001, context: [], expected: ALLOW}
+    - {actor: agent, action: can_send_sms, resource: n_9999, context: [], expected: DENY}
+
+- id: bm-18
+  english: Production databases may be backed up only by a DBA, and never during the 9-to-5 workday.
+  tools_context: [backup_db(name)]
+  source: claude-draft
+  gold_yog: |
+    fact role(dana, dba)
+    fact role(eli, engineer)
+    fact hour(placeholder, 0)
+    allow can_backup_db(A, R):
+        role(A, dba)
+    deny can_backup_db(A, R):
+        hour(now, H)
+        H >= 9
+        H < 17
+  scenarios:
+    - {actor: dana, action: can_backup_db, resource: orders_prod, context: ["hour(now, 22)"], expected: ALLOW}
+    - {actor: dana, action: can_backup_db, resource: orders_prod, context: ["hour(now, 10)"], expected: DENY}
+    - {actor: eli, action: can_backup_db, resource: orders_prod, context: ["hour(now, 22)"], expected: DENY}
+
+- id: bm-19
+  english: A user can only reset their own password.
+  tools_context: [reset_password(user)]
+  source: claude-draft
+  gold_yog: |
+    fact registered(ann)
+    fact registered(ben)
+    allow can_reset_password(A, R):
+        registered(A)
+        A == R
+  scenarios:
+    - {actor: ann, action: can_reset_password, resource: ann, context: [], expected: ALLOW}
+    - {actor: ann, action: can_reset_password, resource: ben, context: [], expected: DENY}
+    - {actor: zed, action: can_reset_password, resource: zed, context: [], expected: DENY}
+
+- id: bm-20
+  english: The agent can never spend more than 100 on a single ad campaign.
+  tools_context: [create_campaign(budget)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact arg(placeholder, placeholder, 0)
+    allow can_create_campaign(A, R):
+        role(A, assistant)
+    deny can_create_campaign(A, R):
+        arg(create_campaign, budget, B)
+        B > 100
+  scenarios:
+    - {actor: agent, action: can_create_campaign, resource: spring, context: ["arg(create_campaign, budget, 100)"], expected: ALLOW}
+    - {actor: agent, action: can_create_campaign, resource: spring, context: ["arg(create_campaign, budget, 101)"], expected: DENY}
+    - {actor: agent, action: can_create_campaign, resource: spring, context: ["arg(create_campaign, budget, 40)"], expected: ALLOW}
+
+- id: bm-21
+  english: Elevators may only be sent to floors the visitor is authorised for.
+  tools_context: [send_elevator(floor)]
+  source: claude-draft
+  gold_yog: |
+    fact authorised(vera, floor_2)
+    fact authorised(vera, floor_3)
+    allow can_send_elevator(A, R):
+        authorised(A, R)
+  scenarios:
+    - {actor: vera, action: can_send_elevator, resource: floor_2, context: [], expected: ALLOW}
+    - {actor: vera, action: can_send_elevator, resource: floor_9, context: [], expected: DENY}
+    - {actor: walt, action: can_send_elevator, resource: floor_2, context: [], expected: DENY}
+
+- id: bm-22
+  english: The drone must not fly higher than 120 metres.
+  tools_context: [set_altitude(metres)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, pilot)
+    fact arg(placeholder, placeholder, 0)
+    allow can_set_altitude(A, R):
+        role(A, pilot)
+        arg(set_altitude, metres, M)
+        M <= 120
+  scenarios:
+    - {actor: agent, action: can_set_altitude, resource: drone_1, context: ["arg(set_altitude, metres, 120)"], expected: ALLOW}
+    - {actor: agent, action: can_set_altitude, resource: drone_1, context: ["arg(set_altitude, metres, 121)"], expected: DENY}
+    - {actor: agent, action: can_set_altitude, resource: drone_1, context: ["arg(set_altitude, metres, 30)"], expected: ALLOW}
+
+- id: bm-23
+  english: Interns may view reports but not export them; managers may do both.
+  tools_context: [view_report(report), export_report(report)]
+  source: claude-draft
+  gold_yog: |
+    fact role(ian, intern)
+    fact role(mia, manager)
+    allow can_view_report(A, R):
+        role(A, intern)
+    allow can_view_report(A, R):
+        role(A, manager)
+    allow can_export_report(A, R):
+        role(A, manager)
+  scenarios:
+    - {actor: ian, action: can_view_report, resource: q3, context: [], expected: ALLOW}
+    - {actor: ian, action: can_export_report, resource: q3, context: [], expected: DENY}
+    - {actor: mia, action: can_export_report, resource: q3, context: [], expected: ALLOW}
+
+- id: bm-24
+  english: The lights may be turned off any time except in rooms that are marked occupied.
+  tools_context: [lights_off(room)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact occupied(study)
+    allow can_lights_off(A, R):
+        role(A, assistant)
+    deny can_lights_off(A, R):
+        occupied(R)
+  scenarios:
+    - {actor: agent, action: can_lights_off, resource: study, context: [], expected: DENY}
+    - {actor: agent, action: can_lights_off, resource: hallway, context: [], expected: ALLOW}
+
+- id: bm-25
+  english: Database queries are allowed in the test environment only.
+  tools_context: [run_query(sql)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact environment(db_test, test)
+    fact environment(db_live, production)
+    allow can_run_query(A, R):
+        role(A, assistant)
+        environment(R, test)
+  scenarios:
+    - {actor: agent, action: can_run_query, resource: db_test, context: [], expected: ALLOW}
+    - {actor: agent, action: can_run_query, resource: db_live, context: [], expected: DENY}
+
+- id: bm-26
+  english: No one may disable the alarm between 10pm and 6am, but anyone with the owner role may do it during the day.
+  tools_context: [disable_alarm()]
+  source: claude-draft
+  gold_yog: |
+    fact role(olga, owner)
+    fact hour(placeholder, 0)
+    allow can_disable_alarm(A, R):
+        role(A, owner)
+    deny can_disable_alarm(A, R):
+        hour(now, H)
+        H >= 22
+    deny can_disable_alarm(A, R):
+        hour(now, H)
+        H < 6
+  scenarios:
+    - {actor: olga, action: can_disable_alarm, resource: alarm, context: ["hour(now, 23)"], expected: DENY}
+    - {actor: olga, action: can_disable_alarm, resource: alarm, context: ["hour(now, 3)"], expected: DENY}
+    - {actor: olga, action: can_disable_alarm, resource: alarm, context: ["hour(now, 12)"], expected: ALLOW}
+    - {actor: agent, action: can_disable_alarm, resource: alarm, context: ["hour(now, 12)"], expected: DENY}
+
+- id: bm-27
+  english: The agent may withdraw cash only when the daily total so far is under 1000.
+  tools_context: [withdraw_cash(amount)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact withdrawn_today(placeholder, 0)
+    allow can_withdraw_cash(A, R):
+        role(A, assistant)
+        withdrawn_today(A, T)
+        T < 1000
+  scenarios:
+    - {actor: agent, action: can_withdraw_cash, resource: atm_1, context: ["withdrawn_today(agent, 999)"], expected: ALLOW}
+    - {actor: agent, action: can_withdraw_cash, resource: atm_1, context: ["withdrawn_today(agent, 1000)"], expected: DENY}
+    - {actor: agent, action: can_withdraw_cash, resource: atm_1, context: ["withdrawn_today(agent, 0)"], expected: ALLOW}
+
+- id: bm-28
+  english: Guests may open only the front door, and never between 10pm and 7am.
+  tools_context: [unlock_door(door_id)]
+  source: claude-draft
+  gold_yog: |
+    fact role(gus, guest)
+    fact hour(placeholder, 0)
+    allow can_unlock_door(A, R):
+        role(A, guest)
+        R == front_door
+    deny can_unlock_door(A, R):
+        hour(now, H)
+        H >= 22
+    deny can_unlock_door(A, R):
+        hour(now, H)
+        H < 7
+  scenarios:
+    - {actor: gus, action: can_unlock_door, resource: front_door, context: ["hour(now, 12)"], expected: ALLOW}
+    - {actor: gus, action: can_unlock_door, resource: back_door, context: ["hour(now, 12)"], expected: DENY}
+    - {actor: gus, action: can_unlock_door, resource: front_door, context: ["hour(now, 23)"], expected: DENY}
+    - {actor: gus, action: can_unlock_door, resource: front_door, context: ["hour(now, 6)"], expected: DENY}
+
+- id: bm-29
+  english: Any file marked confidential must never be uploaded, whoever asks.
+  tools_context: [upload_file(path)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact role(alice, admin)
+    fact confidential(payroll_xls)
+    allow can_upload_file(A, R):
+        role(A, assistant)
+    allow can_upload_file(A, R):
+        role(A, admin)
+    deny can_upload_file(A, R):
+        confidential(R)
+  scenarios:
+    - {actor: agent, action: can_upload_file, resource: payroll_xls, context: [], expected: DENY}
+    - {actor: alice, action: can_upload_file, resource: payroll_xls, context: [], expected: DENY}
+    - {actor: agent, action: can_upload_file, resource: menu_pdf, context: [], expected: ALLOW}
+
+- id: bm-30
+  english: Water valves may open at most 25 percent unless the maintenance flag is set.
+  tools_context: [open_valve(percent)]
+  source: claude-draft
+  gold_yog: |
+    fact role(agent, assistant)
+    fact arg(placeholder, placeholder, 0)
+    fact maintenance(placeholder, no)
+    allow can_open_valve(A, R):
+        role(A, assistant)
+        arg(open_valve, percent, P)
+        P <= 25
+    allow can_open_valve(A, R):
+        role(A, assistant)
+        maintenance(house, yes)
+  scenarios:
+    - {actor: agent, action: can_open_valve, resource: main, context: ["arg(open_valve, percent, 25)"], expected: ALLOW}
+    - {actor: agent, action: can_open_valve, resource: main, context: ["arg(open_valve, percent, 60)"], expected: DENY}
+    - {actor: agent, action: can_open_valve, resource: main, context: ["arg(open_valve, percent, 60)", "maintenance(house, yes)"], expected: ALLOW}
