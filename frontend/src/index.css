@@ -3,3 +3,13 @@
 body {
   @apply bg-slate-50 text-slate-900;
 }
+
+/* Monaco decorations: detector evidence lines */
+.evidence-line {
+  background: rgba(250, 204, 21, 0.25);
+}
+.evidence-gutter {
+  background: #eab308;
+  width: 4px !important;
+  margin-left: 3px;
+}
