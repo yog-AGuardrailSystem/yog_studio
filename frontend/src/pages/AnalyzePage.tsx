@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom'
 import { analyzeSource, analyzeUpload, getSample, listSamples } from '../api/analyze'
 import type { Tool } from '../api/types'
 import { CodeView } from '../components/CodeView'
+import { PageIntro } from '../components/PageIntro'
+import { Spinner } from '../components/Spinner'
+import { Term } from '../components/Term'
 import { ToolsTable } from '../components/ToolsTable'
 import { useAppState } from '../state'
 
@@ -70,6 +73,9 @@ export default function AnalyzePage() {
 
   return (
     <div className="space-y-6">
+      <PageIntro step="Step 1 of 5" title="Upload your agent">
+        Drop in a Python AI agent or MCP server, or pick a sample. Studio reads it (it never runs it) and lists the tools the agent can call.
+      </PageIntro>
       <section
         onDragOver={(e) => {
           e.preventDefault()
@@ -77,7 +83,7 @@ export default function AnalyzePage() {
         }}
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
-        className={`rounded-lg border-2 border-dashed p-6 text-center ${dragging ? 'border-indigo-500 bg-indigo-50' : 'border-slate-300 bg-white'}`}
+        className={`rounded-lg border-2 border-dashed p-6 text-center ${dragging ? 'border-sky-600 bg-sky-50' : 'border-slate-300 bg-white'}`}
       >
         <p className="mb-3 text-sm text-slate-600">Drop a Python agent / MCP server file here, or</p>
         <input
@@ -96,7 +102,7 @@ export default function AnalyzePage() {
             {samples.map((s) => (
               <button
                 key={s}
-                className="rounded border border-slate-300 bg-white px-2 py-1 font-mono text-xs hover:bg-indigo-50"
+                className="rounded border border-slate-300 bg-white px-2 py-1 font-mono text-xs hover:bg-sky-50"
                 onClick={() => run(async () => {
                   const smp = await getSample(s)
                   return analyzeSource(smp.filename, smp.source)
@@ -107,7 +113,7 @@ export default function AnalyzePage() {
             ))}
           </div>
         )}
-        {busy && <p className="mt-3 text-sm text-slate-500">Analysing…</p>}
+        {busy && <p className="mt-3 text-sm text-slate-500"><Spinner label="Analysing" />Analysing the file…</p>}
         <p className="mt-3 text-xs text-slate-400">Files are analysed statically. Your code is never executed.</p>
       </section>
 
@@ -141,7 +147,7 @@ export default function AnalyzePage() {
 
           <div className="grid gap-6 lg:grid-cols-2">
             <section>
-              <h3 className="mb-2 text-sm font-semibold">Source (evidence lines highlighted)</h3>
+              <h3 className="mb-2 text-sm font-semibold">Source (<Term tip="The exact lines that made the detector decide what kind of agent this is. Highlighted in yellow.">evidence</Term> lines highlighted)</h3>
               <CodeView value={analysis.source} highlightLines={highlight} revealLine={reveal} />
             </section>
             <section>
@@ -159,7 +165,7 @@ export default function AnalyzePage() {
                 <ToolsTable tools={analysis.tools} onSelect={(t: Tool) => setReveal(t.source_line)} />
               )}
               {tools.length > 0 && (
-                <Link to="/rules" className="mt-4 inline-block rounded bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                <Link to="/rules" className="mt-4 inline-block rounded bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800">
                   Continue with {tools.length} tool{tools.length === 1 ? '' : 's'} →
                 </Link>
               )}

@@ -4,12 +4,12 @@ A recorded backup video cannot be produced by the build tooling: **record one yo
 Rehearse twice; the offline path below needs no API key and no internet.
 
 ## Before you start
-1. `.\scripts\dev.ps1` (or see docs/RUNNING.md). Open http://localhost:5173. Top strip should show no red banner.
+1. `.\scripts\dev.ps1` (or see docs/RUNNING.md). Open http://localhost:5173 (the landing page). Click **Open Studio**, or go straight to http://localhost:5173/studio. There should be no amber "cannot reach the backend" banner.
 2. Optional live LLM: put `LLM_PROVIDER=gemini` and `GEMINI_API_KEY=...` in `backend/.env`, restart the backend.
 3. Delete `backend/data/policies/*` for a clean "nothing is live yet" start.
 
 ## Script (about 4 minutes)
-1. **Upload & Tools** -> click `smart_home_mcp.py`. Say: "Studio never runs this file, it only reads it." Point at the badge *MCP server, 0.95* and the yellow evidence lines; tools `unlock_door`, `set_thermostat`, `open_valve` appear with side-effect chips.
+1. **Upload** step -> click `smart_home_mcp.py`. Say: "Studio never runs this file, it only reads it." Point at the badge *MCP server, 0.95* and the yellow evidence lines; tools `unlock_door`, `set_thermostat`, `open_valve` appear with side-effect chips.
 2. **Rules** -> type: *The agent may never unlock the door between 11pm and 6am.* then *Thermostat must stay between 16 and 28 degrees.* -> **Find similar examples** (the retrieval step: show the cards and similarity scores) -> **Generate YOG draft**.
    - With Gemini this is the real translation; show attempts used (n/3).
    - Offline (fake provider) the draft is only the nearest example copied: use **Use prepared demo policy** instead and say plainly that it is hand-written.

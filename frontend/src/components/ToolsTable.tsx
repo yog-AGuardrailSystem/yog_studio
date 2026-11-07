@@ -37,7 +37,7 @@ export function ToolsTable({ tools, onSelect, selected, onToggle }: Props) {
       </thead>
       <tbody>
         {tools.map((t) => (
-          <tr key={t.name} className="cursor-pointer border-b border-slate-100 align-top hover:bg-indigo-50" onClick={() => onSelect?.(t)}>
+          <tr key={t.name} className="cursor-pointer border-b border-slate-100 align-top hover:bg-sky-50" onClick={() => onSelect?.(t)}>
             {selected && (
               <td className="py-2" onClick={(e) => e.stopPropagation()}>
                 <input type="checkbox" checked={selected.has(t.name)} onChange={() => onToggle?.(t.name)} aria-label={`select ${t.name}`} />

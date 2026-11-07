@@ -4,7 +4,11 @@ import { evaluate, type EvalReport, type Scenario, type ScenarioResult } from '.
 import { approve, explain, reject } from '../api/policies'
 import type { ExplainResponse } from '../api/types'
 import { CodeView } from '../components/CodeView'
+import { EmptyState } from '../components/EmptyState'
 import { EvalTable } from '../components/EvalTable'
+import { PageIntro } from '../components/PageIntro'
+import { Spinner } from '../components/Spinner'
+import { Term } from '../components/Term'
 import { useAppState } from '../state'
 
 const KIND_STYLE: Record<string, string> = {
@@ -45,9 +49,7 @@ export default function ReviewPage() {
 
   if (!draft) {
     return (
-      <p className="text-sm text-slate-600">
-        No draft yet. <Link to="/rules" className="text-indigo-700 underline">Write rules and generate a draft</Link> first.
-      </p>
+      <EmptyState title="No draft to review yet" text="Write a rule in English and generate a draft first. It will show up here." to="/rules" action="Write rules" />
     )
   }
 
@@ -108,6 +110,9 @@ export default function ReviewPage() {
 
   return (
     <div className="space-y-4">
+      <PageIntro step="Step 3 of 5" title="Review and approve">
+        Check the policy, read what it means in plain English, then run the test scenarios. When you are happy, approve it. Approving is the only way a policy goes live.
+      </PageIntro>
       <div className="rounded border border-slate-200 bg-white p-3 text-sm">
         <b>Rules you wrote:</b>
         <ol className="ml-5 list-decimal">
@@ -122,7 +127,7 @@ export default function ReviewPage() {
             <span className={`rounded border px-2 py-0.5 text-xs font-bold ${valid ? 'border-green-300 bg-green-100 text-green-800' : 'border-red-300 bg-red-100 text-red-800'}`} data-testid="valid-badge">
               {info === null ? 'checking…' : valid ? 'compiles' : 'does NOT compile'}
             </span>
-            <button className="text-sm text-indigo-700" onClick={() => setEditing(!editing)}>
+            <button className="text-sm text-sky-800" onClick={() => setEditing(!editing)}>
               {editing ? 'Done editing' : 'Edit'}
             </button>
           </div>
@@ -135,7 +140,7 @@ export default function ReviewPage() {
         </section>
 
         <section>
-          <h2 className="mb-2 font-semibold">What this policy means (plain English)</h2>
+          <h2 className="mb-2 font-semibold">What this policy means (<Term tip="Studio translates the policy back into plain English so you can check it says what you meant.">readback</Term>)</h2>
           {info?.readback ? (
             <div className="space-y-2" data-testid="readback">
               {info.readback.clauses.map((c) => (
@@ -159,7 +164,7 @@ export default function ReviewPage() {
           <h2 className="font-semibold">Scenario evaluation</h2>
           <button onClick={() => runEval()} disabled={!valid || evaluating}
             className="rounded bg-slate-700 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40">
-            {evaluating ? 'Running…' : 'Run scenarios'}
+            {evaluating ? <><Spinner label="Running scenarios" /> Running…</> : 'Run scenarios'}
           </button>
           <span className="text-xs text-slate-500">Probes are unconfirmed until you confirm or flip them.</span>
         </div>
@@ -183,9 +188,15 @@ export default function ReviewPage() {
         <button onClick={doReject} disabled={busy} className="rounded border border-red-300 bg-white px-4 py-2 text-sm text-red-700">
           Reject
         </button>
+        {status !== 'approved' && (!valid || !report) && (
+          <span className="text-xs text-slate-500" data-testid="approve-hint">
+            {!valid ? 'Approve is off until the policy compiles.' : 'Approve is off until you run the scenarios, so you see how the policy behaves first.'}
+          </span>
+        )}
         {status === 'approved' && approved && (
           <span className="text-sm font-semibold text-green-700" data-testid="approved-msg">
-            Approved and saved as {approved.id}
+            Approved and saved as {approved.id}.{' '}
+            <Link to="/modify" className="underline">Next: patch your agent →</Link>
           </span>
         )}
         {status === 'rejected' && <span className="text-sm text-red-700">Draft rejected: nothing was saved.</span>}

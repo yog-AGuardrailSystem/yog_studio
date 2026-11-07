@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { evaluate, type Call } from '../../lib/yogMirror'
 import { DenyStamp } from './DenyStamp'
 import { TypeText } from './TypeText'
@@ -93,15 +93,12 @@ const YOG = ['deny can_unlock_door(Actor, Door):', '    hour(now, H)', '    H >=
 export function TranslateVisual({ active }: V) {
   const { on, reduce } = useOn(active)
   const [typed, setTyped] = useState(false)
-  useEffect(() => {
-    if (!active) setTyped(false)
-  }, [active])
   const showRest = reduce || typed
   return (
     <Card label="An English rule becomes YOG">
       <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Your rule</p>
       <p className="mt-1 min-h-[3rem] rounded-lg bg-slate-50 p-3 text-sm">
-        <TypeText text={RULE} run={active} onDone={() => setTyped(true)} />
+        <TypeText text={RULE} run={active} onStart={() => setTyped(false)} onDone={() => setTyped(true)} />
       </p>
       <motion.div className="mt-3" initial={false} animate={showRest ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}>
         <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Similar examples retrieved</p>
@@ -257,7 +254,7 @@ const ACTS: Act[] = [
 ]
 const fmt = (h: number) => `${String(h).padStart(2, '0')}:00`
 
-export function DeviceVisual(_: V) {
+export function DeviceVisual() {
   const reduce = useReducedMotion()
   const [hour, setHour] = useState(14)
   const [locked, setLocked] = useState(true)

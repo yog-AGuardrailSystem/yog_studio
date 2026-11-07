@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { deviceState, resetDevice, runDemo, sendCommand, setClock, type DeviceSnapshot } from '../api/device'
+import { DenyStamp } from '../components/motion/DenyStamp'
+import { PageIntro } from '../components/PageIntro'
+import { Skeleton } from '../components/Skeleton'
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 const COMMANDS: { label: string; tool: string; args: Record<string, unknown> }[] = [
@@ -18,6 +21,7 @@ export default function DevicePage() {
   const [guard, setGuard] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [flash, setFlash] = useState<'ALLOW' | 'DENY' | null>(null)
+  const [flashId, setFlashId] = useState(0)
 
   const refresh = () => deviceState().then(setSnap).catch((e) => setError(String(e.message ?? e)))
   useEffect(() => {
@@ -35,24 +39,41 @@ export default function DevicePage() {
 
   async function send(tool: string, args: Record<string, unknown>) {
     const r = await attempt(() => sendCommand(tool, args, guard))
-    if (r) setFlash(r.decision === 'DENY' ? 'DENY' : 'ALLOW')
+    if (r) {
+      setFlash(r.decision === 'DENY' ? 'DENY' : 'ALLOW')
+      setFlashId((n) => n + 1)
+    }
     setTimeout(() => setFlash(null), 1800)
     await refresh()
   }
 
-  if (!snap) return <p className="text-sm text-slate-500">{error ?? 'Loading…'}</p>
+  if (!snap) {
+    return error ? (
+      <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</div>
+    ) : (
+      <div className="space-y-3" role="status" aria-label="Loading the device">
+        <Skeleton className="h-10 w-1/2" />
+        <Skeleton className="h-28 w-full" />
+        <Skeleton className="h-40 w-full" />
+      </div>
+    )
+  }
   const noPolicy = snap.policy_id === null
 
   return (
     <div className="space-y-4">
+      <PageIntro step="Step 5 of 5" title="Try it on the device">
+        A simulated smart home controlled by an agent. Set the clock, send a command, and watch YOG allow or block it. Turn the guard off to see what happens without YOG.
+      </PageIntro>
       {noPolicy && guard && (
         <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           No approved policy yet. <Link to="/review" className="underline">Approve one on the Review page</Link>; guarded commands are refused until then.
         </div>
       )}
       {flash && (
-        <div className={`rounded p-4 text-center text-2xl font-extrabold text-white ${flash === 'DENY' ? 'bg-red-600' : 'bg-green-600'}`} data-testid="flash">
-          {flash === 'DENY' ? 'BLOCKED BY YOG' : 'ALLOWED'}
+        <div className="flex items-center justify-center gap-8 rounded-xl border border-slate-200 bg-white p-5" data-testid="flash" role="status">
+          <DenyStamp decision={flash} id={flashId} />
+          <span className="font-display text-xl font-bold">{flash === 'DENY' ? 'BLOCKED BY YOG' : 'ALLOWED'}</span>
         </div>
       )}
       <div className="flex flex-wrap items-center gap-4 rounded border border-slate-200 bg-white p-3 text-sm">
@@ -82,7 +103,7 @@ export default function DevicePage() {
         </label>
         <span className="text-xs text-slate-500">policy: {snap.policy_id ?? 'none'}</span>
         <button
-          className="ml-auto rounded bg-indigo-600 px-3 py-1.5 font-semibold text-white"
+          className="ml-auto rounded bg-sky-700 px-3 py-1.5 font-semibold text-white"
           onClick={() => attempt(() => runDemo(guard)).then((s) => s && setSnap(s))}
         >
           Run agent demo day
@@ -120,7 +141,7 @@ export default function DevicePage() {
 
       <div className="flex flex-wrap gap-2">
         {COMMANDS.map((c) => (
-          <button key={c.label} onClick={() => send(c.tool, c.args)} className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-indigo-50">
+          <button key={c.label} onClick={() => send(c.tool, c.args)} className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-sky-50">
             {c.label}
           </button>
         ))}

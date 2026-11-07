@@ -2,7 +2,7 @@ import { useReducedMotion } from 'motion/react'
 import { useEffect, useState } from 'react'
 
 /** Types `text` out once `run` is true. Shows the full text immediately under reduced motion. */
-export function TypeText({ text, run, speed = 28, onDone }: { text: string; run: boolean; speed?: number; onDone?: () => void }) {
+export function TypeText({ text, run, speed = 28, onDone, onStart }: { text: string; run: boolean; speed?: number; onDone?: () => void; onStart?: () => void }) {
   const reduce = useReducedMotion()
   const [n, setN] = useState(0)
   useEffect(() => {
@@ -12,6 +12,7 @@ export function TypeText({ text, run, speed = 28, onDone }: { text: string; run:
       return
     }
     setN(0)
+    onStart?.()
     let i = 0
     const id = setInterval(() => {
       i += 1

@@ -155,3 +155,31 @@ body {
   width: 4px !important;
   margin-left: 3px;
 }
+
+/* ---------- Studio: loading states ---------- */
+.spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #cbd5e1;
+  border-top-color: var(--color-brand);
+  border-radius: 9999px;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.skeleton {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+@keyframes shimmer {
+  to { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 2s; }
+  .skeleton { animation: none; }
+}
+
+/* Studio body text uses the same face as the marketing pages */
+body { font-family: "Inter", ui-sans-serif, system-ui, sans-serif; }

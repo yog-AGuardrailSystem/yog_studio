@@ -11,8 +11,8 @@ try {
 const page = await browser.newPage()
 const errors = []
 page.on('pageerror', (e) => errors.push(String(e)))
-await page.goto('http://localhost:5173/')
-await page.waitForSelector('text=YOG Studio')
+await page.goto('http://localhost:5173/studio')
+await page.waitForSelector('text=Upload your agent')
 
 // W2: upload sample
 await page.click('button:has-text("smart_home_mcp.py")')
@@ -72,7 +72,7 @@ ok('W8 flash says BLOCKED', (await page.textContent('[data-testid="flash"]')).in
 await page.screenshot({ path: 'device.png', fullPage: true })
 
 // W1: check page
-await page.click('a:has-text("Check")')
+await page.click('a:has-text("Sandbox")')
 await page.click('button:has-text("Check")')
 await page.waitForSelector('[data-testid="result-card"]')
 ok('W1 check shows DENY for bob/db1', (await page.textContent('[data-testid="result-card"]')).includes('DENY'))
