@@ -70,7 +70,7 @@ export default function RulesPage() {
         <h2 className="mb-2 font-semibold">Tools the policy will cover</h2>
         {tools.length === 0 ? (
           <p className="text-sm text-slate-500">
-            No tools yet. <Link to="/" className="text-indigo-700 underline">Upload an agent first</Link> (or continue without tools).
+            No tools yet. <Link to="/studio" className="text-indigo-700 underline">Upload an agent first</Link> (or continue without tools).
           </p>
         ) : (
           <div className="flex flex-wrap gap-2">

@@ -15,7 +15,7 @@ export default function ModifyPage() {
   }, [analysis])
 
   if (!analysis) {
-    return <p className="text-sm text-slate-600">Upload an agent first. <Link to="/" className="text-indigo-700 underline">Go to upload</Link></p>
+    return <p className="text-sm text-slate-600">Upload an agent first. <Link to="/studio" className="text-indigo-700 underline">Go to upload</Link></p>
   }
 
   async function download() {
