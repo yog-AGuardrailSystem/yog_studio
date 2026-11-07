@@ -1,7 +1,149 @@
 @import "tailwindcss";
 
+@theme {
+  --font-display: "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --color-brand: #0369a1; /* sky-700; no violet anywhere */
+}
+
 body {
   @apply bg-slate-50 text-slate-900;
+}
+
+/* ---------- Marketing pages ---------- */
+.mkt {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  scroll-behavior: smooth;
+}
+
+.btn-primary,
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: transform 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+.btn-primary {
+  background: var(--color-brand);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: #075985;
+  transform: translateY(-1px);
+}
+.btn-secondary {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+}
+.btn-secondary:hover {
+  background: #f1f5f9;
+  transform: translateY(-1px);
+}
+.btn-primary:active,
+.btn-secondary:active {
+  transform: translateY(1px);
+}
+.btn-lg {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+}
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.link:focus-visible,
+.term:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+.link {
+  color: var(--color-brand);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.link:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* Jargon tooltip */
+.term {
+  position: relative;
+  cursor: help;
+  border-bottom: 1px dotted currentColor;
+}
+.term-tip {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  z-index: 10;
+  width: 16rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.4;
+  text-transform: none;
+  letter-spacing: normal;
+  display: none; /* display:none (not opacity) so a hidden tip never causes sideways scroll */
+  pointer-events: none;
+}
+.term:hover .term-tip,
+.term:focus .term-tip {
+  display: block;
+}
+/* Phones: show the tip as a bottom toast so it can never run off-screen */
+@media (max-width: 640px) {
+  .term-tip {
+    position: fixed;
+    left: 1.25rem;
+    right: 1.25rem;
+    bottom: 1rem;
+    width: auto;
+  }
+}
+
+/* Hero card: two states alternate (3.5 s each). Reduced motion shows the DENY state only. */
+.hero-state {
+  opacity: 0;
+}
+.hero-allow {
+  animation: hero-a 7s infinite;
+}
+.hero-deny {
+  animation: hero-b 7s infinite;
+}
+@keyframes hero-a {
+  0%, 44% { opacity: 1; }
+  50%, 94% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes hero-b {
+  0%, 44% { opacity: 0; }
+  50%, 94% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mkt {
+    scroll-behavior: auto;
+  }
+  .hero-allow {
+    animation: none;
+    opacity: 0;
+  }
+  .hero-deny {
+    animation: none;
+    opacity: 1;
+  }
+  .btn-primary,
+  .btn-secondary {
+    transition: none;
+  }
 }
 
 /* Monaco decorations: detector evidence lines */
@@ -13,3 +155,31 @@ body {
   width: 4px !important;
   margin-left: 3px;
 }
+
+/* ---------- Studio: loading states ---------- */
+.spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #cbd5e1;
+  border-top-color: var(--color-brand);
+  border-radius: 9999px;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.skeleton {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+@keyframes shimmer {
+  to { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 2s; }
+  .skeleton { animation: none; }
+}
+
+/* Studio body text uses the same face as the marketing pages */
+body { font-family: "Inter", ui-sans-serif, system-ui, sans-serif; }

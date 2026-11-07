@@ -27,3 +27,15 @@ Approved policies are saved to `backend/data/policies/` (git-ignored). The retri
 
 ## Deploying to Render (free)
 See the "Deploy" section in docs/DEPLOY.md.
+
+## Pages (frontend routes)
+| Route | What it is |
+|---|---|
+| `/` | Landing page: what YOG is, why it is useful, how it is built |
+| `/how-it-works` | Scroll-driven walkthrough with an interactive device demo (runs in the browser, mirrors YOG rules in `frontend/src/lib/yogMirror.ts`) |
+| `/studio` | Step 1: upload an agent |
+| `/rules`, `/review`, `/modify`, `/device` | Steps 2-5 |
+| `/check` | Sandbox: try a policy on one action |
+
+Frontend unit test for the browser-side evaluator: `cd frontend ; npm run test:mirror` (Node 22+).
+Any unknown URL redirects to `/`. The single-process deploy serves every route from `index.html`, so refreshing on `/how-it-works` works.

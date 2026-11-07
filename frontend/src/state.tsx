@@ -17,6 +17,8 @@ interface AppState {
   /** The policy a human approved: the only one later screens may treat as live. */
   approved: PolicyRecord | null
   setApproved: (p: PolicyRecord | null) => void
+  /** Forget everything and start the flow again. */
+  reset: () => void
 }
 
 const Ctx = createContext<AppState | null>(null)
@@ -48,8 +50,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [rules, setRules] = usePersisted<string[]>('yog.rules', [''])
   const [draft, setDraft] = usePersisted<PolicyDraft | null>('yog.draft', null)
   const [approved, setApproved] = usePersisted<PolicyRecord | null>('yog.approved', null)
+  const reset = () => {
+    setAnalysis(null)
+    setTools([])
+    setRules([''])
+    setDraft(null)
+    setApproved(null)
+  }
   return (
-    <Ctx.Provider value={{ analysis, setAnalysis, tools, setTools, rules, setRules, draft, setDraft, approved, setApproved }}>
+    <Ctx.Provider value={{ analysis, setAnalysis, tools, setTools, rules, setRules, draft, setDraft, approved, setApproved, reset }}>
       {children}
     </Ctx.Provider>
   )

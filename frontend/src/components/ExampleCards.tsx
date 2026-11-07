@@ -12,7 +12,7 @@ export function ExampleCards({ examples }: { examples: Retrieved[] }) {
           </div>
           <p className="mt-1 text-sm font-medium">{ex.english}</p>
           <details className="mt-2">
-            <summary className="cursor-pointer text-xs text-indigo-700">Show YOG</summary>
+            <summary className="cursor-pointer text-xs text-sky-800">Show YOG</summary>
             <pre className="mt-1 max-h-56 overflow-auto rounded bg-slate-900 p-2 text-xs text-slate-100">{ex.gold_yog}</pre>
           </details>
         </div>

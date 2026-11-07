@@ -1,51 +1,31 @@
-import { NavLink, Route, Routes } from 'react-router-dom'
-import { ErrorBoundary } from './components/ErrorBoundary'
-import { StatusBar } from './components/StatusBar'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import MarketingLayout from './layouts/MarketingLayout'
+import StudioLayout from './layouts/StudioLayout'
 import AnalyzePage from './pages/AnalyzePage'
 import CheckPage from './pages/CheckPage'
 import DevicePage from './pages/DevicePage'
+import HowItWorksPage from './pages/HowItWorksPage'
+import LandingPage from './pages/LandingPage'
 import ModifyPage from './pages/ModifyPage'
 import ReviewPage from './pages/ReviewPage'
 import RulesPage from './pages/RulesPage'
 
-const links: [string, string][] = [
-  ['/', 'Upload & Tools'],
-  ['/rules', 'Rules'],
-  ['/review', 'Review'],
-  ['/modify', 'Patch'],
-  ['/device', 'Device'],
-  ['/check', 'Check'],
-]
-
 export default function App() {
   return (
-    <div className="mx-auto max-w-6xl p-4">
-      <header className="mb-4 flex flex-wrap items-center gap-6 border-b border-slate-200 pb-3">
-        <h1 className="text-xl font-bold text-indigo-700">YOG Studio</h1>
-        <nav className="flex gap-4 text-sm">
-          {links.map(([to, label]) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/'}
-              className={({ isActive }) => (isActive ? 'font-semibold text-indigo-700' : 'text-slate-600 hover:text-slate-900')}
-            >
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-      </header>
-      <StatusBar />
-      <ErrorBoundary>
-        <Routes>
-          <Route path="/" element={<AnalyzePage />} />
-          <Route path="/rules" element={<RulesPage />} />
-          <Route path="/review" element={<ReviewPage />} />
-          <Route path="/modify" element={<ModifyPage />} />
-          <Route path="/device" element={<DevicePage />} />
-          <Route path="/check" element={<CheckPage />} />
-        </Routes>
-      </ErrorBoundary>
-    </div>
+    <Routes>
+      <Route element={<MarketingLayout />}>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/how-it-works" element={<HowItWorksPage />} />
+      </Route>
+      <Route element={<StudioLayout />}>
+        <Route path="/studio" element={<AnalyzePage />} />
+        <Route path="/rules" element={<RulesPage />} />
+        <Route path="/review" element={<ReviewPage />} />
+        <Route path="/modify" element={<ModifyPage />} />
+        <Route path="/device" element={<DevicePage />} />
+        <Route path="/check" element={<CheckPage />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }

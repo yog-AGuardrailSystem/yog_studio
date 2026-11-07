@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { check, type CheckResult } from '../api/check'
+import { PageIntro } from '../components/PageIntro'
 import { ResultCard } from '../components/ResultCard'
 
 const SAMPLE_POLICY = `fact role(alice, admin)
@@ -48,7 +49,11 @@ export default function CheckPage() {
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div>
+      <PageIntro title="Sandbox">
+        Try a policy on one action, without uploading anything. Good for learning how YOG decides: DENY beats ALLOW, and anything not allowed is denied.
+      </PageIntro>
+      <div className="grid gap-6 md:grid-cols-2">
       <section>
         <h2 className="mb-2 font-semibold">Policy (YOG)</h2>
         <textarea
@@ -70,7 +75,7 @@ export default function CheckPage() {
         <button
           onClick={run}
           disabled={loading}
-          className="rounded bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="rounded bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50"
         >
           {loading ? 'Checking…' : 'Check'}
         </button>
@@ -81,6 +86,7 @@ export default function CheckPage() {
         )}
         {result && <ResultCard result={result} />}
       </section>
+      </div>
     </div>
   )
 }

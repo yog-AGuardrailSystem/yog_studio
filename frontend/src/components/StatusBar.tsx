@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react'
 import { getJson } from '../api/client'
-import { useAppState } from '../state'
 
-/** Backend health banner + a 4-step progress strip (upload -> rules -> approve -> run). */
+/** Shows a banner when the backend can't be reached. Wording differs for local dev vs the hosted site. */
 export function StatusBar() {
-  const { analysis, draft, approved } = useAppState()
   const [up, setUp] = useState<boolean | null>(null)
 
   useEffect(() => {
@@ -21,26 +19,16 @@ export function StatusBar() {
     }
   }, [])
 
-  const steps = [
-    ['1 Upload', !!analysis],
-    ['2 Rules', !!draft],
-    ['3 Approved', !!approved],
-  ] as const
-
+  if (up !== false) return null
   return (
-    <div className="mb-4 space-y-2">
-      {up === false && (
-        <div className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-800" role="alert" data-testid="backend-down">
+    <div className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="alert" data-testid="backend-down">
+      {import.meta.env.DEV ? (
+        <>
           Cannot reach the backend. Start it with <code>.\scripts\dev.ps1</code> (or see docs/RUNNING.md). This page retries automatically.
-        </div>
+        </>
+      ) : (
+        <>The server is waking up. On the free hosting tier this can take about 30 seconds. This page retries automatically.</>
       )}
-      <div className="flex gap-2 text-xs" data-testid="progress">
-        {steps.map(([label, done]) => (
-          <span key={label} className={`rounded-full border px-3 py-1 ${done ? 'border-green-300 bg-green-100 text-green-800' : 'border-slate-200 bg-white text-slate-500'}`}>
-            {done ? '✓ ' : ''}{label}
-          </span>
-        ))}
-      </div>
     </div>
   )
 }

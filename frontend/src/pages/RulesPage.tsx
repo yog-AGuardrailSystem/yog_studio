@@ -5,6 +5,9 @@ import { retrieve, type Retrieved } from '../api/retrieve'
 import { translate } from '../api/translate'
 import { CodeView } from '../components/CodeView'
 import { ExampleCards } from '../components/ExampleCards'
+import { EmptyState } from '../components/EmptyState'
+import { PageIntro } from '../components/PageIntro'
+import { Spinner } from '../components/Spinner'
 import { HintChip } from '../components/ToolsTable'
 import { useAppState } from '../state'
 
@@ -66,12 +69,18 @@ export default function RulesPage() {
 
   return (
     <div className="space-y-6">
+      <PageIntro step="Step 2 of 5" title="Write your rules in English">
+        Say what the agent may and may not do. Studio finds similar example policies, an AI drafts the YOG policy, and the engine checks it. Nothing is live until you approve it in the next step.
+      </PageIntro>
       <section>
         <h2 className="mb-2 font-semibold">Tools the policy will cover</h2>
         {tools.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            No tools yet. <Link to="/" className="text-indigo-700 underline">Upload an agent first</Link> (or continue without tools).
-          </p>
+          <EmptyState
+            title="No tools yet"
+            text="Upload an agent so Studio can see its tools, or just write your rules and continue without them."
+            to="/studio"
+            action="Upload an agent"
+          />
         ) : (
           <div className="flex flex-wrap gap-2">
             {tools.map((t) => (
@@ -104,14 +113,14 @@ export default function RulesPage() {
             </div>
           ))}
         </div>
-        <div className="mt-2 flex gap-3">
-          <button className="text-sm text-indigo-700" onClick={() => setRules([...rules, ''])}>+ add rule</button>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <button className="text-sm text-sky-800" onClick={() => setRules([...rules, ''])}>+ add rule</button>
           <button
             onClick={find}
             disabled={busy || filled.length === 0}
             className="rounded bg-slate-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
           >
-            {busy ? 'Searching…' : 'Find similar examples'}
+            {busy ? <><Spinner label="Searching" /> Searching…</> : 'Find similar examples'}
           </button>
           <button
             onClick={useDemoPolicy}
@@ -123,9 +132,9 @@ export default function RulesPage() {
           <button
             onClick={generate}
             disabled={generating || filled.length === 0}
-            className="rounded bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="rounded bg-sky-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50"
           >
-            {generating ? 'Generating…' : 'Generate YOG draft'}
+            {generating ? <><Spinner label="Generating" /> Generating…</> : 'Generate YOG draft'}
           </button>
         </div>
         {error && <div className="mt-3 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</div>}
@@ -155,7 +164,7 @@ export default function RulesPage() {
             </ul>
           )}
           <CodeView value={draft.yog_source} language="plaintext" height="280px" />
-          <Link to="/review" className="mt-3 inline-block rounded bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+          <Link to="/review" className="mt-3 inline-block rounded bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800">
             Review &amp; approve →
           </Link>
         </section>
