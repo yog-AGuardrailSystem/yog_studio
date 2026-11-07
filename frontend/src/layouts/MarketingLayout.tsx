@@ -1,25 +1,20 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
 
-// "How it works" is added in the next PR; keep the link out until the route exists.
-const SHOW_HOW_IT_WORKS = false
-
 export default function MarketingLayout() {
   return (
     <div className="mkt min-h-screen bg-white text-slate-900">
       <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5">
-          <Link to="/" className="font-display text-lg font-bold tracking-tight">
+          <Link to="/" className="font-display whitespace-nowrap text-lg font-bold tracking-tight">
             YOG<span className="text-brand"> Studio</span>
           </Link>
-          <nav className="flex items-center gap-5 text-sm">
-            <NavLink to="/" end className={({ isActive }) => (isActive ? 'font-semibold' : 'text-slate-600 hover:text-slate-900')}>
+          <nav className="flex items-center gap-4 whitespace-nowrap text-sm sm:gap-5">
+            <NavLink to="/" end className={({ isActive }) => (isActive ? 'hidden font-semibold sm:inline' : 'hidden text-slate-600 hover:text-slate-900 sm:inline')}>
               Home
             </NavLink>
-            {SHOW_HOW_IT_WORKS && (
-              <NavLink to="/how-it-works" className={({ isActive }) => (isActive ? 'font-semibold' : 'text-slate-600 hover:text-slate-900')}>
-                How it works
-              </NavLink>
-            )}
+            <NavLink to="/how-it-works" className={({ isActive }) => (isActive ? 'font-semibold' : 'text-slate-600 hover:text-slate-900')}>
+              How it works
+            </NavLink>
             <Link to="/studio" className="btn-primary">
               Open Studio
             </Link>

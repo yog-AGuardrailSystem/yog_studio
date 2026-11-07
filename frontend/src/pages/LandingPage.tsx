@@ -79,9 +79,9 @@ export default function LandingPage() {
               <Link to="/studio" className="btn-primary btn-lg">
                 Open Studio
               </Link>
-              <a href="#what-is-yog" className="btn-secondary btn-lg">
-                What is YOG?
-              </a>
+              <Link to="/how-it-works" className="btn-secondary btn-lg">
+                See how it works
+              </Link>
             </div>
           </div>
           <HeroCard />

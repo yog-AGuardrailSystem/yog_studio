@@ -4,6 +4,7 @@ import StudioLayout from './layouts/StudioLayout'
 import AnalyzePage from './pages/AnalyzePage'
 import CheckPage from './pages/CheckPage'
 import DevicePage from './pages/DevicePage'
+import HowItWorksPage from './pages/HowItWorksPage'
 import LandingPage from './pages/LandingPage'
 import ModifyPage from './pages/ModifyPage'
 import ReviewPage from './pages/ReviewPage'
@@ -14,6 +15,7 @@ export default function App() {
     <Routes>
       <Route element={<MarketingLayout />}>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/how-it-works" element={<HowItWorksPage />} />
       </Route>
       <Route element={<StudioLayout />}>
         <Route path="/studio" element={<AnalyzePage />} />
