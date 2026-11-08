@@ -7,7 +7,7 @@ import numpy as np
 from pydantic import BaseModel
 
 from app.core.config import DATA_DIR
-from app.llm.provider import LLMProvider
+from app.llm.provider import LLMProvider, embed_texts
 from app.rag.examples import PolicyExample, load_examples
 
 INDEX_PATH = DATA_DIR / "index.npz"
@@ -19,6 +19,7 @@ class Retrieved(BaseModel):
     tools_context: list[str]
     gold_yog: str
     score: float
+    source: str = "unknown"
 
 
 def example_text(ex: PolicyExample) -> str:
@@ -32,7 +33,7 @@ def query_text(english: str, tools: list[str] | None) -> str:
 
 
 def _fingerprint(provider: LLMProvider, examples: list[PolicyExample]) -> str:
-    h = hashlib.sha256(provider.name.encode())
+    h = hashlib.sha256(f"{provider.name}|{provider.embed_model}|{provider.supports_embed_task}".encode())
     for e in examples:
         h.update(e.id.encode())
         h.update(example_text(e).encode())
@@ -49,7 +50,7 @@ class Retriever:
 
     # -- index ----------------------------------------------------------
     def build_index(self) -> int:
-        vecs = np.array(self.provider.embed([example_text(e) for e in self.examples]), dtype=np.float32)
+        vecs = np.array(embed_texts(self.provider, [example_text(e) for e in self.examples], task="document"), dtype=np.float32)
         vecs = vecs / np.maximum(np.linalg.norm(vecs, axis=1, keepdims=True), 1e-9)
         self.index_path.parent.mkdir(parents=True, exist_ok=True)
         np.savez(self.index_path, vectors=vecs, meta=json.dumps(
@@ -79,13 +80,13 @@ class Retriever:
         if not english.strip():
             return []
         matrix = self._load()
-        q = np.array(self.provider.embed([query_text(english, tools)])[0], dtype=np.float32)
+        q = np.array(embed_texts(self.provider, [query_text(english, tools)], task="query")[0], dtype=np.float32)
         q = q / max(float(np.linalg.norm(q)), 1e-9)
         scores = matrix @ q
         order = np.argsort(-scores, kind="stable")[: max(0, k)]
         return [Retrieved(id=self.examples[i].id, english=self.examples[i].english,
                           tools_context=self.examples[i].tools_context, gold_yog=self.examples[i].gold_yog,
-                          score=round(float(scores[i]), 4)) for i in order]
+                          score=round(float(scores[i]), 4), source=self.examples[i].source) for i in order]
 
 
 if __name__ == "__main__":                                   # python -m app.rag.retriever  -> rebuild index

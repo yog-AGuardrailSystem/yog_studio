@@ -26,6 +26,23 @@ class PolicyExample(BaseModel):
     source: str = "unknown"
 
 
+def team_examples() -> list[PolicyExample]:
+    """The engine team's groups A-R as retrievable examples: clauses and facts only (no queries, no comments)."""
+    from app.core.team_examples import load_groups
+    out = []
+    for g in load_groups():
+        code = [ln for ln in g.source.splitlines()
+                if ln.strip() and not ln.lstrip().startswith(("#", "query "))]
+        out.append(PolicyExample(id="team-" + g.id.replace("/", "").lower(), english=g.english,
+                                 gold_yog="\n".join(code) + "\n", source="team"))
+    return out
+
+
+def load_retrieval_examples() -> list[PolicyExample]:
+    """Everything the retriever searches: the 65 drafted pairs plus the team's examples."""
+    return load_examples() + team_examples()
+
+
 def load_examples(directory=POLICIES_DIR) -> list[PolicyExample]:
     out: list[PolicyExample] = []
     for path in sorted(directory.glob("*.yaml")):

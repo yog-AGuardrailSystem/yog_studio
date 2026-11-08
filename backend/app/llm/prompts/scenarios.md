@@ -16,5 +16,5 @@ shown the implementation; decide what SHOULD happen purely from the English rule
   only when the rules clearly grant it; otherwise DENY.
 
 Produce 8 to 14 scenarios covering: each rule's clearly-forbidden case, the clearly-permitted case, and values right at each
-boundary (e.g. one hour before/after a time limit). Reply with ONLY a JSON list, no prose:
-[{"actor": "agent", "action": "can_unlock_door", "resource": "front_door", "context": ["hour(now, 3)"], "expected": "DENY", "note": "3am"}]
+boundary (e.g. one hour before/after a time limit). Reply with ONLY JSON, no prose: an object with one key `scenarios` holding the list (a bare list is also accepted):
+{"scenarios": [{"actor": "agent", "action": "can_unlock_door", "resource": "front_door", "context": ["hour(now, 3)"], "expected": "DENY", "note": "3am"}]}

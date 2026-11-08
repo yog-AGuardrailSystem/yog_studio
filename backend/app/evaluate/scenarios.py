@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.core.models import Tool
 from app.engine.adapter import EngineAdapter, EngineError
-from app.llm.provider import LLMError, LLMProvider, load_prompt
+from app.llm.provider import LLMError, LLMProvider, generate_text, load_prompt
 from app.translate.translator import decision_name, format_tools, render
 
 CONTEXT_PREDS = ("hour", "day", "arg")
@@ -140,6 +140,46 @@ def characterization(adapter: EngineAdapter, policy: str) -> tuple[list[Scenario
 # ----------------------------------------------------------------- LLM (independent)
 
 JSON_RE = re.compile(r"\[.*\]", re.S)
+FENCE_RE = re.compile(r"```[a-z]*\n(.*?)```", re.S | re.I)
+
+# The shape we ask structured-output providers for (the root is an object: some providers require that).
+SCENARIO_SCHEMA = {
+    "type": "object",
+    "properties": {"scenarios": {"type": "array", "items": {
+        "type": "object",
+        "properties": {
+            "actor": {"type": "string"}, "action": {"type": "string"}, "resource": {"type": "string"},
+            "context": {"type": "array", "items": {"type": "string"}},
+            "expected": {"type": "string", "enum": ["ALLOW", "DENY"]},
+            "note": {"type": "string"},
+        },
+        "required": ["actor", "action", "resource", "context", "expected"],
+    }}},
+    "required": ["scenarios"],
+}
+
+
+def parse_scenario_json(reply: str) -> tuple[list, str | None]:
+    """Accepts {"scenarios": [...]} or a bare list, with or without a code fence. Returns (rows, problem)."""
+    text = reply.strip()
+    fence = FENCE_RE.search(text)
+    if fence:
+        text = fence.group(1).strip()
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        m = JSON_RE.search(text)
+        if not m:
+            return [], "scenario generator returned no JSON list"
+        try:
+            data = json.loads(m.group(0))
+        except json.JSONDecodeError:
+            return [], "scenario generator returned invalid JSON"
+    if isinstance(data, dict):
+        data = data.get("scenarios")
+    if not isinstance(data, list):
+        return [], "scenario generator returned no JSON list"
+    return data, None
 
 
 def generate_independent(rules: list[str], tools: list[Tool], provider: LLMProvider) -> tuple[list[Scenario], list[str]]:
@@ -148,16 +188,12 @@ def generate_independent(rules: list[str], tools: list[Tool], provider: LLMProvi
     prompt = render(load_prompt("scenarios"), tools=format_tools(tools),
                     rules="\n".join(f"{i}. {r}" for i, r in enumerate(rules, 1)))
     try:
-        reply = provider.generate(prompt)
+        reply = generate_text(provider, prompt, json_schema=SCENARIO_SCHEMA)
     except LLMError as e:
         return [], [f"scenario generation failed: {e}"]
-    m = JSON_RE.search(reply)
-    if not m:
-        return [], ["scenario generator returned no JSON list"]
-    try:
-        raw = json.loads(m.group(0))
-    except json.JSONDecodeError:
-        return [], ["scenario generator returned invalid JSON"]
+    raw, problem = parse_scenario_json(reply)
+    if problem:
+        return [], [problem]
     names = {decision_name(t.name) for t in tools}
     out = []
     for i, row in enumerate(raw if isinstance(raw, list) else []):

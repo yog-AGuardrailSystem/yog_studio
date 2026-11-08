@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from app.llm.factory import get_provider
 from app.llm.provider import LLMError
-from app.rag.examples import PolicyExample, load_examples
+from app.rag.examples import PolicyExample, load_examples, load_retrieval_examples
 from app.rag.retriever import Retrieved, Retriever
 
 router = APIRouter()
@@ -13,7 +13,7 @@ router = APIRouter()
 
 @lru_cache(maxsize=1)
 def get_retriever() -> Retriever:
-    return Retriever(get_provider())
+    return Retriever(get_provider(), load_retrieval_examples())
 
 
 class RetrieveRequest(BaseModel):
