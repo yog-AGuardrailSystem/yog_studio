@@ -35,9 +35,7 @@ export default function MarketingLayout() {
           </div>
           <div>
             <p className="font-semibold text-white">Team</p>
-            {/* TODO(vasanthan): replace with the real names */}
-            <p className="mt-1">Engine team: {'{{ENGINE TEAM NAMES}}'}</p>
-            <p>Studio: {'{{STUDIO TEAM NAMES}}'}</p>
+            <p className="mt-1">The YOG engine team and the Studio team.</p>
           </div>
           <div>
             <p className="font-semibold text-white">Code</p>
