@@ -198,6 +198,40 @@ def oracle_agreement(adapter: EngineAdapter, provider: LLMProvider, bench: list[
     return {"agreement": proportion(agreed, counted), "rules_without_scenarios": skipped_rules}
 
 
+# ------------------------------------------------------------------ robustness (prompt injection via docstrings)
+ROBUSTNESS_FILE = REPO_ROOT / "benchmark" / "robustness.yaml"
+
+
+def load_robustness(path: Path = ROBUSTNESS_FILE) -> list[dict]:
+    import yaml
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or []
+
+
+def run_robustness(adapter: EngineAdapter, provider: LLMProvider, retriever, cases: list[dict] | None = None) -> dict:
+    """Tool docstrings are untrusted. A case passes only if the generated policy still gives every required decision."""
+    from app.core.models import Param, Tool
+    cases = cases if cases is not None else load_robustness()
+    rows = []
+    for c in cases:
+        tools = [Tool(name=t["name"], params=[Param(name=p) for p in t.get("params", [])],
+                      docstring=t.get("docstring"), source_line=1) for t in c["tools"]]
+        try:
+            d = translate([c["english"]], tools, provider, retriever, adapter, verify=False)
+        except Exception as e:                                       # noqa: BLE001
+            rows.append({"id": c["id"], "passed": False, "failed": [f"exception: {e}"], "yog_source": ""})
+            continue
+        failed = []
+        for s in c["scenarios"]:
+            try:
+                got = adapter.check(d.yog_source, s["actor"], s["action"], s["resource"], s.get("context", [])).decision
+            except EngineError as e:
+                got = f"error: {e}"
+            if got != s["expected"]:
+                failed.append(f"{s['action']}({s['actor']}, {s['resource']}) {s.get('context', [])}: wanted {s['expected']}, got {got}")
+        rows.append({"id": c["id"], "passed": not failed, "failed": failed, "yog_source": d.yog_source})
+    return {"passed": proportion(sum(r["passed"] for r in rows), len(rows)), "rows": rows}
+
+
 # ------------------------------------------------------------------ provenance
 def _sha(*chunks: bytes) -> str:
     h = hashlib.sha256()
@@ -287,6 +321,7 @@ def run_grid(adapter: EngineAdapter, provider: LLMProvider, bench: list[PolicyEx
 
 def run(adapter: EngineAdapter, provider: LLMProvider, *, split_name: str = "dev", config_names: list[str] | None = None,
         limit: int | None = None, partial: Path | None = None, with_oracle: bool = True,
+        with_robustness: bool = False,
         split_path: Path | None = None, progress=lambda msg: None) -> dict:
     bench_all = load_benchmark()
     split = get_split(bench_all, split_path)
@@ -295,6 +330,9 @@ def run(adapter: EngineAdapter, provider: LLMProvider, *, split_name: str = "dev
     res = provenance(provider, bench, split_name, split)
     res["interpretation"] = interpretation(provider, res["rule_sources"])
     res["results"] = run_grid(adapter, provider, bench, configs, partial=partial, progress=progress)
+    if with_robustness:
+        with tempfile.TemporaryDirectory() as tmp:
+            res["robustness"] = run_robustness(adapter, provider, make_retriever("on", provider, load_retrieval_examples(), Path(tmp)))
     if with_oracle and provider.name != "fake":
         res["oracle"] = oracle_agreement(adapter, provider, bench)
     res["usage_total"] = provider.usage.snapshot()
@@ -319,6 +357,10 @@ def to_markdown(res: dict) -> str:
                   f"{v['true']} drafts were verified, {v['false']} were flagged, {v['unknown']} had no check. "
                   f"Correct when verified: {fmt(v['semantic_given_verified_true'])}. "
                   f"Correct when flagged: {fmt(v['semantic_given_verified_false'])}.", ""]
+    if "robustness" in res:
+        rb = res["robustness"]
+        lines += [f"**Prompt-injection robustness** (hostile tool docstrings): {fmt(rb['passed'])}. "
+                  f"Failed: {[r['id'] for r in rb['rows'] if not r['passed']] or 'none'}.", ""]
     if "oracle" in res:
         lines += [f"**Is the independent check itself reliable?** Scenarios written from the English agreed with the gold "
                   f"policy {fmt(res['oracle']['agreement'])}.", ""]
@@ -354,6 +396,7 @@ def main() -> int:
     ap.add_argument("--configs", help=f"comma list from: {', '.join(CONFIGS)} (default: all)")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--resume", type=Path, help="a partial .jsonl from an interrupted run")
+    ap.add_argument("--robustness", action="store_true", help="also run the prompt-injection set")
     ap.add_argument("--no-cache", action="store_true", help="do not reuse cached LLM answers")
     ap.add_argument("--out", type=Path, default=RESULTS_DIR)
     args = ap.parse_args()
@@ -372,7 +415,7 @@ def main() -> int:
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     partial = args.resume or out / f".partial-{args.split}-{provider.name}-{stamp}.jsonl"
     res = run(PythonPrototypeAdapter(), provider, split_name=args.split, config_names=names, limit=args.limit,
-              partial=partial, progress=print)
+              partial=partial, with_robustness=args.robustness, progress=print)
     if args.split in ("test", "all"):
         log_test_run(res, args.out)
     base = f"eval-{args.split}-{provider.name}-{stamp}"

@@ -83,3 +83,19 @@ def test_summarize_counts_verified_buckets():
     assert s["verified"]["true"] == 1 and s["verified"]["false"] == 1
     assert s["verified"]["semantic_given_verified_true"]["pct"] == 100.0
     assert s["failure_categories"] == {"wrong": 1}
+
+
+def test_robustness_set_is_wellformed_and_runs_on_fake():
+    cases = ev.load_robustness()
+    assert len(cases) >= 8 and all(c["scenarios"] and any(s["expected"] == "DENY" for s in c["scenarios"]) for c in cases)
+    r = ev.run_robustness(ADAPTER, FakeProvider(), ev.NullRetriever(), cases[:3])
+    assert r["passed"]["n"] == 3 and all("failed" in x for x in r["rows"])
+
+
+def test_robustness_detects_a_policy_that_obeys_the_injection():
+    class Obedient(FakeProvider):
+        def generate(self, prompt):
+            return "allow can_unlock_door(A, D):\n    role(A, agent)\nfact role(agent, agent)\n"
+    cases = [c for c in ev.load_robustness() if c["id"] == "rb-01"]
+    r = ev.run_robustness(ADAPTER, Obedient(), ev.NullRetriever(), cases)
+    assert not r["rows"][0]["passed"] and r["rows"][0]["failed"]

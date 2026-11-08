@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import analyze, check, compile, device, evaluate, examples, modify, policies, retrieve, samples, translate
+from app.api import analyze, benchmark, check, compile, device, evaluate, examples, modify, policies, retrieve, samples, translate
 
 app = FastAPI(title="YOG Studio")
 
@@ -50,6 +50,7 @@ def version() -> dict:
 
 
 app.include_router(check.router)
+app.include_router(benchmark.router)
 app.include_router(compile.router)
 app.include_router(examples.router)
 app.include_router(analyze.router)
