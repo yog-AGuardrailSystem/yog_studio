@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class EngineError(Exception):
@@ -12,6 +12,54 @@ class CheckResult(BaseModel):
     decision: Literal["ALLOW", "DENY"]
     reason: str
     trace: list[str]
+
+
+class Diagnostic(BaseModel):
+    """One problem found while compiling. `message` is the engine's own text; `hint` explains it in plain English."""
+    code: str                          # stable id, e.g. "undefined_predicate" (the UI keys fixes off this)
+    severity: Literal["error", "warning"] = "error"
+    line: int | None = None            # 1-based; the reference engine reports lines only (no columns)
+    message: str
+    hint: str | None = None
+    suggestion: str | None = None      # e.g. "Did you mean role/2?"
+    fix: dict | None = None            # machine-applicable edit when we are certain: {"line": n, "find": "=", "replace": "=="}
+
+
+class TokenInfo(BaseModel):
+    kind: str
+    value: str | int | None = None
+    line: int
+
+
+class PredicateInfo(BaseModel):
+    name: str
+    arity: int
+    role: Literal["fact", "rule", "decision"]
+    clauses: int                       # facts or clauses that define it
+    line: int | None = None
+
+
+class CompileInfo(BaseModel):
+    ok: bool                           # tokenizes, parses and passes the semantic check
+    diagnostics: list[Diagnostic] = Field(default_factory=list)
+    tokens: list[TokenInfo] = Field(default_factory=list)
+    ast: dict | None = None            # {facts, clauses, queries}; present whenever it parsed
+    predicates: list[PredicateInfo] = Field(default_factory=list)
+
+
+class QuerySpec(BaseModel):
+    """A `query` statement of a program, in source order."""
+    line: int
+    pred: str
+    terms: list[dict]                  # [{"const": x} | {"var": "X"} | {"wildcard": true}]
+    text: str                          # e.g. can_delete(a_agent, database_1)
+
+
+class AskResult(BaseModel):
+    """Answer to a plain (non-decision) query: does the goal hold, and with which bindings."""
+    answer: bool
+    bindings: list[dict] = Field(default_factory=list)
+    trace: list[str] = Field(default_factory=list)
 
 
 class EngineAdapter(ABC):
@@ -30,3 +78,13 @@ class EngineAdapter(ABC):
     @abstractmethod
     def program_info(self, policy: str) -> dict:
         """Parsed structure for the explainer. Raises EngineError on bad policy."""
+
+    # -- optional capabilities (the workbench's compiler explorer). Engines that cannot do these raise EngineError.
+    def compile_info(self, policy: str) -> CompileInfo:
+        raise EngineError("this engine cannot expose its compiler stages")
+
+    def queries(self, policy: str) -> list[QuerySpec]:
+        raise EngineError("this engine cannot list the queries of a program")
+
+    def ask(self, policy: str, pred: str, terms: list[dict]) -> AskResult:
+        raise EngineError("this engine cannot answer plain queries")

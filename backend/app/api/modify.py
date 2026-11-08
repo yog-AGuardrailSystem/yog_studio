@@ -14,6 +14,7 @@ from app.policies.store import PolicyStore
 
 router = APIRouter()
 RUNTIME_PATH = Path(__file__).resolve().parents[1] / "modify" / "yog_runtime.py"
+PLACEHOLDER_MARKER = "OFFLINE FAKE PROVIDER"      # written by llm/fake.py into every draft it copies
 
 
 class ModifyRequest(BaseModel):
@@ -40,6 +41,10 @@ def bundle(req: BundleRequest, store: PolicyStore = Depends(get_store)) -> Respo
     rec = store.get(req.policy_id)
     if rec is None:
         raise HTTPException(status_code=404, detail="no such approved policy: approve a policy first")
+    if PLACEHOLDER_MARKER in rec.yog_source:
+        raise HTTPException(status_code=409, detail=(
+            "This policy is still the offline placeholder (copied from the nearest example, not translated). "
+            "Edit it in the workbench or generate it with a real LLM before downloading a bundle."))
     try:
         res = modify(req.source, req.tools or None, req.filename)
     except (SourceError, ModifyError) as e:

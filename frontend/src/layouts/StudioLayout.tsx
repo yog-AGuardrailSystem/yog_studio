@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation, useNavigate, useOutlet } from 'react-router
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { Stepper } from '../components/Stepper'
 import { StatusBar } from '../components/StatusBar'
+import { MotionToggle } from '../lib/motion'
 import { useAppState } from '../state'
 
 export default function StudioLayout() {
@@ -16,18 +17,19 @@ export default function StudioLayout() {
   function startOver() {
     if (hasWork && !window.confirm('Clear the uploaded agent, your rules, the draft and the approval from this screen and start again?')) return
     reset()
-    navigate('/studio')
+    navigate('/agent')
   }
 
   return (
     <div className="studio-dark">
-      <div className="mx-auto max-w-6xl p-4">
+      <div className="mx-auto max-w-7xl p-4">
         <header className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-slate-200 pb-3">
           <Link to="/" className="font-display whitespace-nowrap text-xl font-bold text-slate-900" title="Back to the home page">
             YOG<span className="text-glow"> Studio</span>
           </Link>
           <Stepper />
           <div className="ml-auto flex items-center gap-4 text-sm">
+            <MotionToggle />
             <NavLink to="/check" className={({ isActive }) => (isActive ? 'font-semibold text-link' : 'text-slate-600 hover:text-slate-900')} title="Try a policy against one action, without uploading anything">
               Sandbox
             </NavLink>

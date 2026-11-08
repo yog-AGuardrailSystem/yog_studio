@@ -99,15 +99,15 @@ export function TranslateVisual({ active }: V) {
   const [typed, setTyped] = useState(false)
   const showRest = reduce || typed
   return (
-    <Card label="An English rule becomes YOG">
+    <Card label="Illustration: an English rule becomes YOG">
       <Label>Your rule</Label>
       <p className="mt-1 min-h-[3rem] rounded-lg bg-slate-800/70 p-3 text-sm text-slate-100">
         <TypeText text={RULE} run={active} onStart={() => setTyped(false)} onDone={() => setTyped(true)} />
       </p>
       <motion.div className="mt-3" initial={false} animate={showRest ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}>
-        <Label>Similar examples retrieved</Label>
+        <Label>Example ids the retriever can return</Label>
         <div className="mt-1 flex flex-wrap gap-2">
-          {['never-at-night', 'time-window', 'door-lock'].map((e, i) => (
+          {['sh-night-lock', 'sh-front-door-only', 'sh-never-back-door'].map((e, i) => (
             <motion.span
               key={e}
               className="rounded-full border border-sky-400/40 bg-sky-500/10 px-2 py-0.5 font-mono text-xs text-sky-200"
@@ -140,7 +140,7 @@ export function VerifyVisual({ active }: V) {
     ['Attempt 2', 'syntax and semantic checks pass', true],
   ]
   return (
-    <Card label="Engine verifies the draft, then you approve">
+    <Card label="Illustration: the engine checks the draft, then you approve">
       <div className="space-y-2">
         {steps.map(([t, d, ok], i) => (
           <motion.div
@@ -214,17 +214,16 @@ export function EvalVisual({ active }: V) {
 
 /* 6 ─ Patch */
 const DIFF: [' ' | '+' | '-', string][] = [
+  ['+', 'from yog_runtime import yog_guard'],
   [' ', '@mcp.tool()'],
+  ['+', '@yog_guard("unlock_door")'],
   [' ', 'def unlock_door(door_id: str, pin=None):'],
-  ['+', '    d = yog.check("agent", "can_unlock_door", door_id)'],
-  ['+', '    if d.decision == "DENY":'],
-  ['+', '        return f"blocked: {d.reason}"'],
   [' ', '    DOORS[door_id] = "unlocked"'],
 ]
 export function PatchVisual({ active }: V) {
   const { on } = useOn(active)
   return (
-    <Card label="Diff that adds yog.check to a tool">
+    <Card label="Diff that guards a tool">
       <pre className="overflow-x-auto rounded-lg border border-white/5 bg-black/50 p-3 font-mono text-xs leading-6">
         {DIFF.map(([k, l], i) => (
           <motion.div

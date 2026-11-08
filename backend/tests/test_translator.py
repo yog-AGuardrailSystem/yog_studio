@@ -143,7 +143,9 @@ def test_api_translate(tmp_path):
             "english_rules": [RULE], "tools": [t.model_dump() for t in smart.tools]})
         assert r.status_code == 200
         j = r.json()
-        assert set(j) == {"english_rules", "yog_source", "retrieved_examples", "attempts", "valid", "errors"}
+        old = {"english_rules", "yog_source", "retrieved_examples", "attempts", "valid", "errors"}
+        assert old <= set(j), "every key the UI already relies on must still be present"
+        assert set(j) - old == {"retrieved", "attempt_log", "verified", "scenario_summary"}, "new fields are additive"
         assert j["valid"] is True and "OFFLINE FAKE" in j["yog_source"]
     finally:
         app.dependency_overrides.clear()

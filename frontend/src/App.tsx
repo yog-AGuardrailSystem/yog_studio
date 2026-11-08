@@ -10,6 +10,7 @@ import DevicePage from './pages/DevicePage'
 import ModifyPage from './pages/ModifyPage'
 import ReviewPage from './pages/ReviewPage'
 import RulesPage from './pages/RulesPage'
+import WorkbenchPage from './pages/WorkbenchPage'
 
 // Marketing pages carry three.js + motion: load them as separate chunks so Studio stays light.
 const LandingPage = lazy(() => import('./pages/LandingPage'))
@@ -23,7 +24,8 @@ export default function App() {
         <Route path="/how-it-works" element={<Suspense fallback={<div className="min-h-screen" />}><HowItWorksPage /></Suspense>} />
       </Route>
       <Route element={<StudioLayout />}>
-        <Route path="/studio" element={<AnalyzePage />} />
+        <Route path="/studio" element={<WorkbenchPage />} />
+        <Route path="/agent" element={<AnalyzePage />} />
         <Route path="/rules" element={<RulesPage />} />
         <Route path="/review" element={<ReviewPage />} />
         <Route path="/modify" element={<ModifyPage />} />

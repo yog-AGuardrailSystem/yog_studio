@@ -49,16 +49,82 @@ jobs:
       - name: Backend install
         working-directory: backend
         run: uv sync --extra dev
-      - name: Backend tests (offline, fake LLM)
+      - name: Backend tests (offline, fake LLM; builds and runs the real C lexer, gcc is on the runner)
         working-directory: backend
-        run: uv run python -m pytest -q
+        run: uv run python -m pytest -q -m "not c_differential"
+      - name: "C lexer vs Python reference on mutated programs (informational, a finding is reported but does not block)"
+        working-directory: backend
+        continue-on-error: true
+        run: uv run python -m pytest -q -m c_differential
 
       - name: Smoke script syntax
         run: bash -n scripts/smoke.sh
+      - name: Claims ledger points at real files
+        run: python3 scripts/claims_check.py
+
+  e2e:
+    name: Browser tests (workbench, landing, motion, accessibility)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install
+        run: |
+          (cd frontend && npm ci)
+          (cd backend && uv sync --extra dev)
+          (cd e2e && npm ci)
+      - name: Start backend (offline fake LLM) and frontend
+        run: |
+          (cd backend && LLM_PROVIDER=fake nohup uv run python -m uvicorn app.main:app --port 8000 > /tmp/backend.log 2>&1 &)
+          (cd frontend && nohup npm run dev -- --host 127.0.0.1 --port 5173 > /tmp/frontend.log 2>&1 &)
+          for i in $(seq 1 60); do curl -fs localhost:8000/health >/dev/null && curl -fs localhost:5173 >/dev/null && break; sleep 2; done
+      - name: Workbench
+        working-directory: e2e
+        run: node workbench.mjs
+      - name: Landing and how-it-works
+        working-directory: e2e
+        run: node landing.mjs
+      - name: Motion tour (registry target, pause control, reduced motion)
+        working-directory: e2e
+        run: node motion.mjs
+      - name: Accessibility (axe contrast and structure)
+        working-directory: e2e
+        run: node axe.mjs
+      - name: Agent flow (upload, rules, review, patch, device)
+        working-directory: e2e
+        run: node ui.mjs
+      - name: Server logs on failure
+        if: failure()
+        run: tail -n 80 /tmp/backend.log /tmp/frontend.log
+
+  docker:
+    name: Docker image (builds the C lexer, smoke-tests the container)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the production image
+        run: docker build -t yog-studio:ci .
+      - name: Start the container
+        run: docker run -d --name yog -p 10000:10000 -e RENDER_GIT_COMMIT="$GITHUB_SHA" yog-studio:ci
+      - name: Smoke-test the container (same script the deploy uses)
+        run: bash scripts/smoke.sh http://localhost:10000 "$GITHUB_SHA" 120
+      - name: The real C lexer is live in the image and agrees with the reference
+        run: python3 scripts/check_c_lexer.py http://localhost:10000
+      - name: Container logs on failure
+        if: failure()
+        run: docker logs yog
 
   deploy:
     name: Deploy to Render
-    needs: test
+    needs: [test, e2e, docker]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 40

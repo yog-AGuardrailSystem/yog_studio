@@ -16,11 +16,11 @@ import {
 const STAGES = [
   { id: 'upload', short: 'Upload', title: 'Drop in your agent', text: 'Upload a Python agent or MCP server. The detector tells you what it found and shows the exact lines that prove it. If it is unsure, it says so and lets you pick the functions yourself. Your code is only read, never run.', Visual: UploadVisual },
   { id: 'tools', short: 'Tools', title: 'See what it can do', text: 'Each tool the agent can call is listed with its parameters and hints about its side effects, like “deletes” or “network”. These are the actions your rules will control.', Visual: ToolsVisual },
-  { id: 'translate', short: 'Rules', title: 'Say it in English', text: 'Write the rule the way you would say it. Studio looks up similar example policies and an LLM drafts the YOG. The model only drafts. It never decides.', Visual: TranslateVisual },
+  { id: 'translate', short: 'Rules', title: 'Say it in English', text: 'Write the rule the way you would say it. Studio looks up similar example policies and a model drafts the YOG. The model only drafts. It never decides.', Visual: TranslateVisual },
   { id: 'verify', short: 'Verify', title: 'The engine checks, you approve', text: 'The YOG engine checks every draft. If it finds an error, the error goes back to the model for another try, up to three. Then you read the policy back in plain English and click Approve. Nothing goes live without that click.', Visual: VerifyVisual },
   { id: 'evaluate', short: 'Test', title: 'Test it on scenarios', text: 'Studio generates test cases, runs them through the engine and shows green ALLOW and red DENY, each with a reason and a trace. You see the policy behave before it is used.', Visual: EvalVisual },
-  { id: 'patch', short: 'Patch', title: 'Get a minimal patch', text: 'Studio shows a side-by-side diff that wraps each tool call in yog.check(). It changes only the lines it must. It does not rewrite your file.', Visual: PatchVisual },
-  { id: 'device', short: 'Try it', title: 'Watch YOG block a command', text: 'This one is live. Drag the clock to 3am and try to unlock the door. Then move it to noon and try again. The same input always gives the same answer.', Visual: DeviceVisual },
+  { id: 'patch', short: 'Patch', title: 'Get a minimal patch', text: 'Studio shows a side-by-side diff that adds a one-line guard above each tool and one import. Nothing else in your file changes, and the patched file is yours to download.', Visual: PatchVisual },
+  { id: 'device', short: 'Try it', title: 'Watch YOG block a command', text: 'Try it yourself. Drag the clock to 3am and try to unlock the door. Then move it to noon and try again. The same input always gives the same answer.', Visual: DeviceVisual },
 ] as const
 
 export default function HowItWorksPage() {
