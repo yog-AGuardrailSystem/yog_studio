@@ -23,3 +23,7 @@ package = false
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+    "c_differential: C lexer vs Python reference on mutated inputs (needs a C compiler)",
+    "live: calls a real LLM API (skipped unless a key is set)",
+]

@@ -1,0 +1,4 @@
+source: https://github.com/yog-AGuardrailSystem/yog_engine
+paths:  yog/src/lexer/{lexer.c,lexer.h,token.h}, yog/tools/lexdump.c, LICENSE (MIT)
+commit: e70af31930cc99a51d3f90fec90e43db03861a7e
+note:   vendored copy of the engine team's C lexer; update only on request (replace files, never hand-edit)

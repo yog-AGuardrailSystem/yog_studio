@@ -49,16 +49,38 @@ jobs:
       - name: Backend install
         working-directory: backend
         run: uv sync --extra dev
-      - name: Backend tests (offline, fake LLM)
+      - name: Backend tests (offline, fake LLM; builds and runs the real C lexer, gcc is on the runner)
         working-directory: backend
-        run: uv run python -m pytest -q
+        run: uv run python -m pytest -q -m "not c_differential"
+      - name: "C lexer vs Python reference on mutated programs (informational, a finding is reported but does not block)"
+        working-directory: backend
+        continue-on-error: true
+        run: uv run python -m pytest -q -m c_differential
 
       - name: Smoke script syntax
         run: bash -n scripts/smoke.sh
 
+  docker:
+    name: Docker image (builds the C lexer, smoke-tests the container)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the production image
+        run: docker build -t yog-studio:ci .
+      - name: Start the container
+        run: docker run -d --name yog -p 10000:10000 -e RENDER_GIT_COMMIT="$GITHUB_SHA" yog-studio:ci
+      - name: Smoke-test the container (same script the deploy uses)
+        run: bash scripts/smoke.sh http://localhost:10000 "$GITHUB_SHA" 120
+      - name: The real C lexer is live in the image and agrees with the reference
+        run: python3 scripts/check_c_lexer.py http://localhost:10000
+      - name: Container logs on failure
+        if: failure()
+        run: docker logs yog
+
   deploy:
     name: Deploy to Render
-    needs: test
+    needs: [test, docker]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 40

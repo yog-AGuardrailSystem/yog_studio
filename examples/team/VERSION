@@ -1,0 +1,4 @@
+source: https://github.com/yog-AGuardrailSystem/yog_engine
+file:   all_examples.yog
+commit: e70af31930cc99a51d3f90fec90e43db03861a7e
+note:   vendored copy; update only on request (replace the file, never hand-edit)
