@@ -16,10 +16,12 @@ cd frontend ; npm run dev
 (`uv run uvicorn` can be blocked by Windows Application Control; `python -m uvicorn` is not.)
 
 Tests: `cd backend ; uv run pytest -q` (offline; forces the fake LLM). Frontend: `cd frontend ; npm run build`.
-Browser walkthrough: `e2e/README.md`. Benchmark: `cd backend ; uv run python -m app.benchmark.runner`.
+Benchmark (needs a real key for numbers that mean anything): `cd backend ; uv run python -m app.benchmark.evaluation --split dev --robustness`, retrieval: `uv run python -m app.benchmark.retrieval_eval`, one-off key check: `uv run python ../scripts/llm_smoke.py`.
+Team review of drafted examples: `uv run python -m app.benchmark.review pack --reviewers A,B,C`, then `... review apply review/A.md ...`.
+Claims the site makes that are not yet demonstrable: `python scripts/claims_check.py`.
 
 ## Configuration (`backend/.env`, see `.env.example`)
-- `LLM_PROVIDER=fake` (default, offline) or `gemini` with `GEMINI_API_KEY`.
+- `LLM_PROVIDER=fake` (default, offline), `gemini` with `GEMINI_API_KEY`, or `claude` with `ANTHROPIC_API_KEY`; `EMBED_PROVIDER` for embeddings. Every setting is documented in `.env.example`.
 - `YOG_ENGINE=python` (default) or `c` (not yet available, see app/engine/c_engine.py).
 
 ## Data
@@ -31,11 +33,14 @@ See the "Deploy" section in docs/DEPLOY.md.
 ## Pages (frontend routes)
 | Route | What it is |
 |---|---|
-| `/` | Landing page with a live 3D scene (an agent action flies at the YOG gate; pick an action and watch ALLOW/DENY) |
-| `/how-it-works` | Scroll-driven walkthrough with an interactive device demo (runs in the browser, mirrors YOG rules in `frontend/src/lib/yogMirror.ts`; step 7 drives the same 3D scene) |
-| `/studio` | Step 1: upload an agent |
-| `/rules`, `/review`, `/modify`, `/device` | Steps 2-5 |
+| `/` | Landing page: live compiler explorer, four compiler scenes, pipeline conveyor, example cards A to R, 3D decision gate |
+| `/how-it-works` | Scroll-driven walkthrough of the agent tools flow, with an interactive device demo |
+| `/studio` | The YOG workbench: editor, live compile, tests with "why", tokens/AST/readback, C lexer, Assist, evidence |
+| `/agent`, `/rules`, `/review`, `/modify`, `/device` | Agent tools: upload an agent, rules, review and approve, patch, device |
 | `/check` | Sandbox: try a policy on one action |
+
+Browser tests (need backend with `LLM_PROVIDER=fake` on :8000 and the frontend on :5173): `cd e2e ; npm ci ; node workbench.mjs ; node landing.mjs ; node motion.mjs ; node axe.mjs ; node ui.mjs`.
+CI runs all five. Set `CHROME_PATH` if Chrome is not in a standard location.
 
 Frontend unit test for the browser-side evaluator: `cd frontend ; npm run test:mirror` (Node 22+).
 Any unknown URL redirects to `/`. The single-process deploy serves every route from `index.html`, so refreshing on `/how-it-works` works.

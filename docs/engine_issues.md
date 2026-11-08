@@ -11,3 +11,6 @@ Studio does not patch `engine/yog.py`; it works around these and records them he
 | 5 | Grammar is not formally frozen. | If generated YOG starts failing after an engine update, check the grammar first. |
 | 6 | Wildcard counter `Parser._wild` is class-level state shared across parses. | Harmless for Studio; noted. |
 | 7 | ANY comparison (even `==`) between an integer and a name raises an uncaught `TypeError` inside `Engine.solve` because it evaluates all six operators eagerly. Found when a probe supplied `arg(t, currency, 0)` to a policy that compares `C == usd`. | `PythonPrototypeAdapter.check` catches it and returns DENY (fail closed) with an explanatory reason. A regression test covers it. |
+| 8 | The engine repo README is out of date (describes an older plan). | Studio's docs describe the code, not the README. | 
+| 9 | No tool prints the C parser's tree, so the explorer cannot show the C parser next to the reference. A `parsedump` like the existing `lexdump` would let it. | Explorer compares tokens only (C lexer vs reference). |
+| 10 | Documented lexer differences between C and the reference (64-bit integers, indent depth 63, ASCII identifiers, tabs rejected, columns tracked). | Listed in `KNOWN_DIFFERENCES` and not reported as mismatches; anything else is. |

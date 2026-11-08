@@ -59,6 +59,50 @@ jobs:
 
       - name: Smoke script syntax
         run: bash -n scripts/smoke.sh
+      - name: Claims ledger points at real files
+        run: python3 scripts/claims_check.py
+
+  e2e:
+    name: Browser tests (workbench, landing, motion, accessibility)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install
+        run: |
+          (cd frontend && npm ci)
+          (cd backend && uv sync --extra dev)
+          (cd e2e && npm ci)
+      - name: Start backend (offline fake LLM) and frontend
+        run: |
+          (cd backend && LLM_PROVIDER=fake nohup uv run python -m uvicorn app.main:app --port 8000 > /tmp/backend.log 2>&1 &)
+          (cd frontend && nohup npm run dev -- --host 127.0.0.1 --port 5173 > /tmp/frontend.log 2>&1 &)
+          for i in $(seq 1 60); do curl -fs localhost:8000/health >/dev/null && curl -fs localhost:5173 >/dev/null && break; sleep 2; done
+      - name: Workbench
+        working-directory: e2e
+        run: node workbench.mjs
+      - name: Landing and how-it-works
+        working-directory: e2e
+        run: node landing.mjs
+      - name: Motion tour (registry target, pause control, reduced motion)
+        working-directory: e2e
+        run: node motion.mjs
+      - name: Accessibility (axe contrast and structure)
+        working-directory: e2e
+        run: node axe.mjs
+      - name: Agent flow (upload, rules, review, patch, device)
+        working-directory: e2e
+        run: node ui.mjs
+      - name: Server logs on failure
+        if: failure()
+        run: tail -n 80 /tmp/backend.log /tmp/frontend.log
 
   docker:
     name: Docker image (builds the C lexer, smoke-tests the container)
@@ -80,7 +124,7 @@ jobs:
 
   deploy:
     name: Deploy to Render
-    needs: [test, docker]
+    needs: [test, e2e, docker]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 40
