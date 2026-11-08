@@ -1,21 +1,26 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import MarketingLayout from './layouts/MarketingLayout'
 import StudioLayout from './layouts/StudioLayout'
 import AnalyzePage from './pages/AnalyzePage'
 import CheckPage from './pages/CheckPage'
 import DevicePage from './pages/DevicePage'
-import HowItWorksPage from './pages/HowItWorksPage'
-import LandingPage from './pages/LandingPage'
+
+
 import ModifyPage from './pages/ModifyPage'
 import ReviewPage from './pages/ReviewPage'
 import RulesPage from './pages/RulesPage'
+
+// Marketing pages carry three.js + motion: load them as separate chunks so Studio stays light.
+const LandingPage = lazy(() => import('./pages/LandingPage'))
+const HowItWorksPage = lazy(() => import('./pages/HowItWorksPage'))
 
 export default function App() {
   return (
     <Routes>
       <Route element={<MarketingLayout />}>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/how-it-works" element={<HowItWorksPage />} />
+        <Route path="/" element={<Suspense fallback={<div className="min-h-screen" />}><LandingPage /></Suspense>} />
+        <Route path="/how-it-works" element={<Suspense fallback={<div className="min-h-screen" />}><HowItWorksPage /></Suspense>} />
       </Route>
       <Route element={<StudioLayout />}>
         <Route path="/studio" element={<AnalyzePage />} />
