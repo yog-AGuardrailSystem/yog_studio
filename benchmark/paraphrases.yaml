@@ -1,0 +1,118 @@
+# Held-out paraphrases for the retrieval evaluation (app/benchmark/retrieval_eval.py).
+# Each line rewords one retrievable example. The query must find its source example WITHOUT sharing its exact words,
+# which is what separates a real embedding model from keyword overlap.
+#   id        = the example this paraphrase should retrieve (examples/policies/*.yaml, or team-<group> for the team file)
+#   source    = claude-draft until a teammate rewrites/approves it (scripts/review_pack.py), then reviewed-by:<name>
+- {id: db-readers-query, source: claude-draft, paraphrase: "Read-only users can issue queries, but dropping a table is off limits for them."}
+- {id: db-never-drop, source: claude-draft, paraphrase: "Dropping tables is forbidden for everybody, yet database administrators keep the ability to query."}
+- {id: db-drop-not-production, source: claude-draft, paraphrase: "Table drops are reserved for DBAs and are not allowed on production databases under any circumstances."}
+- {id: db-query-row-limit, source: claude-draft, paraphrase: "A single query must not return more than a thousand rows."}
+- {id: db-backup-night-window, source: claude-draft, paraphrase: "Run backups only in the early morning window from 1 to 5 am."}
+- {id: db-prod-readonly-for-agent, source: claude-draft, paraphrase: "Write statements against production databases are off limits to the agent."}
+- {id: db-sensitive-tables, source: claude-draft, paraphrase: "Querying tables that hold personal information is restricted to database administrators."}
+- {id: db-backup-approved-destinations, source: claude-draft, paraphrase: "Only approved storage locations may receive backups."}
+- {id: db-no-peak-hours-maintenance, source: claude-draft, paraphrase: "During working hours, 9 to 18, maintenance jobs such as dropping tables or taking backups are not allowed."}
+- {id: db-dba-two-roles, source: claude-draft, paraphrase: "Engineers and DBAs can both query, but taking backups belongs to DBAs alone."}
+- {id: fs-read-any, source: claude-draft, paraphrase: "Reading is fine for any file; writing and deleting are not permitted."}
+- {id: fs-never-delete, source: claude-draft, paraphrase: "File deletion is never allowed for the agent."}
+- {id: fs-write-sandbox-only, source: claude-draft, paraphrase: "Writes are limited to the sandbox directory."}
+- {id: fs-system-files-protected, source: claude-draft, paraphrase: "System files can neither be written nor removed by anyone, administrators included."}
+- {id: fs-delete-temp-only, source: claude-draft, paraphrase: "Deleting is only permitted for files that live in the temp directory."}
+- {id: fs-write-size-limit, source: claude-draft, paraphrase: "No single write may exceed 1 MB, which is 1024 KB."}
+- {id: fs-env-files-secret, source: claude-draft, paraphrase: "Files containing secrets, like .env files, must be neither read nor modified by the agent."}
+- {id: fs-readonly-config, source: claude-draft, paraphrase: "A file flagged read-only can never be changed."}
+- {id: fs-business-hours-write, source: claude-draft, paraphrase: "Only between 9 and 17 may the agent write to files."}
+- {id: fs-owner-edits, source: claude-draft, paraphrase: "A user is allowed to delete a file only if they are its owner."}
+- {id: fs-list-directory-public, source: claude-draft, paraphrase: "Staff members may list directories; the private directory can only be listed by managers."}
+- {id: fin-transfer-cap, source: claude-draft, paraphrase: "Each transaction the finance bot makes is capped at 10000."}
+- {id: fin-large-needs-approval, source: claude-draft, paraphrase: "Any transfer larger than 10000 requires a person to approve it, while smaller ones go through freely."}
+- {id: fin-frozen-accounts, source: claude-draft, paraphrase: "Money must not leave an account that is frozen."}
+- {id: fin-weekend-freeze, source: claude-draft, paraphrase: "Transfers are blocked on weekends."}
+- {id: fin-balance-anyone, source: claude-draft, paraphrase: "All staff may look up a balance, while moving money is for tellers only."}
+- {id: fin-currency-whitelist, source: claude-draft, paraphrase: "Only USD and EUR transfers are acceptable."}
+- {id: fin-approved-beneficiaries, source: claude-draft, paraphrase: "Funds can only be sent to beneficiary accounts that have been approved."}
+- {id: fin-daily-limit, source: claude-draft, paraphrase: "After the finance bot has transferred 50000 in a day it cannot transfer any more that day."}
+- {id: fin-receipt-internal, source: claude-draft, paraphrase: "Send receipts to customers only, never to staff email addresses."}
+- {id: fin-refund-small-auto, source: claude-draft, paraphrase: "The bot refunds amounts of 100 or less automatically and may not refund anything bigger."}
+- {id: gen-admin-all, source: claude-draft, paraphrase: "Administrators have full permissions; all other users are limited to reading documents."}
+- {id: gen-owner-only-edit, source: claude-draft, paraphrase: "Editing a document is limited to its owner."}
+- {id: gen-suspended-users, source: claude-draft, paraphrase: "A suspended account cannot do anything at all."}
+- {id: gen-clearance-levels, source: claude-draft, paraphrase: "Reading a document needs a clearance level equal to or above the document's level."}
+- {id: gen-deny-overrides-allow, source: claude-draft, paraphrase: "Managers may export data but never confidential datasets, which no one can export."}
+- {id: gen-deploy-not-friday, source: claude-draft, paraphrase: "Engineers can deploy services every day other than Friday."}
+- {id: gen-restart-production-approval, source: claude-draft, paraphrase: "Restarting a production server needs sign-off, whereas engineers can restart development servers whenever they like."}
+- {id: gen-group-membership-rule, source: claude-draft, paraphrase: "Finance team members are allowed to see invoices."}
+- {id: gen-grant-access-two-roles, source: claude-draft, paraphrase: "Granting someone access is limited to admins and security officers."}
+- {id: gen-no-self-grant, source: claude-draft, paraphrase: "No one, admins included, can give themselves access."}
+- {id: gen-maintenance-window, source: claude-draft, paraphrase: "Server restarts are allowed only inside the 2am to 4am maintenance slot."}
+- {id: gen-share-external-ban, source: claude-draft, paraphrase: "Internal documents may be shared with employees but not with contractors."}
+- {id: gen-rate-limit, source: claude-draft, paraphrase: "Block an agent after it has made 100 calls within the hour."}
+- {id: gen-default-deny-explicit, source: claude-draft, paraphrase: "Registered users may read public documents, and everything else is denied."}
+- {id: net-email-internal-only, source: claude-draft, paraphrase: "Email may only be sent to addresses inside the company."}
+- {id: net-email-blocklist, source: claude-draft, paraphrase: "The agent can email anybody apart from blocklisted addresses."}
+- {id: net-email-recipient-cap, source: claude-draft, paraphrase: "No more than five recipients per email."}
+- {id: net-email-no-attachments, source: claude-draft, paraphrase: "Emails sent by the agent must not carry attachments."}
+- {id: net-email-working-hours, source: claude-draft, paraphrase: "Sending email is limited to 8 in the morning through 8 at night."}
+- {id: net-http-allowlist, source: claude-draft, paraphrase: "Fetching is only permitted for URLs on approved hosts."}
+- {id: net-delete-user-data-admin, source: claude-draft, paraphrase: "User data deletion is for admins only, and hard deletes are never permitted."}
+- {id: net-delete-user-self-only, source: claude-draft, paraphrase: "Users can erase only their own data."}
+- {id: sh-night-lock, source: claude-draft, paraphrase: "Between 11 at night and 6 in the morning the agent is never allowed to open a door lock."}
+- {id: sh-thermostat-range, source: claude-draft, paraphrase: "Keep the thermostat setting from dropping below 16 or rising above 28 degrees."}
+- {id: sh-valve-max-open, source: claude-draft, paraphrase: "A valve must never be opened beyond half, which is 50 percent."}
+- {id: sh-lock-always, source: claude-draft, paraphrase: "Locking any door is always permitted for the agent."}
+- {id: sh-front-door-only, source: claude-draft, paraphrase: "The only door the agent may unlock is the front door."}
+- {id: sh-never-back-door, source: claude-draft, paraphrase: "The back door must stay locked as far as the agent is concerned."}
+- {id: sh-no-water-main, source: claude-draft, paraphrase: "Hands off the main water valve for the agent."}
+- {id: sh-bedroom-evening-only, source: claude-draft, paraphrase: "Changing the bedroom thermostat is only allowed from 8 in the evening until 8 in the morning."}
+- {id: sh-unlock-only-when-home, source: claude-draft, paraphrase: "Doors may be unlocked by the agent solely while a person is at home."}
+- {id: sh-night-heat-cap, source: claude-draft, paraphrase: "Between 10pm and 6am do not let the thermostat go above 22."}
+- {id: sh-vacation-mode, source: claude-draft, paraphrase: "In vacation mode the agent is barred from unlocking doors and adjusting the thermostat."}
+- {id: sh-admin-valve-assistant-status, source: claude-draft, paraphrase: "Valves may be opened by the admin alone, and the assistant is restricted to checking device status."}
+- {id: team-a, source: claude-draft, paraphrase: "Database deletion is an admin-only action."}
+- {id: team-b, source: claude-draft, paraphrase: "A developer is allowed to deploy only to the staging environment."}
+- {id: team-c, source: claude-draft, paraphrase: "If your team owns a database you are allowed to modify it."}
+- {id: team-d, source: claude-draft, paraphrase: "Production deletes require being an admin, the production environment and the finance team as owner, all together."}
+- {id: team-e, source: claude-draft, paraphrase: "Reading a file is something only admins are allowed to do."}
+- {id: team-f, source: claude-draft, paraphrase: "Email to any address is open to admins; support staff are restricted to internal addresses."}
+- {id: team-g, source: claude-draft, paraphrase: "Admins can change any config file; devops engineers only the staging ones."}
+- {id: team-h, source: claude-draft, paraphrase: "Admins create users in any department; the HR bot only in departments that are non-technical."}
+- {id: team-i, source: claude-draft, paraphrase: "Finance admins have no transfer limit, while a customer may only transfer up to their personal limit that arrives with the request."}
+- {id: team-j, source: claude-draft, paraphrase: "Any shell command is fine for admins, but sandboxed agents are limited to commands marked safe."}
+- {id: team-k, source: claude-draft, paraphrase: "Uploading is unrestricted for admins; analysts may put only non-confidential files into the staging bucket."}
+- {id: team-l, source: claude-draft, paraphrase: "Admins may reach every API, researchers only the research-approved ones."}
+- {id: team-mnopq, source: claude-draft, paraphrase: "Five different actions are each gated behind a single required role."}
+- {id: team-r, source: claude-draft, paraphrase: "Every employee can open documents apart from confidential ones, because a deny always beats an allow."}
+
+# ---- HARD tier: reworded to avoid the original's key words. A keyword-overlap baseline should struggle here;
+# a real embedding model should not. (The easy tier above is passed by the offline baseline already, so on its own
+# it cannot show that real embeddings help.)
+- {id: db-query-row-limit, tier: hard, source: claude-draft, paraphrase: "Result sets from the database are truncated at a thousand records."}
+- {id: db-backup-night-window, tier: hard, source: claude-draft, paraphrase: "Snapshots of the data store are permitted solely in the small hours."}
+- {id: db-sensitive-tables, tier: hard, source: claude-draft, paraphrase: "Only the people who administer the database get to look inside tables with private customer details."}
+- {id: db-backup-approved-destinations, tier: hard, source: claude-draft, paraphrase: "Copies of the database may be stored solely at sanctioned targets."}
+- {id: fs-never-delete, tier: hard, source: claude-draft, paraphrase: "The assistant has no permission to erase anything from disk."}
+- {id: fs-write-size-limit, tier: hard, source: claude-draft, paraphrase: "A payload bigger than a megabyte cannot be saved in one go."}
+- {id: fs-env-files-secret, tier: hard, source: claude-draft, paraphrase: "Credential-bearing dotfiles are completely off limits, for opening and for editing."}
+- {id: fs-owner-edits, tier: hard, source: claude-draft, paraphrase: "Removal of a document is the owner's privilege only."}
+- {id: fin-transfer-cap, tier: hard, source: claude-draft, paraphrase: "The payments bot cannot move more than ten thousand in one go."}
+- {id: fin-frozen-accounts, tier: hard, source: claude-draft, paraphrase: "A locked bank account cannot be a source of outgoing funds."}
+- {id: fin-weekend-freeze, tier: hard, source: claude-draft, paraphrase: "Saturday and Sunday are blackout days for sending money."}
+- {id: fin-currency-whitelist, tier: hard, source: claude-draft, paraphrase: "Payments in any currency other than dollars or euros are refused."}
+- {id: fin-daily-limit, tier: hard, source: claude-draft, paraphrase: "Once fifty thousand has gone out in a day, the bot must stop sending funds."}
+- {id: gen-suspended-users, tier: hard, source: claude-draft, paraphrase: "Accounts under suspension lose every capability."}
+- {id: gen-no-self-grant, tier: hard, source: claude-draft, paraphrase: "A person may not elevate their own permissions."}
+- {id: gen-rate-limit, tier: hard, source: claude-draft, paraphrase: "Throttle callers that exceed a hundred invocations in sixty minutes."}
+- {id: gen-deploy-not-friday, tier: hard, source: claude-draft, paraphrase: "Shipping a release is okay for developers on any weekday except the one before the weekend."}
+- {id: net-email-no-attachments, tier: hard, source: claude-draft, paraphrase: "Messages with files attached must not be sent by the bot."}
+- {id: net-email-recipient-cap, tier: hard, source: claude-draft, paraphrase: "A message addressed to six people or more is not allowed."}
+- {id: net-http-allowlist, tier: hard, source: claude-draft, paraphrase: "Web requests may only go to whitelisted domains."}
+- {id: net-delete-user-self-only, tier: hard, source: claude-draft, paraphrase: "People are only entitled to wipe the information that belongs to themselves."}
+- {id: sh-night-lock, tier: hard, source: claude-draft, paraphrase: "Unlatching entrances is prohibited overnight, from eleven until six."}
+- {id: sh-valve-max-open, tier: hard, source: claude-draft, paraphrase: "Never let a tap run past the halfway mark."}
+- {id: sh-thermostat-range, tier: hard, source: claude-draft, paraphrase: "The heating target has to stay inside sixteen to twenty-eight degrees."}
+- {id: sh-no-water-main, tier: hard, source: claude-draft, paraphrase: "The primary water shutoff is not to be operated by the assistant."}
+- {id: sh-vacation-mode, tier: hard, source: claude-draft, paraphrase: "While nobody is living in the house for a holiday, the bot cannot open entrances or touch the heating."}
+- {id: sh-unlock-only-when-home, tier: hard, source: claude-draft, paraphrase: "Opening an entrance requires that an occupant be present."}
+- {id: team-a, tier: hard, source: claude-draft, paraphrase: "Only an administrator can wipe a database."}
+- {id: team-r, tier: hard, source: claude-draft, paraphrase: "Staff can open any document except those flagged confidential, as a prohibition outranks a permission."}
+- {id: team-j, tier: hard, source: claude-draft, paraphrase: "Administrators may execute arbitrary terminal commands, whereas an isolated bot can only run whitelisted harmless ones."}
