@@ -1,0 +1,94 @@
+name: CI/CD
+
+# Every PR and every push to main runs the tests.
+# A push to main (i.e. a merged PR) that passes the tests then deploys to Render and smoke-tests the live site.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # superseded PR runs are cancelled; a run on main is never cancelled half-way through a deploy
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Frontend install
+        working-directory: frontend
+        run: npm ci
+      - name: Frontend build (type-check + bundle)
+        working-directory: frontend
+        run: npm run build
+      - name: Frontend lint
+        working-directory: frontend
+        run: npm run lint
+      - name: Browser-side rules evaluator tests
+        working-directory: frontend
+        run: npm run test:mirror
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Backend install
+        working-directory: backend
+        run: uv sync --extra dev
+      - name: Backend tests (offline, fake LLM)
+        working-directory: backend
+        run: uv run python -m pytest -q
+
+      - name: Smoke script syntax
+        run: bash -n scripts/smoke.sh
+
+  deploy:
+    name: Deploy to Render
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      SITE_URL: ${{ vars.SITE_URL || 'https://yog-studio.onrender.com' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trigger Render deploy
+        id: hook
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "::warning::RENDER_DEPLOY_HOOK secret is not set, so nothing was deployed. See docs/DEPLOY.md (CI/CD)."
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            echo "### Deploy skipped: RENDER_DEPLOY_HOOK secret not set" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # ?ref=<sha> makes Render build exactly this commit
+          curl -fsS -X POST "${RENDER_DEPLOY_HOOK}&ref=${GITHUB_SHA}" -o /dev/null
+          echo "Deploy triggered for ${GITHUB_SHA}"
+
+      - name: Wait for the new version and smoke-test it
+        if: steps.hook.outputs.skipped != 'true'
+        run: bash scripts/smoke.sh "$SITE_URL" "$GITHUB_SHA" 1500
+
+      - name: Summary
+        if: steps.hook.outputs.skipped != 'true'
+        run: echo "### Deployed ${GITHUB_SHA::7} to $SITE_URL" >> "$GITHUB_STEP_SUMMARY"
