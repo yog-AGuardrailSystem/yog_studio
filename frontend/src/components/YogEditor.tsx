@@ -20,7 +20,7 @@ interface Props {
 
 const OPTIONS = {
   minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false, automaticLayout: true,
-  renderGutterMenu: false, tabSize: 4, insertSpaces: true, detectIndentation: false, wordWrap: 'on',
+  renderGutterMenu: false, renderFinalNewline: 'on', tabSize: 4, insertSpaces: true, detectIndentation: false, wordWrap: 'on',
   quickSuggestions: { other: true, comments: false, strings: false }, ariaLabel: 'YOG policy editor',
 } as never
 
