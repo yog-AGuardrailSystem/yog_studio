@@ -1,0 +1,4 @@
+# keep shell scripts and workflows LF so they run on Linux CI regardless of contributor OS
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
