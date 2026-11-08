@@ -24,11 +24,7 @@ def test_sheet_roundtrip_and_parse():
     items = rv.drafted_items([rv.BENCH_FILE])[:2]
     sheet = rv.render_sheet(A, "Varun", items)
     assert items[0][1].id in sheet and "Readback" in sheet
-    filled = sheet.replace("
-VERDICT: 
-", "
-VERDICT: ok
-", 1)
+    filled = sheet.replace("\nVERDICT: \n", "\nVERDICT: ok\n", 1)
     assert rv.parse_sheet(filled) == {items[0][1].id: {"verdict": "ok", "revised": None}}
     assert rv.parse_sheet(sheet) == {}, "an unanswered sheet changes nothing"
 
