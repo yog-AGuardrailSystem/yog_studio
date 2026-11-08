@@ -31,7 +31,7 @@ class Boundary extends Component<{ fallback: ReactNode; children: ReactNode }, {
  */
 export function Gate({ fallback, className = '', ...props }: GateSceneProps & { fallback: ReactNode }) {
   const reduce = useReducedMotion()
-  const ok = useMemo(webglOk, [])
+  const ok = useMemo(() => webglOk(), [])
   if (!ok) return <div data-testid="gate-fallback" className={className}>{fallback}</div>
   return (
     <Boundary fallback={<div data-testid="gate-fallback" className={className}>{fallback}</div>}>

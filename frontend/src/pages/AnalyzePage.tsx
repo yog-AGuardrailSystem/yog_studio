@@ -165,7 +165,7 @@ export default function AnalyzePage() {
                 <ToolsTable tools={analysis.tools} onSelect={(t: Tool) => setReveal(t.source_line)} />
               )}
               {tools.length > 0 && (
-                <Link to="/rules" className="mt-4 inline-block rounded bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800">
+                <Link to="/rules" className="mt-4 inline-block rounded bg-sky-700 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-sky-800">
                   Continue with {tools.length} tool{tools.length === 1 ? '' : 's'} →
                 </Link>
               )}

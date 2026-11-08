@@ -83,8 +83,8 @@ body {
 .btn-secondary:hover { background: #f1f5f9; transform: translateY(-1px); }
 .btn-primary:active, .btn-secondary:active { transform: translateY(1px) scale(0.98); }
 .btn-lg { padding: 0.75rem 1.5rem; font-size: 1rem; }
-.mkt .btn-primary { background: #0284c7; box-shadow: 0 0 0 1px rgba(125, 211, 252, .35), 0 8px 30px -6px rgba(56, 189, 248, .55); }
-.mkt .btn-primary:hover { background: #0ea5e9; box-shadow: 0 0 0 1px rgba(125, 211, 252, .6), 0 10px 40px -4px rgba(56, 189, 248, .8); }
+.mkt .btn-primary { background: #0369a1; box-shadow: 0 0 0 1px rgba(125, 211, 252, .35), 0 8px 30px -6px rgba(56, 189, 248, .55); }
+.mkt .btn-primary:hover { background: #0478b4; box-shadow: 0 0 0 1px rgba(125, 211, 252, .6), 0 10px 40px -4px rgba(56, 189, 248, .8); }
 .mkt .btn-secondary { background: rgba(15, 23, 42, .5); border-color: rgba(148, 163, 184, .35); color: #e2e8f0; }
 .mkt .btn-secondary:hover { background: rgba(30, 41, 59, .8); border-color: rgba(125, 211, 252, .6); }
 .btn-primary:focus-visible, .btn-secondary:focus-visible, .link:focus-visible, .term:focus-visible, .chip:focus-visible {
@@ -159,4 +159,58 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .spinner { animation-duration: 2s; }
   .skeleton { animation: none; }
+}
+
+/* =====================================================================
+   Studio: dark theme. Tailwind v4 colours are CSS variables, so overriding
+   them inside .studio-dark flips every slate/white/pastel utility at once.
+   (Shades used as FILLS for buttons, e.g. sky-700/800, green-500/600, are left alone.)
+   ===================================================================== */
+@utility text-link {
+  color: var(--color-brand);
+}
+.studio-dark {
+  color-scheme: dark;
+  min-height: 100vh;
+  background: var(--color-ink);
+  color: #e2e8f0;
+  --color-white: #0d1a2d;
+  --color-slate-50: #0a1424; --color-slate-100: #142841; --color-slate-200: #1d3350; --color-slate-300: #2b4466;
+  --color-slate-400: #7d93ad; --color-slate-500: #94a9c2; --color-slate-600: #b0c1d6; --color-slate-700: #cbd8e6;
+  --color-slate-800: #e2e8f0; --color-slate-900: #f1f5f9;
+  --color-green-50: #06281a; --color-green-100: #0a3b25; --color-green-300: #15803d; --color-green-400: #16a34a; --color-green-700: #86efac; --color-green-800: #bbf7d0;
+  --color-emerald-100: #053b2c; --color-emerald-800: #6ee7b7;
+  --color-red-50: #33101a; --color-red-100: #4a1620; --color-red-300: #9f2a2a; --color-red-400: #b91c1c; --color-red-700: #fca5a5; --color-red-800: #fecaca;
+  --color-amber-50: #33260a; --color-amber-100: #46330c; --color-amber-300: #a16207; --color-amber-400: #ca8a04; --color-amber-700: #fcd34d; --color-amber-800: #fde68a; --color-amber-900: #fef3c7;
+  --color-yellow-100: #3a3208; --color-yellow-800: #fde047;
+  --color-orange-100: #3b1f0a; --color-orange-800: #fdba74;
+  --color-blue-50: #0b2545; --color-blue-100: #12335f; --color-blue-200: #1e4a80; --color-blue-800: #bfdbfe;
+  --color-sky-50: #0b2a45; --color-sky-600: #38bdf8;
+}
+.studio-dark .text-link { color: #7dd3fc; }
+.studio-dark .text-brand { color: #38bdf8; } /* brand blue is too dark on the dark ground */
+.studio-dark .spinner { border-color: #2b4466; border-top-color: #38bdf8; }
+.studio-dark .skeleton { background: linear-gradient(90deg, #142841 25%, #1d3350 50%, #142841 75%); background-size: 200% 100%; }
+.studio-dark ::selection { background: rgba(56, 189, 248, .35); }
+.studio-dark ::-webkit-scrollbar { width: 10px; height: 10px; }
+.studio-dark ::-webkit-scrollbar-thumb { background: #2b4466; border-radius: 9999px; }
+.studio-dark ::-webkit-scrollbar-track { background: transparent; }
+
+/* micro-interactions: every button/link responds to the pointer */
+.studio-dark button, .studio-dark a.btn-primary, .studio-dark a.btn-secondary {
+  transition: transform .15s ease, background-color .15s ease, box-shadow .2s ease, border-color .15s ease, opacity .15s ease;
+}
+.studio-dark button:not(:disabled):hover { transform: translateY(-1px); }
+.studio-dark button:not(:disabled):active { transform: translateY(1px) scale(.97); }
+.studio-dark button.bg-sky-700:not(:disabled):hover, .studio-dark a.bg-sky-700:hover {
+  box-shadow: 0 6px 24px -6px rgba(56, 189, 248, .6);
+}
+.btn-approve { background: #15803d; }
+.btn-approve:not(:disabled):hover { background: #166534; box-shadow: 0 6px 24px -6px rgba(34, 197, 94, .7); }
+.studio-dark input:focus-visible, .studio-dark textarea:focus-visible, .studio-dark select:focus-visible, .studio-dark button:focus-visible, .studio-dark a:focus-visible {
+  outline: 2px solid #38bdf8; outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-dark button, .studio-dark a { transition: none; }
+  .studio-dark button:not(:disabled):hover, .studio-dark button:not(:disabled):active { transform: none; }
 }

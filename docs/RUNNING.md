@@ -31,11 +31,16 @@ See the "Deploy" section in docs/DEPLOY.md.
 ## Pages (frontend routes)
 | Route | What it is |
 |---|---|
-| `/` | Landing page: what YOG is, why it is useful, how it is built |
-| `/how-it-works` | Scroll-driven walkthrough with an interactive device demo (runs in the browser, mirrors YOG rules in `frontend/src/lib/yogMirror.ts`) |
+| `/` | Landing page with a live 3D scene (an agent action flies at the YOG gate; pick an action and watch ALLOW/DENY) |
+| `/how-it-works` | Scroll-driven walkthrough with an interactive device demo (runs in the browser, mirrors YOG rules in `frontend/src/lib/yogMirror.ts`; step 7 drives the same 3D scene) |
 | `/studio` | Step 1: upload an agent |
 | `/rules`, `/review`, `/modify`, `/device` | Steps 2-5 |
 | `/check` | Sandbox: try a policy on one action |
 
 Frontend unit test for the browser-side evaluator: `cd frontend ; npm run test:mirror` (Node 22+).
 Any unknown URL redirects to `/`. The single-process deploy serves every route from `index.html`, so refreshing on `/how-it-works` works.
+
+### 3D scene notes
+- three.js is lazy-loaded: it only downloads on `/` and `/how-it-works`, never in Studio (`frontend/src/components/three/`).
+- No WebGL, a render error, or `?fx=off` in the URL falls back to a plain 2D card. `prefers-reduced-motion` shows one still frame.
+- Studio uses a dark theme (`.studio-dark` in `index.css` flips the colour palette) and a custom Monaco theme (`components/monacoTheme.ts`) chosen for WCAG contrast.

@@ -5,6 +5,7 @@ import { approve, explain, reject } from '../api/policies'
 import type { ExplainResponse } from '../api/types'
 import { CodeView } from '../components/CodeView'
 import { EmptyState } from '../components/EmptyState'
+import { Burst } from '../components/motion/Burst'
 import { EvalTable } from '../components/EvalTable'
 import { PageIntro } from '../components/PageIntro'
 import { Spinner } from '../components/Spinner'
@@ -127,7 +128,7 @@ export default function ReviewPage() {
             <span className={`rounded border px-2 py-0.5 text-xs font-bold ${valid ? 'border-green-300 bg-green-100 text-green-800' : 'border-red-300 bg-red-100 text-red-800'}`} data-testid="valid-badge">
               {info === null ? 'checking…' : valid ? 'compiles' : 'does NOT compile'}
             </span>
-            <button className="text-sm text-sky-800" onClick={() => setEditing(!editing)}>
+            <button className="text-sm text-link" onClick={() => setEditing(!editing)}>
               {editing ? 'Done editing' : 'Edit'}
             </button>
           </div>
@@ -163,7 +164,7 @@ export default function ReviewPage() {
         <div className="mb-2 flex items-center gap-3">
           <h2 className="font-semibold">Scenario evaluation</h2>
           <button onClick={() => runEval()} disabled={!valid || evaluating}
-            className="rounded bg-slate-700 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40">
+            className="rounded bg-sky-800 px-3 py-1.5 text-sm font-semibold text-on-accent hover:bg-sky-700 disabled:opacity-40">
             {evaluating ? <><Spinner label="Running scenarios" /> Running…</> : 'Run scenarios'}
           </button>
           <span className="text-xs text-slate-500">Probes are unconfirmed until you confirm or flip them.</span>
@@ -178,10 +179,15 @@ export default function ReviewPage() {
           onClick={doApprove}
           disabled={!valid || busy || !report}
           title={report ? '' : 'Run the scenarios first: you approve a policy only after seeing how it behaves'}
-          className="rounded bg-green-600 px-5 py-2 text-sm font-bold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="btn-approve rounded px-5 py-2 text-sm font-bold text-on-accent disabled:cursor-not-allowed disabled:opacity-40"
         >
           Approve
         </button>
+        {status === 'approved' && approved && (
+          <span className="relative" aria-hidden>
+            <Burst key={approved.id} />
+          </span>
+        )}
         <button onClick={() => setEditing(true)} className="rounded border border-slate-300 bg-white px-4 py-2 text-sm">
           Edit
         </button>

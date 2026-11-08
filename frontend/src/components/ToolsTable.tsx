@@ -1,3 +1,4 @@
+import { motion } from 'motion/react'
 import type { Tool } from '../api/types'
 
 const HINT_STYLE: Record<string, string> = {
@@ -36,8 +37,8 @@ export function ToolsTable({ tools, onSelect, selected, onToggle }: Props) {
         </tr>
       </thead>
       <tbody>
-        {tools.map((t) => (
-          <tr key={t.name} className="cursor-pointer border-b border-slate-100 align-top hover:bg-sky-50" onClick={() => onSelect?.(t)}>
+        {tools.map((t, i) => (
+          <motion.tr key={t.name} initial={{ opacity: 0, x: -14 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06, duration: 0.3 }} className="cursor-pointer border-b border-slate-100 align-top hover:bg-sky-50" onClick={() => onSelect?.(t)}>
             {selected && (
               <td className="py-2" onClick={(e) => e.stopPropagation()}>
                 <input type="checkbox" checked={selected.has(t.name)} onChange={() => onToggle?.(t.name)} aria-label={`select ${t.name}`} />
@@ -66,7 +67,7 @@ export function ToolsTable({ tools, onSelect, selected, onToggle }: Props) {
               </div>
             </td>
             <td className="py-2 text-right text-xs text-slate-500">{t.source_line}</td>
-          </tr>
+          </motion.tr>
         ))}
       </tbody>
     </table>

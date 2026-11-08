@@ -75,7 +75,7 @@ export default function CheckPage() {
         <button
           onClick={run}
           disabled={loading}
-          className="rounded bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50"
+          className="rounded bg-sky-700 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-sky-800 disabled:opacity-50"
         >
           {loading ? 'Checking…' : 'Check'}
         </button>

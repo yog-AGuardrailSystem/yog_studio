@@ -114,11 +114,11 @@ export default function RulesPage() {
           ))}
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-3">
-          <button className="text-sm text-sky-800" onClick={() => setRules([...rules, ''])}>+ add rule</button>
+          <button className="text-sm text-link" onClick={() => setRules([...rules, ''])}>+ add rule</button>
           <button
             onClick={find}
             disabled={busy || filled.length === 0}
-            className="rounded bg-slate-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+            className="rounded bg-sky-800 px-3 py-1.5 text-sm font-semibold text-on-accent hover:bg-sky-700 disabled:opacity-50"
           >
             {busy ? <><Spinner label="Searching" /> Searching…</> : 'Find similar examples'}
           </button>
@@ -132,7 +132,7 @@ export default function RulesPage() {
           <button
             onClick={generate}
             disabled={generating || filled.length === 0}
-            className="rounded bg-sky-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50"
+            className="rounded bg-sky-700 px-3 py-1.5 text-sm font-semibold text-on-accent hover:bg-sky-800 disabled:opacity-50"
           >
             {generating ? <><Spinner label="Generating" /> Generating…</> : 'Generate YOG draft'}
           </button>
@@ -164,7 +164,7 @@ export default function RulesPage() {
             </ul>
           )}
           <CodeView value={draft.yog_source} language="plaintext" height="280px" />
-          <Link to="/review" className="mt-3 inline-block rounded bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800">
+          <Link to="/review" className="mt-3 inline-block rounded bg-sky-700 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-sky-800">
             Review &amp; approve →
           </Link>
         </section>

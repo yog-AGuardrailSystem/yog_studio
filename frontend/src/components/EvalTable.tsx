@@ -1,3 +1,4 @@
+import { motion } from 'motion/react'
 import type { EvalReport, ScenarioResult } from '../api/evaluate'
 import { DecisionBadge } from './ResultCard'
 
@@ -40,7 +41,7 @@ export function EvalTable({ report, onConfirm, onFlip }: Props) {
             {report.results.map((r, i) => {
               const tone = r.error ? 'bg-amber-50' : r.unconfirmed ? 'bg-slate-50' : r.passed ? 'bg-green-50' : 'bg-red-50'
               return (
-                <tr key={i} className={`border-t border-slate-100 align-top ${tone}`}>
+                <motion.tr key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.05, duration: 0.3 }} className={`border-t border-slate-100 align-top ${tone}`}>
                   <td className="p-2 font-mono">{r.action}</td>
                   <td className="font-mono">{r.actor} → {r.resource}</td>
                   <td className="font-mono">{r.context.join(', ') || '—'}<div className="text-slate-400">{r.note}</div></td>
@@ -55,7 +56,7 @@ export function EvalTable({ report, onConfirm, onFlip }: Props) {
                       </>
                     )}
                   </td>
-                </tr>
+                </motion.tr>
               )
             })}
           </tbody>

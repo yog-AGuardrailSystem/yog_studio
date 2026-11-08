@@ -60,7 +60,7 @@ export default function HowItWorksPage() {
                 type="button"
                 onClick={() => go(i)}
                 aria-current={i === active ? 'step' : undefined}
-                className={`whitespace-nowrap rounded-full px-3 py-1 text-sm transition-colors ${i === active ? 'bg-sky-600 font-semibold text-on-accent shadow-[0_0_18px_-2px_rgba(56,189,248,.8)]' : 'text-slate-300 hover:bg-white/10'}`}
+                className={`whitespace-nowrap rounded-full px-3 py-1 text-sm transition-colors ${i === active ? 'bg-sky-700 font-semibold text-on-accent shadow-[0_0_18px_-2px_rgba(56,189,248,.8)]' : 'text-slate-300 hover:bg-white/10'}`}
               >
                 {i + 1}. {s.short}
               </button>

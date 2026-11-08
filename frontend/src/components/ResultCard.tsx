@@ -20,7 +20,7 @@ export function ResultCard({ result }: { result: CheckResult }) {
       {result.trace.length > 0 && (
         <details className="mt-3">
           <summary className="cursor-pointer text-sm font-medium text-slate-600">Trace ({result.trace.length} steps)</summary>
-          <pre className="mt-2 max-h-72 overflow-auto rounded bg-slate-900 p-3 text-xs text-slate-100">
+          <pre className="mt-2 max-h-72 overflow-auto rounded bg-black/50 p-3 text-xs text-sky-100">
             {result.trace.join('\n')}
           </pre>
         </details>
