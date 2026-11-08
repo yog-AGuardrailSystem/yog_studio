@@ -3,183 +3,214 @@
 @theme {
   --font-display: "Inter Tight", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --color-brand: #0369a1; /* sky-700; no violet anywhere */
+  --color-brand: #0369a1; /* buttons (white text on it passes AA) */
+  --color-glow: #38bdf8; /* accent TEXT/borders on dark grounds */
+  --color-ink: #050b16; /* page ground */
+  --color-allow: #22c55e;
+  --color-deny: #ef4444;
+}
+
+/* a colour that never inverts: used for text on filled accent buttons */
+@utility text-on-accent {
+  color: #fff;
 }
 
 body {
   @apply bg-slate-50 text-slate-900;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
-/* ---------- Marketing pages ---------- */
+/* =====================================================================
+   Marketing pages: dark, futuristic, animated
+   ===================================================================== */
 .mkt {
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  position: relative;
+  isolation: isolate;
+  background: var(--color-ink);
+  color: #e2e8f0;
   scroll-behavior: smooth;
 }
+.mkt h1, .mkt h2, .mkt h3 { color: #f8fafc; }
 
+/* animated gradient blobs + faint grid (GlowBackground) */
+.glow-bg { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.glow-bg .blob { position: absolute; border-radius: 9999px; filter: blur(90px); opacity: 0.5; will-change: transform; }
+.glow-bg .b1 { width: 38rem; height: 38rem; left: -10rem; top: -8rem; background: #0369a1; animation: blob1 22s ease-in-out infinite alternate; }
+.glow-bg .b2 { width: 30rem; height: 30rem; right: -8rem; top: 10rem; background: #065f46; opacity: 0.35; animation: blob2 26s ease-in-out infinite alternate; }
+.glow-bg .b3 { width: 26rem; height: 26rem; left: 30%; top: 60rem; background: #7f1d1d; opacity: 0.22; animation: blob1 30s ease-in-out infinite alternate-reverse; }
+.glow-bg .grid {
+  position: absolute; inset: 0;
+  background-image: linear-gradient(rgba(148,163,184,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.07) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse at 50% 20%, #000 20%, transparent 75%);
+}
+@keyframes blob1 { to { transform: translate(6rem, 4rem) scale(1.15); } }
+@keyframes blob2 { to { transform: translate(-5rem, 6rem) scale(1.2); } }
+
+/* glass card + cursor spotlight (set --mx/--my from Spotlight) */
+.glass {
+  position: relative;
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(10, 20, 36, 0.62);
+  backdrop-filter: blur(8px);
+  transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+}
+.glass.spot::before {
+  content: "";
+  position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(380px circle at var(--mx, 50%) var(--my, 50%), rgba(56, 189, 248, 0.16), transparent 60%);
+  opacity: 0; transition: opacity 0.25s;
+}
+.glass.spot:hover::before { opacity: 1; }
+.glass.spot:hover { border-color: rgba(56, 189, 248, 0.45); transform: translateY(-2px); box-shadow: 0 10px 40px -12px rgba(56, 189, 248, 0.35); }
+
+.grad-text {
+  background: linear-gradient(92deg, #7dd3fc 0%, #38bdf8 35%, #34d399 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+/* buttons (shared names; Studio keeps its light look, .mkt gets the glow look) */
 .btn-primary,
 .btn-secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.5rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  transition: transform 0.15s, background-color 0.15s, box-shadow 0.15s;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 0.5rem; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600;
+  transition: transform 0.15s, background-color 0.15s, box-shadow 0.2s, border-color 0.2s;
 }
-.btn-primary {
-  background: var(--color-brand);
-  color: #fff;
-}
-.btn-primary:hover {
-  background: #075985;
-  transform: translateY(-1px);
-}
-.btn-secondary {
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #0f172a;
-}
-.btn-secondary:hover {
-  background: #f1f5f9;
-  transform: translateY(-1px);
-}
-.btn-primary:active,
-.btn-secondary:active {
-  transform: translateY(1px);
-}
-.btn-lg {
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-}
-.btn-primary:focus-visible,
-.btn-secondary:focus-visible,
-.link:focus-visible,
-.term:focus-visible {
-  outline: 2px solid var(--color-brand);
-  outline-offset: 2px;
+.btn-primary { background: var(--color-brand); color: #fff; }
+.btn-primary:hover { background: #075985; transform: translateY(-1px); }
+.btn-secondary { border: 1px solid #cbd5e1; background: #fff; color: #0f172a; }
+.btn-secondary:hover { background: #f1f5f9; transform: translateY(-1px); }
+.btn-primary:active, .btn-secondary:active { transform: translateY(1px) scale(0.98); }
+.btn-lg { padding: 0.75rem 1.5rem; font-size: 1rem; }
+.mkt .btn-primary { background: #0369a1; box-shadow: 0 0 0 1px rgba(125, 211, 252, .35), 0 8px 30px -6px rgba(56, 189, 248, .55); }
+.mkt .btn-primary:hover { background: #0478b4; box-shadow: 0 0 0 1px rgba(125, 211, 252, .6), 0 10px 40px -4px rgba(56, 189, 248, .8); }
+.mkt .btn-secondary { background: rgba(15, 23, 42, .5); border-color: rgba(148, 163, 184, .35); color: #e2e8f0; }
+.mkt .btn-secondary:hover { background: rgba(30, 41, 59, .8); border-color: rgba(125, 211, 252, .6); }
+.btn-primary:focus-visible, .btn-secondary:focus-visible, .link:focus-visible, .term:focus-visible, .chip:focus-visible {
+  outline: 2px solid var(--color-glow); outline-offset: 2px;
 }
 
-.link {
-  color: var(--color-brand);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+.link { color: var(--color-brand); text-decoration: underline; text-underline-offset: 3px; }
+.link:hover { text-decoration-thickness: 2px; }
+.mkt .link { color: var(--color-glow); }
+
+/* scenario chips in the 3D readout */
+.chip {
+  border: 1px solid rgba(125, 211, 252, .4); background: rgba(8, 47, 73, .5); color: #bae6fd;
+  border-radius: 9999px; padding: 0.2rem 0.65rem; font-size: 0.75rem; font-weight: 500;
+  transition: background-color .15s, transform .15s, border-color .15s;
 }
-.link:hover {
-  text-decoration-thickness: 2px;
-}
+.chip:hover { background: rgba(14, 116, 144, .6); border-color: #7dd3fc; transform: translateY(-1px); }
+.chip:active { transform: scale(.96); }
+
+.gate-skeleton { min-height: 22rem; border-radius: 1rem; background: radial-gradient(circle at 50% 50%, rgba(56,189,248,.12), transparent 60%); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .5; } }
+.gate-scene canvas { display: block; width: 100% !important; height: 100% !important; touch-action: pan-y; }
 
 /* Jargon tooltip */
-.term {
-  position: relative;
-  cursor: help;
-  border-bottom: 1px dotted currentColor;
-}
+.term { position: relative; cursor: help; border-bottom: 1px dotted currentColor; }
 .term-tip {
-  position: absolute;
-  left: 0;
-  bottom: calc(100% + 6px);
-  z-index: 10;
-  width: 16rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  background: #0f172a;
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 400;
-  line-height: 1.4;
-  text-transform: none;
-  letter-spacing: normal;
+  position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 10; width: 16rem;
+  padding: 0.5rem 0.75rem; border-radius: 0.5rem; background: #0f172a; color: #fff;
+  border: 1px solid rgba(148,163,184,.25);
+  font-size: 0.75rem; font-weight: 400; line-height: 1.4; text-transform: none; letter-spacing: normal;
   display: none; /* display:none (not opacity) so a hidden tip never causes sideways scroll */
   pointer-events: none;
 }
-.term:hover .term-tip,
-.term:focus .term-tip {
-  display: block;
-}
-/* Phones: show the tip as a bottom toast so it can never run off-screen */
+.term:hover .term-tip, .term:focus .term-tip { display: block; }
 @media (max-width: 640px) {
-  .term-tip {
-    position: fixed;
-    left: 1.25rem;
-    right: 1.25rem;
-    bottom: 1rem;
-    width: auto;
-  }
+  .term-tip { position: fixed; left: 1.25rem; right: 1.25rem; bottom: 1rem; width: auto; }
 }
 
-/* Hero card: two states alternate (3.5 s each). Reduced motion shows the DENY state only. */
-.hero-state {
-  opacity: 0;
-}
-.hero-allow {
-  animation: hero-a 7s infinite;
-}
-.hero-deny {
-  animation: hero-b 7s infinite;
-}
-@keyframes hero-a {
-  0%, 44% { opacity: 1; }
-  50%, 94% { opacity: 0; }
-  100% { opacity: 1; }
-}
-@keyframes hero-b {
-  0%, 44% { opacity: 0; }
-  50%, 94% { opacity: 1; }
-  100% { opacity: 0; }
-}
+/* CSS-only hero fallback card (used when WebGL is unavailable): two states alternate */
+.hero-state { opacity: 0; }
+.hero-allow { animation: hero-a 7s infinite; }
+.hero-deny { animation: hero-b 7s infinite; }
+@keyframes hero-a { 0%, 44% { opacity: 1; } 50%, 94% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes hero-b { 0%, 44% { opacity: 0; } 50%, 94% { opacity: 1; } 100% { opacity: 0; } }
+
+/* marquee */
+.marquee { display: flex; overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+.marquee-track { display: flex; flex-shrink: 0; gap: 0.75rem; padding-right: 0.75rem; animation: marquee 38s linear infinite; }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+@keyframes marquee { to { transform: translateX(-100%); } }
+
+/* pipeline pulse */
+@keyframes travel { from { left: 0; } to { left: calc(100% - 0.75rem); } }
+
 @media (prefers-reduced-motion: reduce) {
-  .mkt {
-    scroll-behavior: auto;
-  }
-  .hero-allow {
-    animation: none;
-    opacity: 0;
-  }
-  .hero-deny {
-    animation: none;
-    opacity: 1;
-  }
-  .btn-primary,
-  .btn-secondary {
-    transition: none;
-  }
+  .mkt { scroll-behavior: auto; }
+  .glow-bg .blob, .gate-skeleton, .marquee-track { animation: none; }
+  .hero-allow { animation: none; opacity: 0; }
+  .hero-deny { animation: none; opacity: 1; }
+  .btn-primary, .btn-secondary, .glass, .chip { transition: none; }
 }
 
 /* Monaco decorations: detector evidence lines */
-.evidence-line {
-  background: rgba(250, 204, 21, 0.25);
-}
-.evidence-gutter {
-  background: #eab308;
-  width: 4px !important;
-  margin-left: 3px;
-}
+.evidence-line { background: rgba(250, 204, 21, 0.25); }
+.evidence-gutter { background: #eab308; width: 4px !important; margin-left: 3px; }
 
 /* ---------- Studio: loading states ---------- */
-.spinner {
-  width: 1rem;
-  height: 1rem;
-  border: 2px solid #cbd5e1;
-  border-top-color: var(--color-brand);
-  border-radius: 9999px;
-  animation: spin 0.7s linear infinite;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-.skeleton {
-  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s linear infinite;
-}
-@keyframes shimmer {
-  to { background-position: -200% 0; }
-}
+.spinner { width: 1rem; height: 1rem; border: 2px solid #cbd5e1; border-top-color: var(--color-brand); border-radius: 9999px; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.skeleton { background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) {
   .spinner { animation-duration: 2s; }
   .skeleton { animation: none; }
 }
 
-/* Studio body text uses the same face as the marketing pages */
-body { font-family: "Inter", ui-sans-serif, system-ui, sans-serif; }
+/* =====================================================================
+   Studio: dark theme. Tailwind v4 colours are CSS variables, so overriding
+   them inside .studio-dark flips every slate/white/pastel utility at once.
+   (Shades used as FILLS for buttons, e.g. sky-700/800, green-500/600, are left alone.)
+   ===================================================================== */
+@utility text-link {
+  color: var(--color-brand);
+}
+.studio-dark {
+  color-scheme: dark;
+  min-height: 100vh;
+  background: var(--color-ink);
+  color: #e2e8f0;
+  --color-white: #0d1a2d;
+  --color-slate-50: #0a1424; --color-slate-100: #142841; --color-slate-200: #1d3350; --color-slate-300: #2b4466;
+  --color-slate-400: #7d93ad; --color-slate-500: #94a9c2; --color-slate-600: #b0c1d6; --color-slate-700: #cbd8e6;
+  --color-slate-800: #e2e8f0; --color-slate-900: #f1f5f9;
+  --color-green-50: #06281a; --color-green-100: #0a3b25; --color-green-300: #15803d; --color-green-400: #16a34a; --color-green-700: #86efac; --color-green-800: #bbf7d0;
+  --color-emerald-100: #053b2c; --color-emerald-800: #6ee7b7;
+  --color-red-50: #33101a; --color-red-100: #4a1620; --color-red-300: #9f2a2a; --color-red-400: #b91c1c; --color-red-700: #fca5a5; --color-red-800: #fecaca;
+  --color-amber-50: #33260a; --color-amber-100: #46330c; --color-amber-300: #a16207; --color-amber-400: #ca8a04; --color-amber-700: #fcd34d; --color-amber-800: #fde68a; --color-amber-900: #fef3c7;
+  --color-yellow-100: #3a3208; --color-yellow-800: #fde047;
+  --color-orange-100: #3b1f0a; --color-orange-800: #fdba74;
+  --color-blue-50: #0b2545; --color-blue-100: #12335f; --color-blue-200: #1e4a80; --color-blue-800: #bfdbfe;
+  --color-sky-50: #0b2a45; --color-sky-600: #38bdf8;
+}
+.studio-dark .text-link { color: #7dd3fc; }
+.studio-dark .text-brand { color: #38bdf8; } /* brand blue is too dark on the dark ground */
+.studio-dark .spinner { border-color: #2b4466; border-top-color: #38bdf8; }
+.studio-dark .skeleton { background: linear-gradient(90deg, #142841 25%, #1d3350 50%, #142841 75%); background-size: 200% 100%; }
+.studio-dark ::selection { background: rgba(56, 189, 248, .35); }
+.studio-dark ::-webkit-scrollbar { width: 10px; height: 10px; }
+.studio-dark ::-webkit-scrollbar-thumb { background: #2b4466; border-radius: 9999px; }
+.studio-dark ::-webkit-scrollbar-track { background: transparent; }
+
+/* micro-interactions: every button/link responds to the pointer */
+.studio-dark button, .studio-dark a.btn-primary, .studio-dark a.btn-secondary {
+  transition: transform .15s ease, background-color .15s ease, box-shadow .2s ease, border-color .15s ease, opacity .15s ease;
+}
+.studio-dark button:not(:disabled):hover { transform: translateY(-1px); }
+.studio-dark button:not(:disabled):active { transform: translateY(1px) scale(.97); }
+.studio-dark button.bg-sky-700:not(:disabled):hover, .studio-dark a.bg-sky-700:hover {
+  box-shadow: 0 6px 24px -6px rgba(56, 189, 248, .6);
+}
+.btn-approve { background: #15803d; }
+.btn-approve:not(:disabled):hover { background: #166534; box-shadow: 0 6px 24px -6px rgba(34, 197, 94, .7); }
+.studio-dark input:focus-visible, .studio-dark textarea:focus-visible, .studio-dark select:focus-visible, .studio-dark button:focus-visible, .studio-dark a:focus-visible {
+  outline: 2px solid #38bdf8; outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-dark button, .studio-dark a { transition: none; }
+  .studio-dark button:not(:disabled):hover, .studio-dark button:not(:disabled):active { transform: none; }
+}

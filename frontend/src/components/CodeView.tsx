@@ -1,5 +1,6 @@
 import Editor, { type OnMount } from '@monaco-editor/react'
 import { useEffect, useRef } from 'react'
+import { defineYogTheme, YOG_DARK } from './monacoTheme'
 
 type Monaco = Parameters<OnMount>[1]
 type EditorInstance = Parameters<OnMount>[0]
@@ -44,6 +45,8 @@ export function CodeView({ value, language = 'python', height = '420px', readOnl
       <Editor
         height={height}
         language={language}
+        theme={YOG_DARK}
+        beforeMount={defineYogTheme}
         value={value}
         onChange={(v) => onChange?.(v ?? '')}
         onMount={(ed, monaco) => {

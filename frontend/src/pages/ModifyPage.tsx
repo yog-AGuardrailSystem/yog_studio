@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { downloadBundle, modify, type ModifyResult } from '../api/modify'
 import { EmptyState } from '../components/EmptyState'
+import { defineYogTheme, YOG_DARK } from '../components/monacoTheme'
 import { PageIntro } from '../components/PageIntro'
 import { Skeleton } from '../components/Skeleton'
 import { useAppState } from '../state'
@@ -56,17 +57,17 @@ export default function ModifyPage() {
             </ul>
           )}
           <div className="overflow-hidden rounded border border-slate-300">
-            <DiffEditor height="460px" language="python" keepCurrentOriginalModel keepCurrentModifiedModel original={analysis.source} modified={res.patched_source}
-              options={{ readOnly: true, renderSideBySide: true, minimap: { enabled: false }, automaticLayout: true }} />
+            <DiffEditor height="460px" language="python" theme={YOG_DARK} beforeMount={defineYogTheme} keepCurrentOriginalModel keepCurrentModifiedModel original={analysis.source} modified={res.patched_source}
+              options={{ readOnly: true, renderSideBySide: true, minimap: { enabled: false }, automaticLayout: true, renderGutterMenu: false, renderMarginRevertIcon: false }} />
           </div>
           <div className="flex items-center gap-3">
             <button onClick={download} disabled={!approved}
-              className="rounded bg-sky-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
+              className="rounded bg-sky-700 px-4 py-2 text-sm font-semibold text-on-accent disabled:opacity-40">
               Download patched bundle (.zip)
             </button>
             {!approved && (
               <span className="text-xs text-slate-500" data-testid="download-hint">
-                Download is off until you approve a policy, because the bundle contains it. <Link to="/review" className="text-sky-800 underline">Go to Review</Link>
+                Download is off until you approve a policy, because the bundle contains it. <Link to="/review" className="text-link underline">Go to Review</Link>
               </span>
             )}
           </div>

@@ -1,4 +1,5 @@
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { motion, useReducedMotion } from 'motion/react'
+import { Link, NavLink, useLocation, useNavigate, useOutlet } from 'react-router-dom'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { Stepper } from '../components/Stepper'
 import { StatusBar } from '../components/StatusBar'
@@ -7,6 +8,9 @@ import { useAppState } from '../state'
 export default function StudioLayout() {
   const { analysis, draft, approved, reset } = useAppState()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const outlet = useOutlet()
+  const reduce = useReducedMotion()
   const hasWork = !!(analysis || draft || approved)
 
   function startOver() {
@@ -16,25 +20,36 @@ export default function StudioLayout() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-4">
-      <header className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-slate-200 pb-3">
-        <Link to="/" className="font-display whitespace-nowrap text-xl font-bold text-slate-900" title="Back to the home page">
-          YOG<span className="text-brand"> Studio</span>
-        </Link>
-        <Stepper />
-        <div className="ml-auto flex items-center gap-4 text-sm">
-          <NavLink to="/check" className={({ isActive }) => (isActive ? 'font-semibold text-sky-800' : 'text-slate-600 hover:text-slate-900')} title="Try a policy against one action, without uploading anything">
-            Sandbox
-          </NavLink>
-          <button type="button" onClick={startOver} className="text-slate-600 hover:text-red-700" data-testid="start-over">
-            Start over
-          </button>
-        </div>
-      </header>
-      <StatusBar />
-      <ErrorBoundary>
-        <Outlet />
-      </ErrorBoundary>
+    <div className="studio-dark">
+      <div className="mx-auto max-w-6xl p-4">
+        <header className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-slate-200 pb-3">
+          <Link to="/" className="font-display whitespace-nowrap text-xl font-bold text-slate-900" title="Back to the home page">
+            YOG<span className="text-glow"> Studio</span>
+          </Link>
+          <Stepper />
+          <div className="ml-auto flex items-center gap-4 text-sm">
+            <NavLink to="/check" className={({ isActive }) => (isActive ? 'font-semibold text-link' : 'text-slate-600 hover:text-slate-900')} title="Try a policy against one action, without uploading anything">
+              Sandbox
+            </NavLink>
+            <button type="button" onClick={startOver} className="text-slate-600 hover:text-red-700" data-testid="start-over">
+              Start over
+            </button>
+          </div>
+        </header>
+        <StatusBar />
+        <ErrorBoundary>
+          {/* each page eases in; keyed on the path so every navigation replays it */}
+          <motion.div
+            key={pathname}
+            data-testid="page-transition"
+            initial={reduce ? false : { opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: 'easeOut' }}
+          >
+            {outlet}
+          </motion.div>
+        </ErrorBoundary>
+      </div>
     </div>
   )
 }

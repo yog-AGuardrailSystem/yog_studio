@@ -1,3 +1,4 @@
+import { motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Reveal } from '../components/motion/Reveal'
@@ -44,14 +45,14 @@ export default function HowItWorksPage() {
   return (
     <main>
       <section className="mx-auto max-w-6xl px-5 pb-6 pt-14">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-brand">How it works</p>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-glow">How it works</p>
         <h1 className="font-display max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">
           From a Python agent to a policy that blocks the wrong action.
         </h1>
-        <p className="mt-4 max-w-2xl text-lg text-slate-600">Scroll through the seven steps. The last one is yours to try.</p>
+        <p className="mt-4 max-w-2xl text-lg text-slate-300">Scroll through the seven steps. The last one is yours to try.</p>
       </section>
 
-      <nav aria-label="Steps" className="sticky top-14 z-10 border-y border-slate-200 bg-white/90 backdrop-blur">
+      <nav aria-label="Steps" className="sticky top-14 z-10 border-y border-white/10 bg-slate-950/80 backdrop-blur">
         <ol className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-5 py-2">
           {STAGES.map((s, i) => (
             <li key={s.id}>
@@ -59,13 +60,22 @@ export default function HowItWorksPage() {
                 type="button"
                 onClick={() => go(i)}
                 aria-current={i === active ? 'step' : undefined}
-                className={`whitespace-nowrap rounded-full px-3 py-1 text-sm transition-colors ${i === active ? 'bg-sky-700 font-semibold text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                className={`whitespace-nowrap rounded-full px-3 py-1 text-sm transition-colors ${i === active ? 'bg-sky-700 font-semibold text-on-accent shadow-[0_0_18px_-2px_rgba(56,189,248,.8)]' : 'text-slate-300 hover:bg-white/10'}`}
               >
                 {i + 1}. {s.short}
               </button>
             </li>
           ))}
         </ol>
+        <div className="h-0.5 bg-white/5" aria-hidden>
+          <motion.div
+            data-testid="beam"
+            className="h-full bg-gradient-to-r from-sky-400 to-emerald-400 shadow-[0_0_12px_rgba(56,189,248,.9)]"
+            initial={false}
+            animate={{ width: `${((active + 1) / STAGES.length) * 100}%` }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+          />
+        </div>
       </nav>
 
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-5 lg:grid-cols-2">
@@ -79,12 +89,12 @@ export default function HowItWorksPage() {
               ref={(el) => {
                 refs.current[i] = el
               }}
-              className="flex scroll-mt-28 flex-col justify-center py-12 lg:min-h-[85vh]"
+              className={`flex scroll-mt-28 flex-col justify-center py-12 transition-opacity duration-500 lg:min-h-[85vh] ${isDesktop && i !== active ? 'opacity-40' : 'opacity-100'}`}
             >
               <Reveal>
-                <p className="font-mono text-sm text-brand">Step {i + 1} of {STAGES.length}</p>
+                <p className="font-mono text-sm text-glow">Step {i + 1} of {STAGES.length}</p>
                 <h2 className="font-display mt-2 text-3xl font-bold tracking-tight">{s.title}</h2>
-                <p className="mt-3 max-w-md text-slate-600">{s.text}</p>
+                <p className="mt-3 max-w-md text-slate-300">{s.text}</p>
               </Reveal>
               {!isDesktop && (
                 <div className="mt-6">
@@ -103,7 +113,7 @@ export default function HowItWorksPage() {
         )}
       </div>
 
-      <section className="bg-slate-950 py-16 text-white">
+      <section className="border-t border-white/10 bg-black/30 py-20">
         <div className="mx-auto max-w-6xl px-5">
           <h2 className="font-display max-w-3xl text-3xl font-extrabold sm:text-4xl">The LLM drafts. The engine verifies. You approve.</h2>
           <div className="mt-6 flex flex-wrap gap-3">

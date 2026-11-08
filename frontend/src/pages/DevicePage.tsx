@@ -1,3 +1,4 @@
+import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { deviceState, resetDevice, runDemo, sendCommand, setClock, type DeviceSnapshot } from '../api/device'
@@ -103,7 +104,7 @@ export default function DevicePage() {
         </label>
         <span className="text-xs text-slate-500">policy: {snap.policy_id ?? 'none'}</span>
         <button
-          className="ml-auto rounded bg-sky-700 px-3 py-1.5 font-semibold text-white"
+          className="ml-auto rounded bg-sky-700 px-3 py-1.5 font-semibold text-on-accent"
           onClick={() => attempt(() => runDemo(guard)).then((s) => s && setSnap(s))}
         >
           Run agent demo day
@@ -154,13 +155,13 @@ export default function DevicePage() {
           </thead>
           <tbody>
             {[...snap.log].reverse().map((e) => (
-              <tr key={e.n} className={`border-t border-slate-100 align-top ${e.decision === 'DENY' ? 'bg-red-50' : e.decision === 'ALLOW' ? 'bg-green-50' : 'bg-amber-50'}`}>
+              <motion.tr key={e.n} initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }} className={`border-t border-slate-100 align-top ${e.decision === 'DENY' ? 'bg-red-50' : e.decision === 'ALLOW' ? 'bg-green-50' : 'bg-amber-50'}`}>
                 <td className="p-2">{e.n}</td>
                 <td>{e.sim_day} {String(e.sim_hour).padStart(2, '0')}:00</td>
                 <td className="font-mono">{e.tool}({Object.values(e.args).join(', ')})</td>
                 <td className="font-bold">{e.decision}</td>
                 <td>{e.message}</td>
-              </tr>
+              </motion.tr>
             ))}
           </tbody>
         </table>
