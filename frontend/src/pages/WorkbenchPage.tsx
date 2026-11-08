@@ -1,3 +1,4 @@
+import { motion } from 'motion/react'
 import { Link } from "react-router-dom"
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -31,6 +32,7 @@ export default function WorkbenchPage() {
   const [palette, setPalette] = useState(false)
   const [tour, setTour] = useState(() => safeGet(TOUR_KEY) !== 'done')
   const [toast, setToast] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
   const editor = useRef<{ focusLine: (n: number) => void } | null>(null)
   const seq = useRef(0)
 
@@ -41,6 +43,7 @@ export default function WorkbenchPage() {
   useEffect(() => {
     safeSet(SRC_KEY, source)
     const mine = ++seq.current
+    setBusy(true)
     const t = setTimeout(async () => {
       try {
         const c = await compile(source)
@@ -53,6 +56,8 @@ export default function WorkbenchPage() {
         if (mine === seq.current) { setRun(r); if (a !== adhoc) setAdhoc(a) }
       } catch (e) {
         if (mine === seq.current) setLoadError(e instanceof Error ? e.message : String(e))
+      } finally {
+        if (mine === seq.current) setBusy(false)
       }
     }, 350)
     return () => clearTimeout(t)
@@ -104,9 +109,10 @@ export default function WorkbenchPage() {
     <div data-testid="workbench">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <h1 className="font-display text-xl font-bold">YOG workbench</h1>
+        <span className={`compile-ring ${busy ? 'is-busy' : ''}`} aria-hidden data-motion="wb:compile-ring" title={busy ? 'Compiling…' : 'Up to date'} />
         {server?.offline_demo && <span className="chip" data-testid="offline-chip" title="No AI model is configured; Assist copies the nearest example">Offline demo mode</span>}
         <span className="flex-1" />
-        <button type="button" className="btn-secondary" onClick={() => setPalette(true)} data-testid="open-palette">Commands <kbd className="ml-1 text-xs text-slate-500">Ctrl K</kbd></button>
+        <button type="button" className="btn-secondary" onClick={() => setPalette(true)} data-testid="open-palette">Commands <kbd className="ml-1 text-xs" style={{ color: '#475569' }}>Ctrl K</kbd></button>
         <button type="button" className="btn-secondary" onClick={copyShare} data-testid="share">Share link</button>
         <button type="button" className="btn-secondary" onClick={() => downloadText('policy.yog', source)}>Download .yog</button>
         <button type="button" className="btn-secondary" onClick={() => setTour(true)}>Tour</button>
@@ -138,8 +144,9 @@ export default function WorkbenchPage() {
           <div role="tablist" className="mb-3 flex flex-wrap gap-1 border-b border-slate-200">
             {TABS.map((t) => (
               <button key={t} role="tab" type="button" aria-selected={tab === t} onClick={() => setTab(t)} data-testid={`tab-${t.replace(' ', '-')}`}
-                className={`-mb-px border-b-2 px-3 py-1.5 text-sm ${tab === t ? 'border-sky-500 font-semibold text-slate-900' : 'border-transparent text-slate-600 hover:text-slate-900'}`}>
+                className={`relative px-3 py-1.5 text-sm ${tab === t ? 'font-semibold text-slate-900' : 'text-slate-600 hover:text-slate-900'}`}>
                 {tabLabel(t)}
+                {tab === t && <motion.span layoutId="wb-tabline" className="absolute inset-x-0 -bottom-px h-0.5 bg-sky-500" data-motion="wb:tabline" />}
               </button>
             ))}
           </div>
@@ -157,7 +164,7 @@ export default function WorkbenchPage() {
       </div>
       <CommandPalette open={palette} onClose={() => setPalette(false)} commands={commands} />
       <Tour open={tour} onClose={closeTour} />
-      <div aria-live="polite" className="fixed bottom-4 left-1/2 -translate-x-1/2">{toast && <div className="rounded bg-slate-900 px-3 py-1.5 text-sm text-white shadow-lg" data-testid="toast">{toast}</div>}</div>
+      <div aria-live="polite" className="fixed bottom-4 left-1/2 -translate-x-1/2">{toast && <div className="pop-in rounded bg-slate-900 px-3 py-1.5 text-sm text-white shadow-lg" data-testid="toast" data-motion="wb:toast">{toast}</div>}</div>
     </div>
   )
 }

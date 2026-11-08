@@ -4,6 +4,7 @@ import {
   type CLexerResponse, type CompileInfo, type Diagnostic, type Info, type QueryResult, type Readback, type Retrieved, type RunResponse,
 } from '../../api/compile'
 import type { PolicyDraft } from '../../api/types'
+import { Burst } from '../motion/Burst'
 import { applyFix, resultLabel } from '../../lib/workbench'
 
 const chip = 'inline-block rounded px-1.5 py-0.5 font-mono text-xs'
@@ -27,7 +28,7 @@ export function TokensPanel({ info }: { info: CompileInfo | null }) {
           <div key={line} className="flex flex-wrap items-center gap-1">
             <span className="w-8 shrink-0 text-right text-xs text-slate-500">{line}</span>
             {toks.map((t, i) => (
-              <span key={i} className={`${chip} ${KIND_COLOUR[t.kind] ?? 'bg-slate-200 text-slate-800'}`} title={t.kind}>
+              <span key={i} className={`${chip} rise ${KIND_COLOUR[t.kind] ?? 'bg-slate-200 text-slate-800'}`} style={{ animationDelay: `${Math.min(line * 40 + i * 25, 900)}ms` }} data-motion={`wb:token:${line}:${i}`} title={t.kind}>
                 {t.value != null && t.value !== '' ? String(t.value) : t.kind}
               </span>
             ))}
@@ -43,7 +44,7 @@ function Node({ k, v, depth }: { k: string; v: unknown; depth: number }) {
   if (v && typeof v === 'object') {
     const entries = Array.isArray(v) ? v.map((x, i) => [String(i), x] as const) : Object.entries(v as object)
     return (
-      <details open={depth < 2} className="ml-3">
+      <details open={depth < 2} className="ml-3 rise" style={{ animationDelay: `${depth * 90}ms` }} data-motion={`wb:ast:${depth}:${k}`}>
         <summary className="cursor-pointer text-sm text-slate-700">
           <span className="font-mono">{k}</span> <span className="text-slate-500">{Array.isArray(v) ? `[${entries.length}]` : '{…}'}</span>
         </summary>
@@ -51,7 +52,7 @@ function Node({ k, v, depth }: { k: string; v: unknown; depth: number }) {
       </details>
     )
   }
-  return <div className="ml-6 text-sm"><span className="font-mono text-slate-500">{k}:</span> <span className="font-mono text-slate-800">{JSON.stringify(v)}</span></div>
+  return <div className="ml-6 rise text-sm" data-motion={`wb:ast-leaf:${depth}:${k}`}><span className="font-mono text-slate-500">{k}:</span> <span className="font-mono text-slate-800">{JSON.stringify(v)}</span></div>
 }
 export function AstPanel({ info }: { info: CompileInfo | null }) {
   if (!info?.ast) return <p className="text-sm text-slate-500">The tree appears once the program parses.</p>
@@ -66,7 +67,7 @@ export function ChecksPanel({ info, source, onFix, onJump }: {
   return (
     <div data-testid="checks-panel">
       {info.ok ? (
-        <p className="rounded border border-emerald-700 bg-emerald-50 p-3 text-sm text-emerald-800" role="status">
+        <p className="pop-in rounded border border-emerald-700 bg-emerald-50 p-3 text-sm text-emerald-800" role="status" data-motion="wb:compiles-badge">
           ✓ Compiles. Tokenizer, parser and semantic check all pass ({info.predicates.length} predicates).
         </p>
       ) : (
@@ -74,7 +75,7 @@ export function ChecksPanel({ info, source, onFix, onJump }: {
           {info.diagnostics.map((d: Diagnostic, i) => {
             const next = applyFix(source, d)
             return (
-              <li key={i} className="rounded border border-red-700 bg-red-50 p-3 text-sm" data-testid="diagnostic">
+              <li key={i} className="shake rounded border border-red-700 bg-red-50 p-3 text-sm" data-testid="diagnostic" data-motion={`wb:diagnostic:${i}`}>
                 <div className="font-semibold text-red-800">
                   {d.line ? <button type="button" className="underline" onClick={() => onJump(d.line!)}>Line {d.line}</button> : 'Program'}: {d.hint ?? d.message}
                 </div>
@@ -123,16 +124,19 @@ export function TestsPanel({ run, source, decisions, adhoc, setAdhoc, onWhy, why
   return (
     <div data-testid="tests-panel">
       <p className="mb-2 text-sm text-slate-600" data-testid="test-summary">
-        {run.results.length} queries · <b className="text-emerald-700">{run.passed} passed</b> · <b className={run.failed ? 'text-red-700' : ''}>{run.failed} failed</b> · {run.untested} without an expectation
+        {run.results.length} queries · <b className="text-green-700">{run.passed} passed</b> · <b className={run.failed ? 'text-red-700' : ''}>{run.failed} failed</b> · {run.untested} without an expectation
         <span className="block text-xs text-slate-500">Add <code># -&gt; DENY</code> (or ALLOW/TRUE/FALSE) after a query to make it a test.</span>
       </p>
+      {run.results.length > 0 && run.failed === 0 && run.passed === run.results.length && (
+        <div className="relative h-0" data-testid="all-green"><Burst key={run.results.length + ':' + run.passed} /></div>
+      )}
       <ul className="space-y-1">
         {run.results.map((r) => (
-          <li key={r.line} className="rounded border border-slate-200 bg-white p-2 text-sm">
+          <li key={`${r.line}-${r.decision}-${r.answer}`} className="flip rounded border border-slate-200 bg-white p-2 text-sm" data-motion={`wb:test:${r.line}`} style={{ animationDelay: `${(r.line % 12) * 40}ms` }}>
             <button type="button" className="flex w-full items-center gap-2 text-left" onClick={() => show(r)} aria-expanded={open === r.line} data-testid="query-row">
-              <span className={`${chip} ${resultLabel(r) === 'ALLOW' || resultLabel(r) === 'TRUE' ? 'bg-emerald-800 text-emerald-50' : 'bg-red-800 text-red-50'}`}>{resultLabel(r)}</span>
+              <span className={`${chip} ${resultLabel(r) === 'ALLOW' || resultLabel(r) === 'TRUE' ? 'bg-[#047857] text-on-accent' : 'bg-[#b91c1c] text-on-accent'}`}>{resultLabel(r)}</span>
               <span className="font-mono">{r.text}</span>
-              {r.passed === true && <span className="ml-auto text-emerald-700">✓ as expected</span>}
+              {r.passed === true && <span className="ml-auto text-green-700">✓ as expected</span>}
               {r.passed === false && <span className="ml-auto text-red-700">✗ expected {r.expected}</span>}
             </button>
             {open === r.line && (
@@ -162,7 +166,7 @@ export function TestsPanel({ run, source, decisions, adhoc, setAdhoc, onWhy, why
         {run.adhoc_error && <p className="mt-2 text-sm text-red-700" role="alert">{run.adhoc_error}</p>}
         {run.adhoc && (
           <div className="mt-2 text-sm" data-testid="adhoc-result">
-            <span className={`${chip} ${run.adhoc.decision === 'ALLOW' ? 'bg-emerald-800 text-emerald-50' : 'bg-red-800 text-red-50'}`}>{run.adhoc.decision}</span>{' '}
+            <span className={`${chip} ${run.adhoc.decision === 'ALLOW' ? 'bg-[#047857] text-on-accent' : 'bg-[#b91c1c] text-on-accent'}`}>{run.adhoc.decision}</span>{' '}
             {run.adhoc.reason}
             <button type="button" className="link ml-3 text-xs" onClick={() => onWhy(why ? null : { reason: run.adhoc!.reason, trace: run.adhoc!.trace })} data-testid="why-adhoc">
               {why ? 'Hide' : 'Why?'} (highlight in editor)
@@ -194,7 +198,7 @@ export function ReadbackPanel({ source, ok }: { source: string; ok: boolean }) {
       {rb.actions.map((a) => (
         <div key={a.predicate} className="rounded border border-slate-200 bg-white p-3">
           <div className="font-semibold">{a.action} <span className="font-mono text-xs text-slate-500">({a.predicate})</span></div>
-          {a.allow.map((t, i) => <div key={'a' + i} className="mt-1 text-emerald-700">Allowed when {t}</div>)}
+          {a.allow.map((t, i) => <div key={'a' + i} className="mt-1 text-green-700">Allowed when {t}</div>)}
           {a.deny.map((t, i) => <div key={'d' + i} className="mt-1 text-red-700">Denied when {t}</div>)}
         </div>
       ))}
@@ -296,7 +300,7 @@ export function AssistPanel({ info, current, onInsert, onReplace }: {
             {found.map((r) => (
               <li key={r.id} className="rounded border border-slate-200 bg-white p-2">
                 <div className="flex items-center gap-2"><span className="font-mono text-xs">{r.id}</span>
-                  <span className="h-1.5 flex-1 overflow-hidden rounded bg-slate-200"><span className="block h-full bg-sky-500" style={{ width: `${Math.max(2, Math.round(r.score * 100))}%` }} /></span>
+                  <span className="h-1.5 flex-1 overflow-hidden rounded bg-slate-200"><span className="bar-grow block h-full bg-sky-500" data-motion={`wb:ret:${r.id}`} style={{ width: `${Math.max(2, Math.round(r.score * 100))}%` }} /></span>
                   <span className="text-xs text-slate-500">{r.score.toFixed(2)}</span></div>
                 {r.english && <div className="text-slate-600">{r.english}</div>}
               </li>
@@ -308,15 +312,15 @@ export function AssistPanel({ info, current, onInsert, onReplace }: {
         <ol className="space-y-1 text-xs text-slate-600" data-testid="attempt-log">
           {events.filter((e) => e.phase === 'scenarios' && e.state === 'ready').map((e, i) => <li key={'s' + i}>Wrote {e.count} independent test scenarios from your English.</li>)}
           {attempts.map((e, i) => (
-            <li key={i}>Attempt {e.n}: {e.compiled ? 'compiles' : 'does not compile'}{e.errors?.length ? ` (${e.errors[0]})` : ''}{e.scenario_failures?.length ? `; ${e.scenario_failures.length} scenario(s) disagree` : ''}</li>
+            <li key={i} className="rise" data-motion={`wb:attempt:${i}`}>Attempt {e.n}: {e.compiled ? 'compiles' : 'does not compile'}{e.errors?.length ? ` (${e.errors[0]})` : ''}{e.scenario_failures?.length ? `; ${e.scenario_failures.length} scenario(s) disagree` : ''}</li>
           ))}
         </ol>
       )}
       {draft && (
-        <div className="rounded border border-slate-300 p-3" data-testid="draft-box">
+        <div className="pop-in rounded border border-slate-300 p-3" data-testid="draft-box" data-motion="wb:draft-card">
           <div className="mb-1 font-semibold">Draft {draft.valid ? '' : '(does not compile yet)'}
-            {draft.verified === true && <span className={`${chip} ml-2 bg-emerald-800 text-emerald-50`}>checked against independent scenarios</span>}
-            {draft.verified === false && <span className={`${chip} ml-2 bg-amber-800 text-amber-50`}>scenarios disagree: review carefully</span>}
+            {draft.verified === true && <span className={`${chip} ml-2 bg-[#047857] text-on-accent`}>checked against independent scenarios</span>}
+            {draft.verified === false && <span className={`${chip} ml-2 bg-[#92400e] text-on-accent`}>scenarios disagree: review carefully</span>}
           </div>
           <pre className="max-h-64 overflow-auto rounded bg-slate-100 p-2 font-mono text-xs">{draft.yog_source}</pre>
           <p className="mt-1 text-xs text-slate-500">A draft is a suggestion. Read it, then choose how it enters the editor.</p>

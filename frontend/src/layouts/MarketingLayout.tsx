@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { GlowBackground } from '../components/motion/GlowBackground'
+import { MotionToggle } from '../lib/motion'
 
 const navCls = ({ isActive }: { isActive: boolean }) =>
   isActive ? 'font-semibold text-white' : 'text-slate-300 hover:text-white'
@@ -13,13 +14,14 @@ export default function MarketingLayout() {
           <Link to="/" className="font-display whitespace-nowrap text-lg font-bold tracking-tight text-white">
             YOG<span className="text-glow"> Studio</span>
           </Link>
-          <nav className="flex items-center gap-4 whitespace-nowrap text-sm sm:gap-5">
+          <nav className="flex items-center gap-2 whitespace-nowrap text-sm sm:gap-5">
             <NavLink to="/" end className={(s) => `hidden sm:inline ${navCls(s)}`}>
               Home
             </NavLink>
             <NavLink to="/how-it-works" className={navCls}>
               How it works
             </NavLink>
+            <MotionToggle />
             <Link to="/studio" className="btn-primary">
               Open Studio
             </Link>

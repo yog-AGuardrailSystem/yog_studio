@@ -13,7 +13,7 @@ export function CommandPalette({ open, onClose, commands }: { open: boolean; onC
   const go = (c?: Command) => { if (c) { onClose(); c.run() } }
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-24" onMouseDown={onClose} data-testid="palette">
-      <div className="w-full max-w-lg rounded-lg border border-slate-300 bg-white p-2 shadow-2xl" role="dialog" aria-label="Command palette" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="pop-in w-full max-w-lg rounded-lg border border-slate-300 bg-white p-2 shadow-2xl" data-motion="wb:palette" role="dialog" aria-label="Command palette" onMouseDown={(e) => e.stopPropagation()}>
         <input
           ref={input} value={q} onChange={(e) => { setQ(e.target.value); setSel(0) }} aria-label="Type a command"
           placeholder="Type a command…" className="field mb-2"
@@ -53,7 +53,7 @@ export function Tour({ open, onClose }: { open: boolean; onClose: () => void }) 
   if (!open) return null
   const s = STEPS[i]
   return (
-    <div className="fixed bottom-6 right-6 z-40 w-80 rounded-lg border border-sky-600 bg-white p-4 shadow-2xl" role="dialog" aria-label="Welcome tour" data-testid="tour">
+    <div className="pop-in fixed bottom-6 right-6 z-40 w-80 rounded-lg border border-sky-600 bg-white p-4 shadow-2xl" data-motion="wb:tour" role="dialog" aria-label="Welcome tour" data-testid="tour">
       <div className="text-xs text-slate-500">Step {i + 1} of {STEPS.length}</div>
       <h3 className="mt-1 font-display text-base font-bold">{s.title}</h3>
       <p className="mt-1 text-sm text-slate-600">{s.body}</p>

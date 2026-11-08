@@ -6,7 +6,10 @@ import { CompilerExplorer, EXPLORER_LOAD_EVENT } from '../components/CompilerExp
 import { Section } from '../components/Section'
 import { Term } from '../components/Term'
 import { LlmVsYog } from '../components/motion/LlmVsYog'
-import { Pipeline } from '../components/motion/Pipeline'
+import { CardFlow } from '../components/fx/CardFlow'
+import { ClickRipple, CursorGlow, KeywordMarquee, Magnetic, Parallax, ParticleField, ScrollRail, SectionDots } from '../components/fx/Ambient'
+import { PipelineFlow } from '../components/fx/PipelineFlow'
+import { CompilerScenes } from '../components/scenes/CompilerScenes'
 import { Reveal } from '../components/motion/Reveal'
 import { Spotlight } from '../components/motion/Spotlight'
 import { Gate } from '../components/three/Gate'
@@ -93,29 +96,30 @@ export default function LandingPage() {
 
   return (
     <main>
+      <ScrollRail /><SectionDots /><ParticleField /><CursorGlow /><ClickRipple />
       {/* 1. Hero */}
-      <section className="py-14 sm:py-20">
+      <section data-section="hero" id="hero" className="py-14 sm:py-20">
         <div className="mx-auto w-full max-w-6xl px-5">
           <motion.p className="mb-4 text-xs font-semibold uppercase tracking-widest text-glow" initial={reduce ? false : { opacity: 0 }} animate={{ opacity: 1 }}>
             YOG · deterministic policy for AI agents
           </motion.p>
-          <h1 className="font-display max-w-4xl text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
+          <Parallax id="hero-title" speed={0.05}><h1 className="font-display max-w-4xl text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
             {HEAD.map((w, i) => word(w, i, i >= 5 ? 'grad-text' : ''))}
-          </h1>
+          </h1></Parallax>
           <Reveal delay={0.4}>
             <p className="mt-6 max-w-2xl text-lg text-slate-300">
               Write a rule once. YOG compiles it, checks it, and answers ALLOW or DENY for every action, the same way every time, with the reason attached.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <a href="#explorer" className="btn-primary btn-lg">Try the compiler</a>
-              <Link to="/studio" className="btn-secondary btn-lg">Open the workbench</Link>
+              <Magnetic id="try"><a href="#explorer" className="btn-primary btn-lg">Try the compiler</a></Magnetic>
+              <Magnetic id="workbench"><Link to="/studio" className="btn-secondary btn-lg">Open the workbench</Link></Magnetic>
             </div>
           </Reveal>
         </div>
       </section>
 
       {/* 2. Live compiler explorer */}
-      <section id="explorer" className="pb-16 sm:pb-24" aria-label="Compiler explorer">
+      <section id="explorer" data-section="explorer" className="pb-16 sm:pb-24" aria-label="Compiler explorer">
         <div className="mx-auto w-full max-w-6xl px-5">
           <Reveal>
             <CompilerExplorer />
@@ -125,6 +129,11 @@ export default function LandingPage() {
           </Reveal>
         </div>
       </section>
+
+      {/* 2b. Stage by stage */}
+      <Section eyebrow="Inside the compiler" title="Watch one program move through the stages.">
+        <CompilerScenes />
+      </Section>
 
       {/* 3. Why a compiler */}
       <Section
@@ -158,6 +167,7 @@ export default function LandingPage() {
               <p className="font-mono text-xs text-glow">Group {g.id}</p>
               <p className="font-display text-base font-bold">{g.title}</p>
               <p className="mt-1 text-sm text-slate-300">{g.english}</p>
+              <CardFlow id={g.id} source={sources[g.id] ?? ''} />
               <button type="button" className="link mt-3 text-sm" disabled={!sources[g.id]} onClick={() => tryInExplorer(g.id)} data-testid={`card-${g.id.replace('/', '')}`}>
                 Run it in the explorer
               </button>
@@ -168,7 +178,8 @@ export default function LandingPage() {
 
       {/* 5. Pipeline */}
       <Section band eyebrow="The pipeline" title="From source text to a decision, one stage at a time.">
-        <Pipeline steps={PIPELINE} />
+        <PipelineFlow steps={PIPELINE} />
+        <div className="mt-6"><KeywordMarquee /></div>
         <Reveal>
           <p className="mt-8 max-w-3xl text-slate-300">
             A Python reference interpreter defines the behaviour. The C implementation follows the same stages and is checked against the reference.{' '}
