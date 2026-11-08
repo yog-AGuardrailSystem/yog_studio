@@ -67,4 +67,6 @@ export interface PolicyDraft {
   attempts: number
   valid: boolean
   errors: string[]
+  verified?: boolean | null
+  attempt_log?: { n: number; compiled: boolean; errors: string[]; scenario_failures: string[] }[]
 }

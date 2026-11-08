@@ -1,17 +1,17 @@
-import { chromium } from 'playwright'
+import { launch, BASE } from './lib.mjs'
 
 const results = []
 const ok = (name, pass, extra = '') => { results.push({ name, pass, extra }); console.log(pass ? 'PASS' : 'FAIL', name, extra) }
 let browser
 try {
-  browser = await chromium.launch()
+  browser = await launch()
 } catch (e) {
   console.log('LAUNCH_FAILED', String(e).slice(0, 300)); process.exit(2)
 }
 const page = await browser.newPage()
 const errors = []
 page.on('pageerror', (e) => errors.push(String(e)))
-await page.goto('http://localhost:5173/studio')
+await page.goto('' + BASE + '/agent')
 await page.waitForSelector('text=Upload your agent')
 
 // W2: upload sample

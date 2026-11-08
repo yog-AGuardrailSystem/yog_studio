@@ -78,7 +78,7 @@ export default function RulesPage() {
           <EmptyState
             title="No tools yet"
             text="Upload an agent so Studio can see its tools, or just write your rules and continue without them."
-            to="/studio"
+            to="/agent"
             action="Upload an agent"
           />
         ) : (

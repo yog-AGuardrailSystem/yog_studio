@@ -20,7 +20,7 @@ export function Stepper() {
   const reduce = useReducedMotion()
 
   const steps: Step[] = [
-    { to: '/studio', label: 'Upload', done: !!analysis },
+    { to: '/agent', label: 'Upload', done: !!analysis },
     { to: '/rules', label: 'Rules', done: !!draft },
     { to: '/review', label: 'Review', done: !!approved, locked: draft ? undefined : 'Write rules and generate a draft first' },
     { to: '/modify', label: 'Patch', done: false, locked: analysis ? undefined : 'Upload an agent first' },

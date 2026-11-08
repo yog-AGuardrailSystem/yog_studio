@@ -19,7 +19,7 @@ export default function ModifyPage() {
   }, [analysis])
 
   if (!analysis) {
-    return <EmptyState title="No agent uploaded yet" text="Upload a Python agent first. Studio then shows exactly which lines it would add." to="/studio" action="Upload an agent" />
+    return <EmptyState title="No agent uploaded yet" text="Upload a Python agent first. Studio then shows exactly which lines it would add." to="/agent" action="Upload an agent" />
   }
 
   async function download() {
