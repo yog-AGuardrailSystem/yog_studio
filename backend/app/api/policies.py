@@ -1,9 +1,10 @@
-from functools import lru_cache
+import os
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.api.deps import get_adapter
+from app.core import session
 from app.engine.adapter import EngineAdapter, EngineError
 from app.evaluate.evaluator import evaluate
 from app.explain.explainer import Readback, explain
@@ -12,9 +13,16 @@ from app.policies.store import PolicyRecord, PolicyStore
 router = APIRouter()
 
 
-@lru_cache(maxsize=1)
-def get_store() -> PolicyStore:
-    return PolicyStore()
+def get_store(request: Request) -> PolicyStore:
+    """The visitor's OWN approved policies (see app/core/session.py): never another visitor's."""
+    return PolicyStore(session.policies_dir(request))
+
+
+def _max_policies() -> int:
+    try:
+        return int(os.getenv("MAX_POLICIES_PER_SESSION", "100"))
+    except ValueError:
+        return 100
 
 
 class ExplainRequest(BaseModel):
@@ -53,6 +61,8 @@ def approve(req: ApproveRequest, adapter: EngineAdapter = Depends(get_adapter),
     """The human gate. The server re-validates -- the client's 'valid' flag is never trusted."""
     if not req.grounded and not req.ungrounded_confirmed:
         raise HTTPException(status_code=409, detail="this draft is not based on any stored example: confirm that you have read it line by line before approving")
+    if len(store.list()) >= _max_policies():
+        raise HTTPException(status_code=409, detail="you have reached the limit of approved policies for this session; they expire after a few days")
     errors = adapter.validate(req.yog_source)
     if errors:
         raise HTTPException(status_code=422, detail="cannot approve an invalid policy: " + "; ".join(errors))
