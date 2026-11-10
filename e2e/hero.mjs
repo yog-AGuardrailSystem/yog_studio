@@ -69,12 +69,33 @@ await page.mouse.down(); await page.mouse.move(box.x + box.width * 0.5 + 330, bo
 await page.waitForTimeout(500)
 check('dragging turns the orb', Math.abs((await yaw(page)) - before) > 0.6, `${before} -> ${await yaw(page)}`)
 check('and it stays in orbit (no scripted sequence takes over)', (await attr(page, 'data-phase')) === 'orbit')
+const turned = (((await yaw(page)) - before + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI
+check('dragging right turns the front of the orb to the right', turned > 0.4, `turned ${turned.toFixed(2)}`)
+const pitch0 = parseFloat(await attr(page, 'data-pitch'))
+await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.6)
+await page.mouse.down(); await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.6 - 160, { steps: 12 }); await page.mouse.up()
+await page.waitForTimeout(350)
+const pitch1 = parseFloat(await attr(page, 'data-pitch'))
+check('dragging UP turns the front of the orb UP (it follows the pointer)', pitch1 < pitch0 - 0.15, `pitch ${pitch0} -> ${pitch1}`)
+const pitch2a = parseFloat(await attr(page, 'data-pitch'))
+await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.3)
+await page.mouse.down(); await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.3 + 160, { steps: 12 }); await page.mouse.up()
+await page.waitForTimeout(350)
+check('dragging DOWN turns the front of the orb DOWN', parseFloat(await attr(page, 'data-pitch')) > pitch2a + 0.15, `pitch ${pitch2a} -> ${await attr(page, 'data-pitch')}`)
 const sideOn = await count(page, WHITE, middle)
 check('the bright core is still there from another angle (same dots, nothing rearranged)', sideOn > 150, String(sideOn))
 
 // hover, click, right button
 await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.4); await page.waitForTimeout(600)
 check('hovering marks the orb as hovered', (await attr(page, 'data-hover')) === 'true')
+await page.waitForTimeout(1400)
+const loose = parseInt(await attr(page, 'data-free'))
+check('while the pointer is over the orb a few particles come loose and float around it', loose >= 10 && loose <= 48, `loose=${loose}`)
+check('there are never more than 50 of them', parseInt(await attr(page, 'data-free')) <= 50)
+await page.mouse.move(box.x + 6, box.y + 6)          // inside the globe's box but nowhere near the orb
+await page.waitForTimeout(1800)
+check('with the pointer off the orb nothing comes loose', parseInt(await attr(page, 'data-free')) === 0 && (await attr(page, 'data-hover')) === 'false')
+await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.4); await page.waitForTimeout(600)
 const imp0 = parseInt(await attr(page, 'data-impacts'))
 await page.mouse.click(box.x + box.width * 0.55, box.y + box.height * 0.45)
 await page.waitForTimeout(500)
@@ -84,6 +105,8 @@ await page.waitForTimeout(300)
 check('the right button does nothing', parseInt(await attr(page, 'data-impacts')) === imp0 + 1)
 await page.mouse.move(5, 5); await page.waitForTimeout(700)
 check('leaving clears the hover', (await attr(page, 'data-hover')) === 'false')
+await page.waitForTimeout(900)
+check('and the loose particles fade away', parseInt(await attr(page, 'data-free')) === 0)
 
 // ---- look
 const look = await page.evaluate(() => ({

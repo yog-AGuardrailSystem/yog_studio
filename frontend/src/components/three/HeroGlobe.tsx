@@ -3,17 +3,17 @@
  *
  * Nothing rearranges. The orb turns: seen side-on the logo core is a bright band through the middle, and as the orb
  * comes round to face you the band becomes the letters. On landing the orb scales/fades in while swinging from side-on to
- * front-on. It then keeps turning slowly; dragging turns it (with inertia), hovering dents the skin and lifts fine
+ * front-on. It then keeps turning slowly; dragging turns it (with inertia), hovering dents the skin and lets a few (48) dots come loose
  * particles, a click sends a ripple across it and a burst of debris off it.
  *
  * Layers (all one shader, drawn as separate point sets):
  *   shell   a sparse subset of the orb's points at 1.3x radius: bigger, softer dots (depth-of-field) forming the halo
  *   main    the orb surface (rim-lit, lit from the top-left, shadowed lower right, back side drawn faintly) + the logo core
- *   cloud   fine extra particles over the hovered patch
+ *   free    up to 48 loose particles that float around the pointer while it is over the orb
  *   debris  up to three click bursts
  *
  * Heavy (three.js). Never import this directly from a page: use ./HeroGlobeView (lazy, with fallbacks, pause, off-screen stop).
- * Test hooks on the host element: data-ready, data-phase (reveal | orbit), data-yaw, data-hover, data-impacts.
+ * Test hooks on the host element: data-ready, data-phase (reveal | orbit), data-yaw, data-pitch, data-hover, data-free (loose particles, at most 48), data-impacts.
  */
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from 'react'
@@ -30,6 +30,7 @@ const SPIN = 0.06            // rad/s, slow turn after the reveal
 const REST_PITCH = 0.05
 const BURSTS = 3
 const HITS = 4
+const FREE = 48              // loose particles that float around the pointer while it is over the orb (never more than 50)
 
 const VERT = /* glsl */ `
 uniform vec2 uSize;
@@ -37,7 +38,7 @@ uniform float uDpr;
 uniform float uTime;
 uniform float uRadiusPx;
 uniform float uEnter;
-uniform float uMode;          // 0 main, 1 shell, 2 hover cloud, 3 debris
+uniform float uMode;          // 0 main, 1 shell, 3 debris
 uniform float uHover;
 uniform float uBlur;
 uniform float uShellScale;
@@ -127,12 +128,6 @@ void main() {
       a = fade * uBurst.w * step(mix(0.97, 0.86, uBurst.w), s2) * (0.35 + s2 * 0.5) * uGain;
       sz = 1.2 + s2 * 1.6;
       col = mix(uImpact, uLight, 0.4);
-    } else if (uMode > 1.5) {
-      // hover cloud: fine particles lifted a little off the hovered patch
-      p = n * (radius + 0.015 + seed * 0.05) + vec3(sin(seed * 93.0), cos(seed * 71.0), 0.0) * 0.018;
-      a = hover * hover * (0.3 + seed * 0.5) * uGain;
-      sz = 1.2 + seed * 1.4;
-      col = mix(uLight, vec3(1.0, 0.95, 0.72), 0.3);
     } else {
       float edge = pow(max(1.0 - abs(n.z), 0.0), 3.0);                  // rim light: the silhouette is brighter and bigger
       float lit = clamp(0.52 - n.x * 0.48 + n.y * 0.32, 0.08, 1.0);      // lit from the top left
@@ -147,6 +142,7 @@ void main() {
       a *= 1.0 - shadow * 0.9;
       a += dust * 0.11;
       a *= uGain * (1.0 + blush * 0.6);
+      a *= 1.0 - hover * 0.45;                                           // dots under the pointer thin out: some of them are the ones that came loose
       sz = (1.3 + front * (0.2 + seed * 0.4) + edge * (1.5 + strand * 2.5)) * (1.0 - dust * 0.45);
       if (uMode > 0.5) {
         // shell: a bigger, sparser, softer copy of the surface; dots near the viewer go out of focus
@@ -219,6 +215,37 @@ interface GlobeProps {
   host: RefObject<HTMLDivElement | null>
 }
 
+/** The loose pointer particles: simple soft gold dots placed directly in CSS px. */
+function makeFreeMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    transparent: true, depthTest: false, depthWrite: false,
+    blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
+    uniforms: { uSize: { value: new THREE.Vector2(1, 1) }, uDpr: { value: 1 } },
+    vertexShader: /* glsl */ `
+      uniform vec2 uSize; uniform float uDpr;
+      attribute float aSeed; attribute float aAlpha;
+      varying float vA; varying float vS;
+      void main() {
+        gl_Position = vec4(position.xy / uSize * vec2(2.0, -2.0) + vec2(-1.0, 1.0), 0.0, 1.0);
+        gl_PointSize = (4.5 + aSeed * 5.5) * uDpr;
+        vA = aAlpha; vS = aSeed;
+      }`,
+    fragmentShader: /* glsl */ `
+      precision highp float;
+      varying float vA; varying float vS;
+      void main() {
+        float d = length(gl_PointCoord - 0.5);
+        float core = 1.0 - smoothstep(0.16, 0.5, d);
+        float glow = exp(-d * d * 14.0);
+        float a = vA * (0.95 * core + 0.75 * glow);
+        vec3 col = mix(vec3(1.0, 0.78, 0.33), vec3(1.0, 0.95, 0.78), step(0.5, vS) * 0.6);
+        gl_FragColor = vec4(col * a, a);
+      }`,
+  })
+}
+
+interface Loose { x: number; y: number; vx: number; vy: number; a: number; ang: number; rad: number; w: number; wait: number; on: boolean }
+
 function makeMaterial(mode: number): THREE.ShaderMaterial {
   const hit = Array.from({ length: HITS }, () => new THREE.Vector4(-1, 0, 0, 0))
   const hitDir = Array.from({ length: HITS }, () => new THREE.Vector3(0, 0, 1))
@@ -256,19 +283,27 @@ function Globe({ mask, nOrb, nLogo, calm, input, host }: GlobeProps) {
       g.setIndex(new THREE.BufferAttribute(subsetIndices(nOrb, keep, s), 1))        // only orb points: indices below nOrb
       return g
     }
-    const shellGeo = subset(0.24, 5), cloudGeo = subset(0.4, 6), debrisGeo = subset(0.3, 7)
+    const shellGeo = subset(0.24, 5), debrisGeo = subset(0.3, 7)
     const make = (g: THREE.BufferGeometry, m: THREE.ShaderMaterial, order: number) => {
       const p = new THREE.Points(g, m); p.frustumCulled = false; p.renderOrder = order; return p
     }
-    const shellM = makeMaterial(1), mainM = makeMaterial(0), cloudM = makeMaterial(2)
+    const shellM = makeMaterial(1), mainM = makeMaterial(0)
     const debrisM = Array.from({ length: BURSTS }, () => makeMaterial(3))
-    const shell = make(shellGeo, shellM, 0), main = make(geo, mainM, 1), cloud = make(cloudGeo, cloudM, 2)
+    const shell = make(shellGeo, shellM, 0), main = make(geo, mainM, 1)
     const debris = debrisM.map((m, i) => make(debrisGeo, m, 3 + i))
-    cloud.visible = false
     debris.forEach((d) => { d.visible = false })
-    return { geos: [geo, shellGeo, cloudGeo, debrisGeo], mats: [shellM, mainM, cloudM, ...debrisM], shellM, mainM, cloudM, debrisM, objects: [shell, main, cloud, ...debris], cloud, debris }
+
+    // the few loose particles that float around the pointer while it is over the orb (positions are CSS px, updated every frame)
+    const freeGeo = new THREE.BufferGeometry()
+    freeGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(FREE * 3), 3))
+    freeGeo.setAttribute('aSeed', new THREE.BufferAttribute(Float32Array.from({ length: FREE }, (_, k) => hash01(k * 1.7, k * 0.3, 2)), 1))
+    freeGeo.setAttribute('aAlpha', new THREE.BufferAttribute(new Float32Array(FREE), 1))
+    const freeM = makeFreeMaterial()
+    const free = make(freeGeo, freeM, 10)
+    free.visible = false
+    return { geos: [geo, shellGeo, debrisGeo, freeGeo], mats: [shellM, mainM, ...debrisM], shellM, mainM, debrisM, freeM, freeGeo, objects: [shell, main, ...debris, free], debris, free }
   }, [mask, nOrb, nLogo])
-  useEffect(() => () => { built.geos.forEach((g) => g.dispose()); built.mats.forEach((m) => m.dispose()) }, [built])
+  useEffect(() => () => { built.geos.forEach((g) => g.dispose()); built.mats.forEach((m) => m.dispose()); built.freeM.dispose() }, [built])
 
   // when motion is paused (or resumed) while the canvas is idle, draw one frame now so it snaps to the still pose
   const invalidate = useThree((s) => s.invalidate)
@@ -281,6 +316,7 @@ function Globe({ mask, nOrb, nLogo, calm, input, host }: GlobeProps) {
   const st = useRef({
     t0: performance.now() / 1000, phase: 'reveal' as 'reveal' | 'orbit', yaw: -Math.PI / 2, pitch: REST_PITCH, vyaw: SPIN, hover: 0,
     lastClick: 0, lastFace: 0, faceUntil: 0, faceTarget: 0, impacts: 0, slot: 0, burst: 0, ready: false, lastData: 0,
+    over: false, px: 0, py: 0, shown: 0, loose: [] as Loose[],
   })
 
   useFrame((state, delta) => {
@@ -295,7 +331,7 @@ function Globe({ mask, nOrb, nLogo, calm, input, host }: GlobeProps) {
     let enterMain: number, enterShell: number
 
     if (calm) {                                         // paused / reduced motion: one still frame, logo facing the viewer
-      s.yaw = 0; s.pitch = REST_PITCH; s.phase = 'orbit'; s.hover = 0
+      s.yaw = 0; s.pitch = REST_PITCH; s.phase = 'orbit'; s.hover = 0; s.over = false
       enterMain = enterShell = 1
     } else {
       const age = now - s.t0
@@ -304,7 +340,7 @@ function Globe({ mask, nOrb, nLogo, calm, input, host }: GlobeProps) {
         if (s.phase === 'reveal') s.phase = 'orbit'
         s.faceUntil = 0
         s.yaw += i.dragDX * 0.0035
-        s.pitch = Math.max(-1.2, Math.min(1.2, s.pitch - i.dragDY * 0.0035))
+        s.pitch = Math.max(-1.2, Math.min(1.2, s.pitch + i.dragDY * 0.0035))     // drag up: the face of the orb moves up with the pointer
         const v = Math.max(-3, Math.min(3, (i.dragDX * 0.0035) / Math.max(dt, 1e-3)))
         s.vyaw += (v - s.vyaw) * (1 - Math.exp(-dt / 0.04))
         i.dragDX = 0; i.dragDY = 0
@@ -326,8 +362,58 @@ function Globe({ mask, nOrb, nLogo, calm, input, host }: GlobeProps) {
         s.lastFace = i.faceId; s.phase = 'orbit'
         s.faceTarget = Math.round(s.yaw / TAU) * TAU; s.faceUntil = now + 1.4
       }
-      s.hover += ((i.inside && !i.dragging ? 1 : 0) - s.hover) * (1 - Math.exp(-dt / 0.1))
+      // "over the globe" means over the orb itself, not just somewhere in its box
+      s.over = i.inside && !i.dragging && Math.hypot(i.x - w / 2, i.y - h / 2) < radiusPx * 1.03
+      s.hover += ((s.over ? 1 : 0) - s.hover) * (1 - Math.exp(-dt / 0.1))
     }
+
+    // Loose particles: while the pointer is over the orb, a few dots (48 at most) come off the surface near it and float
+    // around it on springs with a little drift; when the pointer leaves they fade out where they are.
+    if (!s.loose.length) {
+      for (let k = 0; k < FREE; k++) {
+        s.loose.push({ x: 0, y: 0, vx: 0, vy: 0, a: 0, ang: Math.random() * TAU, rad: 16 + Math.random() * 46,
+          w: (0.7 + Math.random() * 1.6) * (Math.random() < 0.5 ? -1 : 1), wait: Math.random() * 0.5, on: false })
+      }
+    }
+    if (!calm) {
+      if (s.over) { s.px = i.x; s.py = i.y }
+      const t = state.clock.elapsedTime
+      const pos = built.freeGeo.getAttribute('position') as THREE.BufferAttribute
+      const al = built.freeGeo.getAttribute('aAlpha') as THREE.BufferAttribute
+      let shown = 0
+      s.loose.forEach((q, k) => {
+        if (s.over && !q.on) {
+          q.wait -= dt                                                  // they come loose one after another, not all at once
+          if (q.wait <= 0) {
+            const r = Math.random() * 34, an = Math.random() * TAU     // start on the orb, close to the pointer
+            q.x = s.px + Math.cos(an) * r; q.y = s.py + Math.sin(an) * r
+            q.vx = (Math.random() - 0.5) * 40; q.vy = (Math.random() - 0.5) * 40
+            q.a = 0; q.on = true
+          }
+        }
+        if (q.on) {
+          q.ang += q.w * dt
+          const rad = q.rad * (1 + 0.25 * Math.sin(t * 1.3 + k))
+          const tx = s.px + Math.cos(q.ang) * rad, ty = s.py + Math.sin(q.ang) * rad * 0.8
+          q.vx += ((tx - q.x) * 18 - q.vx * 4.5 + Math.sin(t * 2.1 + k * 3.7) * 40) * dt
+          q.vy += ((ty - q.y) * 18 - q.vy * 4.5 + Math.cos(t * 1.7 + k * 2.3) * 40) * dt
+          q.x += q.vx * dt; q.y += q.vy * dt
+          if (s.over) q.a = Math.min(1, q.a + dt / 0.35)
+          else { q.a -= dt / 0.45; if (q.a <= 0) { q.a = 0; q.on = false; q.wait = Math.random() * 0.5 } }
+        }
+        pos.setXYZ(k, q.x, q.y, 0)
+        al.setX(k, q.on ? q.a : 0)
+        if (q.on && q.a > 0.05) shown++
+      })
+      pos.needsUpdate = true; al.needsUpdate = true
+      s.shown = shown
+    } else {
+      s.shown = 0
+      s.loose.forEach((q) => { q.on = false; q.a = 0 })
+    }
+    built.free.visible = !calm && s.shown > 0
+    built.freeM.uniforms.uSize.value.set(w, h)
+    built.freeM.uniforms.uDpr.value = dpr
 
     // a click: ripple across the surface + a burst of debris. The hit direction is stored un-rotated so the wave stays attached.
     if (!calm && i.clickId > s.lastClick) {
@@ -359,9 +445,7 @@ function Globe({ mask, nOrb, nLogo, calm, input, host }: GlobeProps) {
       for (const hh of u.uHit.value as THREE.Vector4[]) if (hh.x >= 0 && time - hh.x > 4) hh.x = -1     // a ripple is over: stop doing the maths
     }
     built.mainM.uniforms.uEnter.value = enterMain
-    built.cloudM.uniforms.uEnter.value = enterMain
     built.shellM.uniforms.uEnter.value = enterShell
-    built.cloud.visible = !calm && s.hover > 0.02
     built.debrisM.forEach((m, k) => {
       m.uniforms.uEnter.value = 1
       const b = m.uniforms.uBurst.value as THREE.Vector4
@@ -376,6 +460,8 @@ function Globe({ mask, nOrb, nLogo, calm, input, host }: GlobeProps) {
         el.dataset.yaw = (((s.yaw + Math.PI) % TAU + TAU) % TAU - Math.PI).toFixed(2)
         el.dataset.hover = s.hover > 0.5 ? 'true' : 'false'
         el.dataset.impacts = String(s.impacts)
+        el.dataset.free = String(s.shown)
+        el.dataset.pitch = s.pitch.toFixed(2)
       }
     }
   })
@@ -399,9 +485,18 @@ export default function HeroGlobe({ calm, active, nOrb, nLogo, input, host }: He
     buildLogoMask().then((m) => { if (alive) setMask(m) })
     return () => { alive = false }
   }, [])
+  // Pausing must always end on the still pose. Asking an idle canvas for one more frame is order-dependent, so instead the
+  // loop is kept running for a moment after motion is paused (a frame is guaranteed), then it goes idle.
+  const [settling, setSettling] = useState(false)
+  useEffect(() => {
+    if (!calm) return
+    const start = setTimeout(() => setSettling(true), 0)
+    const stop = setTimeout(() => setSettling(false), 500)
+    return () => { clearTimeout(start); clearTimeout(stop) }
+  }, [calm])
   if (!mask) return null
   return (
-    <Canvas frameloop={calm ? 'demand' : active ? 'always' : 'never'} dpr={[1, 2]} camera={{ position: [0, 0, 4] }}
+    <Canvas frameloop={calm ? (settling ? 'always' : 'demand') : active ? 'always' : 'never'} dpr={[1, 2]} camera={{ position: [0, 0, 4] }}
       gl={{ antialias: false, alpha: true, powerPreference: 'default' }} onCreated={({ gl }) => gl.setClearColor(0x000000, 0)}>
       <Globe mask={mask} nOrb={nOrb} nLogo={nLogo} calm={calm} input={input} host={host} />
     </Canvas>
