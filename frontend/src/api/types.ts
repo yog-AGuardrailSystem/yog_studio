@@ -69,4 +69,11 @@ export interface PolicyDraft {
   errors: string[]
   verified?: boolean | null
   attempt_log?: { n: number; compiled: boolean; errors: string[]; scenario_failures: string[] }[]
+  grounded?: boolean                  // false: no retrieved example cleared the relevance floor
+  cited_examples?: string[]           // examples the model said it used (checked against what was retrieved)
+  citation_problems?: string[]
+  floor?: number | null
+  floor_calibrated?: boolean | null
+  reranked?: boolean
+  retrieved?: { id: string; english: string; score: number; source: string; relevant?: boolean; rerank?: number | null }[]
 }

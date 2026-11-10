@@ -82,9 +82,30 @@ check('Assist shows retrieved examples with scores', true)
 await page.getByTestId('assist-draft').click()
 await page.waitForSelector('[data-testid=draft-box]', { timeout: 20000 })
 check('Assist produces a draft', true)
+check('the draft names the example it is based on', /Based on:/.test(await page.getByTestId('citations').innerText()))
 await page.getByTestId('draft-insert').click()
 await page.waitForSelector('[data-testid=toast]')
 check('draft is inserted only on click', true)
+
+// Real AI / Offline switch: starts Offline on a server with no key, and says why Real is unavailable
+const sw = page.getByTestId('ai-mode-toggle')
+check('AI mode switch is shown', await sw.isVisible())
+check('AI mode defaults to Offline here', (await sw.getAttribute('aria-checked')) === 'false' && /Offline/.test(await page.getByTestId('ai-mode-label').innerText()))
+
+// Strict RAG: an off-topic rule finds nothing relevant, the UI says so, and the draft needs an explicit confirmation
+await page.getByTestId('tab-Assist').click()                        // inserting a draft moved us to Checks
+await page.getByTestId('assist-input').fill('What is the capital of France?')
+await page.getByTestId('assist-find').click()
+await page.waitForSelector('[data-testid=no-match]')
+check('off-topic rule shows "no close example"', true)
+check('weak matches are marked below the floor', (await page.locator('[data-testid=retrieved-list] li[data-relevant=no]').count()) > 0)
+check('the relevance floor is shown', /relevance floor/.test(await page.getByTestId('floor-note').innerText()))
+await page.getByTestId('assist-draft').click()
+await page.waitForSelector('[data-testid=ungrounded-chip]', { timeout: 20000 })
+check('an ungrounded draft is labelled', true)
+check('inserting an ungrounded draft is blocked until confirmed', await page.getByTestId('draft-insert').isDisabled())
+await page.getByTestId('ungrounded-ack').check()
+check('confirming enables inserting', !(await page.getByTestId('draft-insert').isDisabled()))
 
 // Evidence tab never invents numbers
 await page.getByTestId('tab-Evidence').click()

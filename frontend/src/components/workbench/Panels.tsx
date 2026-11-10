@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   benchmarkLatest, cancelTranslate, compareCLexer, explain, pollTranslate, retrieve, startTranslate,
-  type CLexerResponse, type CompileInfo, type Diagnostic, type Info, type QueryResult, type Readback, type Retrieved, type RunResponse,
+  type CLexerResponse, type CompileInfo, type Diagnostic, type QueryResult, type Readback, type Retrieved, type RetrieveResult, type RunResponse,
 } from '../../api/compile'
 import type { PolicyDraft } from '../../api/types'
 import { Burst } from '../motion/Burst'
+import { useAiMode } from '../../lib/aiMode'
 import { applyFix, resultLabel } from '../../lib/workbench'
 
 const chip = 'inline-block rounded px-1.5 py-0.5 font-mono text-xs'
@@ -231,14 +232,57 @@ export function CLexerPanel({ source, available }: { source: string; available: 
 }
 
 // ---------------------------------------------------------------- Assist: English -> retrieval -> draft
-interface Ev { phase?: string; n?: number; state?: string; errors?: string[]; scenario_failures?: string[]; compiled?: boolean; examples?: { id: string; score: number }[]; count?: number; valid?: boolean; error?: string; verified?: boolean | null }
-export function AssistPanel({ info, current, onInsert, onReplace }: {
-  info: Info | null; current: string; onInsert: (yog: string) => void; onReplace: (yog: string) => void
+interface Ev {
+  phase?: string; n?: number; state?: string; errors?: string[]; scenario_failures?: string[]; compiled?: boolean
+  examples?: Retrieved[]; count?: number; valid?: boolean; error?: string; verified?: boolean | null
+  grounded?: boolean; floor?: number | null; calibrated?: boolean | null; reranked?: boolean; ok?: boolean; problem?: string | null
+}
+
+function RetrievedList({ data }: { data: RetrieveResult }) {
+  return (
+    <div data-testid="retrieved-list">
+      <div className="flex flex-wrap items-baseline gap-2"><b>Most similar examples</b>
+        {data.floor != null && (
+          <span className="text-xs text-slate-600" data-testid="floor-note">
+            relevance floor {data.floor.toFixed(2)}{data.floor_calibrated === false ? ' (provisional: not calibrated for this model yet)' : ''}
+          </span>
+        )}
+      </div>
+      {data.grounded === false && (
+        <p className="mt-1 rounded border border-amber-600 bg-amber-50 p-2 text-amber-900" role="note" data-testid="no-match">
+          No stored example is close enough to this rule. The matches below are shown for transparency only; none of them is given to the AI.
+        </p>
+      )}
+      <ul className="mt-1 space-y-1">
+        {data.results.map((r) => {
+          const weak = r.relevant === false
+          return (
+            <li key={r.id} className={`rounded border p-2 ${weak ? 'border-slate-200 bg-slate-50 text-slate-500' : 'border-slate-200 bg-white'}`} data-relevant={weak ? 'no' : 'yes'}>
+              <div className="flex items-center gap-2"><span className="font-mono text-xs">{r.id}</span>
+                <span className="h-1.5 flex-1 overflow-hidden rounded bg-slate-200"><span className={`bar-grow block h-full ${weak ? 'bg-slate-400' : 'bg-sky-500'}`} data-motion={`wb:ret:${r.id}`} style={{ width: `${Math.max(2, Math.round(Math.max(0, r.score) * 100))}%` }} /></span>
+                <span className="text-xs text-slate-500">{r.score.toFixed(2)}</span>
+                {weak && <span className={`${chip} bg-slate-200 text-slate-700`}>below floor</span>}
+                {r.rerank != null && <span className={`${chip} bg-sky-100 text-sky-900`} title="the AI's own judgement of how useful this example is">AI {r.rerank.toFixed(0)}/10</span>}
+                {!!r.lexical && r.lexical >= 0.6 && <span className={`${chip} bg-slate-100 text-slate-700`} title="shares key words with your rule">keywords</span>}
+              </div>
+              {r.english && <div className={weak ? '' : 'text-slate-600'}>{r.english}</div>}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+export function AssistPanel({ current, onInsert, onReplace }: {
+  current: string; onInsert: (yog: string) => void; onReplace: (yog: string) => void
 }) {
+  const { mode, liveReady, rerank, setRerank } = useAiMode()
   const [english, setEnglish] = useState('')
-  const [found, setFound] = useState<Retrieved[] | null>(null)
+  const [found, setFound] = useState<RetrieveResult | null>(null)
   const [events, setEvents] = useState<Ev[]>([])
   const [draft, setDraft] = useState<PolicyDraft | null>(null)
+  const [ack, setAck] = useState(false)
   const [status, setStatus] = useState<'idle' | 'running' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
   const job = useRef<{ id: string; stop: boolean } | null>(null)
@@ -246,20 +290,21 @@ export function AssistPanel({ info, current, onInsert, onReplace }: {
 
   async function find() {
     setError(null)
-    try { setFound((await retrieve(english, [], 3)).results) } catch (e) { setError(err(e)) }
+    try { setFound(await retrieve(english, [], 3, mode)) } catch (e) { setError(err(e)) }
   }
   async function draftIt() {
-    setStatus('running'); setError(null); setDraft(null); setEvents([])
+    setStatus('running'); setError(null); setDraft(null); setEvents([]); setAck(false)
     try {
-      const { job_id } = await startTranslate([english])
+      const { job_id } = await startTranslate([english], { mode, rerank })
       job.current = { id: job_id, stop: false }
       let since = 0
       while (!job.current.stop) {
         const v = await pollTranslate(job_id, since)
         since = v.next
-        if (v.events.length) setEvents((e) => [...e, ...(v.events as Ev[])])
-        const ex = (v.events as Ev[]).find((e) => e.phase === 'retrieved')?.examples
-        if (ex) setFound((f) => f ?? ex.map((x) => ({ id: x.id, score: x.score, english: '', tools_context: [], gold_yog: '', source: '' })))
+        const evs = v.events as Ev[]
+        if (evs.length) setEvents((e) => [...e, ...evs])
+        const got = evs.find((e) => e.phase === 'retrieved')
+        if (got?.examples) setFound({ results: got.examples, floor: got.floor ?? null, floor_calibrated: got.calibrated ?? null, grounded: got.grounded !== false, provider: null })
         if (v.status !== 'running') {
           if (v.status === 'done') setDraft(v.result)
           if (v.status === 'error') setError(v.error)
@@ -277,39 +322,38 @@ export function AssistPanel({ info, current, onInsert, onReplace }: {
     setStatus('idle')
   }
   const attempts = events.filter((e) => e.phase === 'attempt' && e.state === 'checked')
+  const reranking = events.find((e) => e.phase === 'reranked')
+  const ungrounded = draft?.grounded === false
+  const blocked = ungrounded && !ack
   return (
     <div className="space-y-3 text-sm" data-testid="assist-panel">
-      {info?.offline_demo && (
+      {mode === 'offline' ? (
         <p className="rounded border border-amber-600 bg-amber-50 p-2 text-amber-900" data-testid="offline-badge" role="note">
-          Offline demo mode: no AI model is configured, so drafts are copied from the nearest example, not translated. Add a Gemini or Claude key in backend/.env for real drafts.
+          Offline mode: no AI model is used, so a draft is the nearest stored example copied as it is, not a translation.
+          {liveReady ? ' Turn on Real AI (top of the page) for real drafts.' : ' Real AI is not available on this server: add a Gemini or Claude key in backend/.env.'}
+        </p>
+      ) : (
+        <p className="rounded border border-emerald-700 bg-emerald-50 p-2 text-emerald-900" data-testid="real-badge" role="note">
+          Real AI is on. Drafts are written by the model from your rule and only the examples that are close enough, then checked by the compiler and by independent tests.
         </p>
       )}
       <label className="block">Describe a rule in plain English
-        <textarea className="field h-20" value={english} onChange={(e) => setEnglish(e.target.value)} placeholder="e.g. Contractors may never delete files in production." data-testid="assist-input" />
+        <textarea className="field h-20" value={english} maxLength={2000} onChange={(e) => setEnglish(e.target.value)} placeholder="e.g. Contractors may never delete files in production." data-testid="assist-input" />
+      </label>
+      <label className={`flex items-center gap-2 ${mode === 'real' ? '' : 'text-slate-500'}`}>
+        <input type="checkbox" checked={rerank} disabled={mode !== 'real'} onChange={(e) => setRerank(e.target.checked)} data-testid="rerank-toggle" />
+        Let the AI re-rank the closest examples <span className="text-xs text-slate-500">(slower, one extra call{mode !== 'real' ? '; needs Real AI' : ''})</span>
       </label>
       <div className="flex gap-2">
         <button type="button" className="btn-secondary" onClick={find} disabled={!english.trim()} data-testid="assist-find">Find similar examples</button>
         <button type="button" className="btn-primary" onClick={draftIt} disabled={!english.trim() || status === 'running'} data-testid="assist-draft">{status === 'running' ? 'Drafting…' : 'Draft YOG'}</button>
         {status === 'running' && <button type="button" className="btn-secondary" onClick={cancel}>Cancel</button>}
       </div>
-      {error && <p className="text-red-700" role="alert">{error}</p>}
-      {found && (
-        <div data-testid="retrieved-list">
-          <b>Most similar examples</b>
-          <ul className="mt-1 space-y-1">
-            {found.map((r) => (
-              <li key={r.id} className="rounded border border-slate-200 bg-white p-2">
-                <div className="flex items-center gap-2"><span className="font-mono text-xs">{r.id}</span>
-                  <span className="h-1.5 flex-1 overflow-hidden rounded bg-slate-200"><span className="bar-grow block h-full bg-sky-500" data-motion={`wb:ret:${r.id}`} style={{ width: `${Math.max(2, Math.round(r.score * 100))}%` }} /></span>
-                  <span className="text-xs text-slate-500">{r.score.toFixed(2)}</span></div>
-                {r.english && <div className="text-slate-600">{r.english}</div>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {error && <p className="text-red-700" role="alert" data-testid="assist-error">{error}</p>}
+      {found && <RetrievedList data={found} />}
       {events.length > 0 && (
         <ol className="space-y-1 text-xs text-slate-600" data-testid="attempt-log">
+          {reranking && <li>{reranking.ok ? 'The AI re-ranked the closest examples.' : `Re-ranking was skipped (${reranking.problem ?? 'unavailable'}); kept the search order.`}</li>}
           {events.filter((e) => e.phase === 'scenarios' && e.state === 'ready').map((e, i) => <li key={'s' + i}>Wrote {e.count} independent test scenarios from your English.</li>)}
           {attempts.map((e, i) => (
             <li key={i} className="rise" data-motion={`wb:attempt:${i}`}>Attempt {e.n}: {e.compiled ? 'compiles' : 'does not compile'}{e.errors?.length ? ` (${e.errors[0]})` : ''}{e.scenario_failures?.length ? `; ${e.scenario_failures.length} scenario(s) disagree` : ''}</li>
@@ -321,12 +365,23 @@ export function AssistPanel({ info, current, onInsert, onReplace }: {
           <div className="mb-1 font-semibold">Draft {draft.valid ? '' : '(does not compile yet)'}
             {draft.verified === true && <span className={`${chip} ml-2 bg-[#047857] text-on-accent`}>checked against independent scenarios</span>}
             {draft.verified === false && <span className={`${chip} ml-2 bg-[#92400e] text-on-accent`}>scenarios disagree: review carefully</span>}
+            {ungrounded && <span className={`${chip} ml-2 bg-[#92400e] text-on-accent`} data-testid="ungrounded-chip">ungrounded</span>}
           </div>
           <pre className="max-h-64 overflow-auto rounded bg-slate-100 p-2 font-mono text-xs">{draft.yog_source}</pre>
+          <p className="mt-2 text-xs text-slate-700" data-testid="citations">
+            {draft.cited_examples?.length ? <>Based on: {draft.cited_examples.map((id) => <span key={id} className={`${chip} mr-1 bg-slate-100 text-slate-800`}>{id}</span>)}</> : 'The draft does not cite any stored example.'}
+          </p>
+          {!!draft.citation_problems?.length && <ul className="mt-1 list-disc pl-5 text-xs text-amber-900" data-testid="citation-problems">{draft.citation_problems.map((p) => <li key={p}>{p}</li>)}</ul>}
+          {ungrounded && (
+            <label className="mt-2 flex items-start gap-2 rounded border border-amber-600 bg-amber-50 p-2 text-amber-900">
+              <input type="checkbox" className="mt-0.5" checked={ack} onChange={(e) => setAck(e.target.checked)} data-testid="ungrounded-ack" />
+              <span>No stored example supports this draft. I understand it comes from the model alone and I will read every line before using it.</span>
+            </label>
+          )}
           <p className="mt-1 text-xs text-slate-500">A draft is a suggestion. Read it, then choose how it enters the editor.</p>
           <div className="mt-2 flex gap-2">
-            <button type="button" className="btn-primary" onClick={() => onInsert(draft.yog_source)} data-testid="draft-insert">Add to the end of my program</button>
-            <button type="button" className="btn-secondary" onClick={() => { if (!current.trim() || window.confirm('Replace everything in the editor with this draft?')) onReplace(draft.yog_source) }}>Replace my program</button>
+            <button type="button" className="btn-primary" disabled={blocked} onClick={() => onInsert(draft.yog_source)} data-testid="draft-insert">Add to the end of my program</button>
+            <button type="button" className="btn-secondary" disabled={blocked} onClick={() => { if (!current.trim() || window.confirm('Replace everything in the editor with this draft?')) onReplace(draft.yog_source) }}>Replace my program</button>
           </div>
         </div>
       )}

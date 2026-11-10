@@ -82,7 +82,7 @@ jobs:
           (cd e2e && npm ci)
       - name: Start backend (offline fake LLM) and frontend
         run: |
-          (cd backend && LLM_PROVIDER=fake nohup uv run python -m uvicorn app.main:app --port 8000 > /tmp/backend.log 2>&1 &)
+          (cd backend && YOG_NO_DOTENV=1 LLM_PROVIDER=fake nohup uv run python -m uvicorn app.main:app --port 8000 > /tmp/backend.log 2>&1 &)
           (cd frontend && nohup npm run dev -- --host 127.0.0.1 --port 5173 > /tmp/frontend.log 2>&1 &)
           for i in $(seq 1 60); do curl -fs localhost:8000/health >/dev/null && curl -fs localhost:5173 >/dev/null && break; sleep 2; done
       - name: Workbench

@@ -41,12 +41,18 @@ class ApproveRequest(BaseModel):
     english_rules: list[str] = Field(default_factory=list)
     retrieved_examples: list[str] = Field(default_factory=list)
     attempts: int = 0
+    # A draft no stored example supported must be confirmed explicitly. This is a human-confirmation gate for the UI
+    # (the review screen sends both), not an authentication boundary.
+    grounded: bool = True
+    ungrounded_confirmed: bool = False
 
 
 @router.post("/policies/approve", response_model=PolicyRecord)
 def approve(req: ApproveRequest, adapter: EngineAdapter = Depends(get_adapter),
             store: PolicyStore = Depends(get_store)) -> PolicyRecord:
     """The human gate. The server re-validates -- the client's 'valid' flag is never trusted."""
+    if not req.grounded and not req.ungrounded_confirmed:
+        raise HTTPException(status_code=409, detail="this draft is not based on any stored example: confirm that you have read it line by line before approving")
     errors = adapter.validate(req.yog_source)
     if errors:
         raise HTTPException(status_code=422, detail="cannot approve an invalid policy: " + "; ".join(errors))

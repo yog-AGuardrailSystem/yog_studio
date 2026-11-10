@@ -29,6 +29,7 @@ export default function ReviewPage() {
   const [info, setInfo] = useState<ExplainResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<'idle' | 'approved' | 'rejected'>('idle')
+  const [ackUngrounded, setAckUngrounded] = useState(false)
   const [busy, setBusy] = useState(false)
 
   // re-validate + refresh the readback whenever the text changes (debounced)
@@ -87,6 +88,8 @@ export default function ReviewPage() {
         english_rules: draft.english_rules,
         retrieved_examples: draft.retrieved_examples,
         attempts: draft.attempts,
+        grounded: draft.grounded !== false,
+        ungrounded_confirmed: ackUngrounded,
       })
       setApproved(rec)
       setStatus('approved')
@@ -174,10 +177,16 @@ export default function ReviewPage() {
 
       {error && <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</div>}
 
+      {draft.grounded === false && (
+        <label className="flex items-start gap-2 rounded border border-amber-600 bg-amber-50 p-3 text-sm text-amber-900" data-testid="ungrounded-confirm">
+          <input type="checkbox" className="mt-0.5" checked={ackUngrounded} onChange={(e) => setAckUngrounded(e.target.checked)} data-testid="ungrounded-ack" />
+          <span><b>Ungrounded draft.</b> No stored example was close enough to these rules, so the policy comes from the model alone. I have read it line by line and want to approve it anyway.</span>
+        </label>
+      )}
       <div className="flex items-center gap-3 border-t border-slate-200 pt-4">
         <button
           onClick={doApprove}
-          disabled={!valid || busy || !report}
+          disabled={!valid || busy || !report || (draft.grounded === false && !ackUngrounded)}
           title={report ? '' : 'Run the scenarios first: you approve a policy only after seeing how it behaves'}
           className="btn-approve rounded px-5 py-2 text-sm font-bold text-on-accent disabled:cursor-not-allowed disabled:opacity-40"
         >
@@ -194,9 +203,9 @@ export default function ReviewPage() {
         <button onClick={doReject} disabled={busy} className="rounded border border-red-300 bg-white px-4 py-2 text-sm text-red-700">
           Reject
         </button>
-        {status !== 'approved' && (!valid || !report) && (
+        {status !== 'approved' && (!valid || !report || (draft.grounded === false && !ackUngrounded)) && (
           <span className="text-xs text-slate-500" data-testid="approve-hint">
-            {!valid ? 'Approve is off until the policy compiles.' : 'Approve is off until you run the scenarios, so you see how the policy behaves first.'}
+            {!valid ? 'Approve is off until the policy compiles.' : !report ? 'Approve is off until you run the scenarios, so you see how the policy behaves first.' : 'Approve is off until you confirm the draft has no supporting example.'}
           </span>
         )}
         {status === 'approved' && approved && (

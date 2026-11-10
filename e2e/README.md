@@ -3,7 +3,7 @@
 Not part of pytest. Start the backend with the offline fake LLM and the frontend, then run:
 
 ```
-cd backend  ; $env:LLM_PROVIDER="fake" ; uv run python -m uvicorn app.main:app --port 8000
+cd backend  ; $env:YOG_NO_DOTENV="1" ; $env:LLM_PROVIDER="fake" ; uv run python -m uvicorn app.main:app --port 8000
 cd frontend ; npm run dev
 cd e2e      ; npm ci
 node workbench.mjs   # the YOG workbench at /studio

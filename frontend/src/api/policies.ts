@@ -8,6 +8,8 @@ export const approve = (body: {
   english_rules: string[]
   retrieved_examples: string[]
   attempts: number
+  grounded?: boolean
+  ungrounded_confirmed?: boolean
   evaluation?: Record<string, unknown> | null
 }) => postJson<PolicyRecord>('/policies/approve', body)
 

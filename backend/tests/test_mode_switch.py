@@ -202,3 +202,19 @@ def test_forwarded_header_is_trusted_only_when_configured(monkeypatch):
     assert client_ip(Request(scope)) == "1.2.3.4"                                  # a spoofable header is ignored by default
     monkeypatch.setenv("TRUST_PROXY", "1")
     assert client_ip(Request(scope)) == "9.9.9.9"
+
+
+# ------------------------------------------------------------------ approving an ungrounded draft
+def test_approving_an_ungrounded_draft_needs_explicit_confirmation(client, tmp_path, monkeypatch):
+    from app.api.deps import get_adapter
+    from app.api.policies import get_store
+    from app.policies.store import PolicyStore
+    app.dependency_overrides[get_store] = lambda: PolicyStore(tmp_path / "policies")
+    try:
+        body = {"yog_source": NIGHT.gold_yog, "english_rules": ["x"], "grounded": False}
+        r = client.post("/policies/approve", json=body)
+        assert r.status_code == 409 and "read it line by line" in r.json()["detail"]
+        assert client.post("/policies/approve", json={**body, "ungrounded_confirmed": True}).status_code == 200
+        assert client.post("/policies/approve", json={**body, "grounded": True}).status_code == 200   # grounded drafts are unchanged
+    finally:
+        app.dependency_overrides.clear()
