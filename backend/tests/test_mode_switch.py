@@ -170,6 +170,27 @@ def test_input_fields_are_bounded(client):
     assert client.post("/translate", json={"english_rules": ["r"], "tools": TOOLS * 101}).status_code == 422
 
 
+# ------------------------------------------------------------------ .env loading
+def test_dotenv_is_read_once_per_call_and_skipped_when_disabled(monkeypatch):
+    """Regression: _load_env once called itself forever; tests never noticed because they disable it."""
+    calls = []
+    monkeypatch.setattr(factory, "load_dotenv", lambda path: calls.append(str(path)))
+    monkeypatch.delenv("YOG_NO_DOTENV", raising=False)
+    factory._load_env()
+    assert len(calls) == 1 and calls[0].replace("\\", "/").endswith("backend/.env")
+    monkeypatch.setenv("YOG_NO_DOTENV", "1")
+    factory._load_env()
+    assert len(calls) == 1
+
+
+def test_get_provider_and_live_status_work_with_dotenv_enabled(monkeypatch):
+    monkeypatch.setattr(factory, "load_dotenv", lambda path: None)
+    monkeypatch.delenv("YOG_NO_DOTENV", raising=False)
+    monkeypatch.setenv("LLM_PROVIDER", "fake")
+    assert factory.get_provider().name == "fake"
+    assert factory.live_status()["live_available"] is False
+
+
 # ------------------------------------------------------------------ guard units
 def test_token_bucket_refills_over_time():
     t = [0.0]

@@ -18,7 +18,7 @@ def _load_env() -> None:
     """Read backend/.env (never overriding real environment variables). Tests set YOG_NO_DOTENV so a developer's
     local keys can never leak into them."""
     if not os.getenv("YOG_NO_DOTENV"):
-        _load_env()
+        load_dotenv(REPO_ROOT / "backend" / ".env")
 
 
 def _flag(name: str, default: bool) -> bool:
