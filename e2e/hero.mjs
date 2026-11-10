@@ -49,17 +49,14 @@ check('the globe is ready (WebGL)', await ready(page))
 check('on landing it starts turning from side-on to front-on', await until(page, async () => (await attr(page, 'data-phase')) === 'reveal', 6000))
 check('then keeps turning slowly on its own', await until(page, async () => (await attr(page, 'data-phase')) === 'orbit', 15000))
 check('the orb is drawn in gold dots', (await count(page, GOLD)) > 1500)
+const middle = [0.3, 0.3, 0.7, 0.6]
+const WHITE = 'r > 215 && g > 190 && b > 130'
+// the logo is always inside: when the swing ends the orb faces us and the letters are bright dots in the middle
+const faceOn = await count(page, WHITE, middle)
+check('front-on, the YOG letters are a bright cluster of dots in the middle', faceOn > 400, String(faceOn))
 const y0 = await yaw(page); await page.waitForTimeout(2200)
 check('it turns by itself', Math.abs((await yaw(page)) - y0) > 0.03, `${y0} -> ${await yaw(page)}`)
 
-// the logo is always inside: turn it to face us and the letters are bright dots in the middle of the orb
-await page.getByTestId('hero-logo-btn').focus(); await page.keyboard.press('Enter')
-check('"Show the logo" turns the orb to face the viewer (keyboard)', await until(page, async () => Math.abs(await yaw(page)) < 0.2, 8000))
-await page.mouse.move(5, 5); await page.waitForTimeout(600)
-const middle = [0.3, 0.3, 0.7, 0.6]
-const WHITE = 'r > 215 && g > 190 && b > 130'
-const faceOn = await count(page, WHITE, middle)
-check('front-on, the YOG letters are a bright cluster of dots in the middle', faceOn > 400, String(faceOn))
 
 // drag turns it side-on: the logo becomes a band, and nothing is rebuilt (same dots)
 const box = await page.locator(G).boundingBox()

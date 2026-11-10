@@ -13,7 +13,7 @@ function HeroLogoFallback() {
 
 /**
  * The interactive gold orb for the landing hero, with the YOG logo living inside it.
- * Drag to turn it (it coasts), hover to dent the skin, click for a ripple and a burst of dots, "Show the logo" turns it to face you.
+ * Drag to turn it (it coasts), hover to nudge a few dots, click for a ripple and a burst of dots.
  * Stops drawing when off-screen or the tab is hidden; pause / reduced motion shows one still frame facing the viewer.
  */
 export function HeroGlobeView({ className = '' }: { className?: string }) {
@@ -65,14 +65,13 @@ export function HeroGlobeView({ className = '' }: { className?: string }) {
     if (i.dragging && drag.current.moved < 6) { const p = local(e); i.clickX = p.x; i.clickY = p.y; i.clickId++ }   // a click/tap, not a drag
     i.dragging = false
   }
-  const showLogo = () => { input.current.faceId++ }
 
   return (
     <div className={`relative ${className}`}>
       <div ref={host} role="img" aria-label="An interactive globe of gold dots with the YOG logo inside it"
         data-testid="hero-globe" data-calm={calm ? 'true' : 'false'} data-ready={ok ? undefined : 'fallback'}
         {...m('hero:globe')}
-        className="absolute inset-x-0 top-0 bottom-14 cursor-grab select-none active:cursor-grabbing" style={{ touchAction: 'pan-y' }}
+        className="absolute inset-0 cursor-grab select-none active:cursor-grabbing" style={{ touchAction: 'pan-y' }}
         onPointerMove={onMove} onPointerEnter={onEnter} onPointerLeave={onLeave} onPointerDown={onDown} onPointerUp={onUp} onPointerCancel={onLeave}>
         {ok ? (
           <Boundary fallback={<HeroLogoFallback />}>
@@ -81,12 +80,6 @@ export function HeroGlobeView({ className = '' }: { className?: string }) {
             </Suspense>
           </Boundary>
         ) : <HeroLogoFallback />}
-      </div>
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 pb-1">
-        <p className="text-xs text-slate-400" {...m('hero:globe-hint')}>Drag to spin it. Click for a ripple.</p>
-        <button type="button" onClick={showLogo} className="hero-logo-btn pointer-events-auto" data-testid="hero-logo-btn" {...m('hero:logo-btn')}>
-          Show the logo
-        </button>
       </div>
     </div>
   )

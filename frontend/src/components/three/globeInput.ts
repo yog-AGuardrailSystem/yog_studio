@@ -10,9 +10,8 @@ export interface GlobeInput {
   clickId: number           // bumped on every click/tap (not drag); clickX/clickY say where
   clickX: number
   clickY: number
-  faceId: number            // bumped when "Show the logo" is pressed: turn the orb to face the viewer
 }
 
 export const newInput = (): GlobeInput => ({
-  x: 0, y: 0, inside: false, dragging: false, dragDX: 0, dragDY: 0, clickId: 0, clickX: 0, clickY: 0, faceId: 0,
+  x: 0, y: 0, inside: false, dragging: false, dragDX: 0, dragDY: 0, clickId: 0, clickX: 0, clickY: 0,
 })

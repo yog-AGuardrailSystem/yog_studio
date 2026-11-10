@@ -119,14 +119,7 @@ body {
 
 .gate-skeleton { min-height: 22rem; border-radius: 1rem; background: radial-gradient(circle at 50% 50%, rgba(245,185,66,.10), transparent 60%); animation: pulse 1.6s ease-in-out infinite; }
 
-/* hero globe: the "show the logo" control and the no-WebGL fallback */
-.hero-logo-btn {
-  border: 1px solid rgba(245, 185, 66, .45); background: rgba(245, 185, 66, .08); color: #ffe2a0;
-  border-radius: 9999px; padding: .3rem .9rem; font-size: .8rem; font-weight: 600;
-  transition: background-color .15s, border-color .15s, transform .15s;
-}
-.hero-logo-btn:hover { background: rgba(245, 185, 66, .2); border-color: #f5b942; transform: translateY(-1px); }
-.hero-logo-btn:focus-visible { outline: 2px solid #f5b942; outline-offset: 3px; }
+/* hero globe: the no-WebGL fallback */
 .hero-logo-fallback { position: absolute; inset: 0; display: grid; place-items: center; }
 .hero-logo-fallback::before {
   content: ""; position: absolute; width: min(78%, 26rem); aspect-ratio: 1; border-radius: 9999px;

@@ -287,7 +287,7 @@ function Globe({ mask, nOrb, nLogo, calm, input, host }: GlobeProps) {
 
   const st = useRef({
     t0: performance.now() / 1000, phase: 'reveal' as 'reveal' | 'orbit', yaw: -Math.PI / 2, pitch: REST_PITCH, vyaw: SPIN, hover: 0,
-    lastClick: 0, lastFace: 0, faceUntil: 0, faceTarget: 0, impacts: 0, slot: 0, burst: 0, ready: false, lastData: 0,
+    lastClick: 0, impacts: 0, slot: 0, burst: 0, ready: false, lastData: 0,
     over: false, px: 0, py: 0, shown: 0, picked: [] as number[], weights: new Map<number, number>(),
   })
 
@@ -310,7 +310,6 @@ function Globe({ mask, nOrb, nLogo, calm, input, host }: GlobeProps) {
       enterMain = easeOut(age / ENTER); enterShell = easeOut((age - 0.16) / ENTER)
       if (i.dragging) {
         if (s.phase === 'reveal') s.phase = 'orbit'
-        s.faceUntil = 0
         s.yaw += i.dragDX * 0.0035
         s.pitch = Math.max(-1.2, Math.min(1.2, s.pitch + i.dragDY * 0.0035))     // drag up: the face of the orb moves up with the pointer
         const v = Math.max(-3, Math.min(3, (i.dragDX * 0.0035) / Math.max(dt, 1e-3)))
@@ -321,18 +320,10 @@ function Globe({ mask, nOrb, nLogo, calm, input, host }: GlobeProps) {
         s.yaw = (-Math.PI / 2) * (1 - easeOut(k))
         s.pitch += (REST_PITCH - s.pitch) * (1 - Math.exp(-dt / 0.6))
         if (k >= 1) s.phase = 'orbit'
-      } else if (now < s.faceUntil) {                   // "Show the logo": ease to the nearest front view
-        s.yaw += (s.faceTarget - s.yaw) * (1 - Math.exp(-dt * 5))
-        s.pitch += (REST_PITCH - s.pitch) * (1 - Math.exp(-dt * 5))
-        s.vyaw = 0
       } else {                                          // coast after a drag, then settle into the slow spin
         s.yaw += s.vyaw * dt
         s.vyaw += (SPIN - s.vyaw) * (1 - Math.exp(-dt / 1.6))
         s.pitch += (REST_PITCH - s.pitch) * (1 - Math.exp(-dt / 2.4))
-      }
-      if (i.faceId > s.lastFace) {
-        s.lastFace = i.faceId; s.phase = 'orbit'
-        s.faceTarget = Math.round(s.yaw / TAU) * TAU; s.faceUntil = now + 1.4
       }
       // "over the globe" means over the orb itself, not just somewhere in its box
       s.over = i.inside && !i.dragging && Math.hypot(i.x - w / 2, i.y - h / 2) < radiusPx * 1.03

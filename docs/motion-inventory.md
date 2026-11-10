@@ -32,7 +32,6 @@ count grows with the program on screen (one id per token, per AST node, per test
 | `pipe:packet`, `pipe:packet-trail` | packet crosses the diagram | in view | stopped | e2e/motion.mjs |
 | `card:<group>:*` | per-example flow: dots travel, beam to ALLOW/DENY (drawn from the program's real counts) | always | beam not rendered, dots stopped | e2e/motion.mjs |
 | `hero:globe` | ~14,000 gold dots in an orb (rim light, faint far side, sparse halo shell) with a letter-shaped YOG core of ~9,000 dots through its depth: swings side-on to front-on on landing, turns slowly, drag with inertia, hover dents the skin and nudges the 96 dots nearest the pointer by a few pixels (only while it is over the orb), click sends a ripple and a debris burst | page load, pointer | one still frame facing the viewer; static gold wordmark without WebGL | e2e/hero.mjs |
-| `hero:globe-hint`, `hero:logo-btn` | the hint line and the keyboard-reachable "Show the logo" button (turns the orb to face the viewer) | always | none | e2e/hero.mjs |
 | `fx:scroll-rail` | progress bar from scroll position | scroll | static | e2e/motion.mjs |
 | `fx:dot:*` | section dots glow for the current section | scroll | static | e2e/motion.mjs |
 | `fx:particles` | constellation canvas | page load | not started | e2e/motion.mjs |
