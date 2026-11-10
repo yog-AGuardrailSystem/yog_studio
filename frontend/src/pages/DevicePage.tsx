@@ -151,7 +151,7 @@ export default function DevicePage() {
       <div className="max-h-96 overflow-auto rounded border border-slate-200 bg-white" data-testid="device-log">
         <table className="w-full text-left text-xs">
           <thead className="sticky top-0 bg-slate-100 uppercase text-slate-500">
-            <tr><th className="p-2">#</th><th>Sim time</th><th>Command</th><th>Decision</th><th>Result</th></tr>
+            <tr><th className="p-2">#</th><th>Sim time</th><th>Command</th><th>Decision</th><th>Result</th><th /></tr>
           </thead>
           <tbody>
             {[...snap.log].reverse().map((e) => (
@@ -161,6 +161,13 @@ export default function DevicePage() {
                 <td className="font-mono">{e.tool}({Object.values(e.args).join(', ')})</td>
                 <td className="font-bold">{e.decision}</td>
                 <td>{e.message}</td>
+                <td className="p-2">
+                  {e.guarded && (
+                    <Link className="underline" data-testid={`why-${e.n}`} to={`/studio/why?${new URLSearchParams({
+                      action: 'can_' + e.tool, resource: String(Object.values(e.args).find((v) => typeof v === 'string') ?? 'item'), ctx: e.facts.join('|'),
+                    })}`}>Why?</Link>
+                  )}
+                </td>
               </motion.tr>
             ))}
           </tbody>

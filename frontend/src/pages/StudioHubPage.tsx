@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { listPolicies } from '../api/policies'
 import { Reveal } from '../components/motion/Reveal'
 import { Spotlight } from '../components/motion/Spotlight'
 import { GROUPS, TOOLS, type StudioTool } from '../lib/tools'
@@ -45,6 +46,11 @@ export default function StudioHubPage() {
   }, [hash, navigate])
 
   const ready = TOOLS.filter((t) => t.status === 'ready').length
+  const planned = TOOLS.length - ready
+  const [approvedId, setApprovedId] = useState<string | null>(null)
+  useEffect(() => {
+    listPolicies().then((p) => setApprovedId(p[0]?.id ?? null)).catch(() => undefined)
+  }, [])
   return (
     <main>
       <section className="mx-auto max-w-6xl px-5 pb-6 pt-14">
@@ -53,7 +59,13 @@ export default function StudioHubPage() {
         <p className="mt-4 max-w-2xl text-lg text-slate-300">
           Every tool works on the same YOG policy. Use one on its own, or go left to right: build, understand, test, ship, operate.
         </p>
-        <p className="mt-3 text-sm text-slate-400" data-testid="tool-count">{ready} ready, {TOOLS.length - ready} planned.</p>
+        <p className="mt-3 text-sm text-slate-400" data-testid="tool-count">{planned === 0 ? `${ready} tools, all ready.` : `${ready} ready, ${planned} planned.`}</p>
+        {approvedId && (
+          <p className="mt-4 max-w-2xl rounded-lg border border-white/15 bg-white/5 p-3 text-sm text-slate-200" data-testid="hub-approved">
+            You have an approved policy ({approvedId.slice(-8)}). <Link to="/studio/scorecard" className="link">See its scorecard</Link>, or{' '}
+            <Link to="/studio/map" className="link">draw its map</Link>.
+          </p>
+        )}
       </section>
 
       {GROUPS.map((g) => {
