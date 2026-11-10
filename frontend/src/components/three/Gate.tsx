@@ -1,29 +1,10 @@
-import { Component, lazy, Suspense, useMemo, type ReactNode } from 'react'
+import { lazy, Suspense, useMemo, type ReactNode } from 'react'
 import { useReducedMotion } from 'motion/react'
 import type { GateSceneProps } from './GateScene'
+import { Boundary, webglOk } from './webgl'
 
 // three.js lives in its own chunk and only loads on pages that render <Gate/> (never in Studio).
 const GateScene = lazy(() => import('./GateScene'))
-
-function webglOk(): boolean {
-  try {
-    if (new URLSearchParams(window.location.search).get('fx') === 'off') return false
-    const c = document.createElement('canvas')
-    return !!(c.getContext('webgl2') || c.getContext('webgl'))
-  } catch {
-    return false
-  }
-}
-
-class Boundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
-  state = { failed: false }
-  static getDerivedStateFromError() {
-    return { failed: true }
-  }
-  render() {
-    return this.state.failed ? this.props.fallback : this.props.children
-  }
-}
 
 /**
  * Lazy 3D scene with graceful fallbacks: no WebGL / ?fx=off / render error -> `fallback`.

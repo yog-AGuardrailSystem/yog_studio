@@ -60,7 +60,7 @@ export default function HowItWorksPage() {
                 type="button"
                 onClick={() => go(i)}
                 aria-current={i === active ? 'step' : undefined}
-                className={`whitespace-nowrap rounded-full px-3 py-1 text-sm transition-colors ${i === active ? 'bg-sky-700 font-semibold text-on-accent shadow-[0_0_18px_-2px_rgba(56,189,248,.8)]' : 'text-slate-300 hover:bg-white/10'}`}
+                className={`whitespace-nowrap rounded-full px-3 py-1 text-sm transition-colors ${i === active ? 'bg-sky-700 font-semibold text-on-accent shadow-[0_0_18px_-2px_rgba(245,185,66,.8)]' : 'text-slate-300 hover:bg-white/10'}`}
               >
                 {i + 1}. {s.short}
               </button>
@@ -70,7 +70,7 @@ export default function HowItWorksPage() {
         <div className="h-0.5 bg-white/5" aria-hidden>
           <motion.div
             data-testid="beam"
-            className="h-full bg-gradient-to-r from-sky-400 to-emerald-400 shadow-[0_0_12px_rgba(56,189,248,.9)]"
+            className="h-full bg-gradient-to-r from-sky-300 to-orange-400 shadow-[0_0_12px_rgba(245,185,66,.9)]"
             initial={false}
             animate={{ width: `${((active + 1) / STAGES.length) * 100}%` }}
             transition={{ duration: 0.5, ease: 'easeOut' }}

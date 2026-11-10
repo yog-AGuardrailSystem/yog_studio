@@ -8,6 +8,7 @@ cd frontend ; npm run dev
 cd e2e      ; npm ci
 node workbench.mjs   # the YOG workbench at /studio
 node landing.mjs     # landing + how-it-works: live explorer, example cards, finished-product wording, overflow
+node hero.mjs        # black + gold hero: gold globe forms YOG, hover/click/drag, pause, fallback (needs no backend)
 node motion.mjs      # motion registry count (target 300), pause control, OS reduced motion
 node axe.mjs         # axe contrast and structure on every main screen
 node ui.mjs          # agent tools flow: upload, rules, review/approve, patch, device 3am block
@@ -15,4 +16,4 @@ node prod.mjs        # production build (uvicorn app.asgi:app --port 8002 after 
 ```
 
 `ui.mjs` approves a policy, so it writes into `backend/data/policies/`. Set `CHROME_PATH` if Chrome is not found.
-CI (`.github/workflows/ci-cd.yml`, job `e2e`) runs all six on every PR.
+CI (`.github/workflows/ci-cd.yml`, job `e2e`) runs all seven on every PR.

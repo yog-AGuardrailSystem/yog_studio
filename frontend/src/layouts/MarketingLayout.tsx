@@ -10,8 +10,8 @@ export default function MarketingLayout() {
     <div className="mkt min-h-screen">
       <GlowBackground />
       <header className="sticky top-0 z-20 border-b border-white/10 bg-slate-950/70 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5">
-          <Link to="/" className="font-display whitespace-nowrap text-lg font-bold tracking-tight text-white">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-3 sm:px-5">
+          <Link to="/" className="font-display mr-3 whitespace-nowrap text-lg font-bold tracking-tight text-white">
             YOG<span className="text-glow"> Studio</span>
           </Link>
           <nav className="flex items-center gap-2 whitespace-nowrap text-sm sm:gap-5">
