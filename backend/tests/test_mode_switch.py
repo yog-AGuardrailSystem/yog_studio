@@ -239,3 +239,37 @@ def test_approving_an_ungrounded_draft_needs_explicit_confirmation(client, tmp_p
         assert client.post("/policies/approve", json={**body, "grounded": True}).status_code == 200   # grounded drafts are unchanged
     finally:
         app.dependency_overrides.clear()
+
+
+# ------------------------------------------------------------------ secrets
+def test_the_api_key_never_appears_in_responses_or_logs(client, monkeypatch):
+    """With a key configured, nothing the server says or logs may contain it (a live provider is stubbed: no network)."""
+    import io
+    import logging
+    from app.core.log import JsonFormatter, logger
+    from app.llm.provider import LLMError
+
+    secret = "AIza-SECRET-must-not-leak-9"
+    monkeypatch.setenv("GEMINI_API_KEY", secret)
+
+    class Failing(FakeProvider):
+        name = "gemini"
+
+        def generate(self, prompt, system=None):
+            raise LLMError("Gemini request failed after 3 attempts: connection reset")
+
+    monkeypatch.setattr(factory, "real_provider", lambda: Failing())
+    buf = io.StringIO()
+    handler = logging.StreamHandler(buf)
+    handler.setFormatter(JsonFormatter())
+    logger.addHandler(handler)
+    try:
+        seen = [client.get("/info").text, client.get("/status").text,
+                client.post("/translate", json={**BODY, "mode": "real"}).text,
+                client.post("/retrieve", json={"english": NIGHT.english, "mode": "real"}).text,
+                client.post("/translate", json={"english_rules": "not-a-list"}).text,
+                client.post("/policies/approve", json={"yog_source": "allow broken("}).text]
+    finally:
+        logger.removeHandler(handler)
+    assert "AIza" not in " ".join(seen) + buf.getvalue()
+    assert buf.getvalue().count('"msg":"request"') >= 5                        # logging happened, and stayed clean

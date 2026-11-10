@@ -17,6 +17,8 @@ from datetime import datetime, timezone
 
 from fastapi import HTTPException, Request
 
+from app.core import metrics
+
 
 def _num(name: str, default: float) -> float:
     try:
@@ -102,8 +104,11 @@ def live_guard(request: Request) -> None:
     """Call before any request that will spend live-LLM quota. Raises 429 with a message the UI shows as is."""
     ok, wait = limiter.allow("live", client_ip(request), _num("LIVE_RATE_PER_MIN", 6))
     if not ok:
+        metrics.inc("live_refused")
         raise too_many(wait, "Live AI is rate limited to protect the server's quota.")
     cap = int(_num("LIVE_LLM_DAILY_CAP", 300))
     if not budget.spend(cap):
+        metrics.inc("live_refused")
         raise HTTPException(status_code=429, detail="The live AI budget for today is used up. Switch to Offline mode, or try again tomorrow.",
                             headers={"Retry-After": "3600"})
+    metrics.inc("live_calls")

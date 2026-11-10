@@ -100,9 +100,34 @@ jobs:
       - name: Agent flow (upload, rules, review, patch, device)
         working-directory: e2e
         run: node ui.mjs
+      - name: Production build under its real security headers (CSP, session cookie, visitor isolation)
+        run: |
+          (cd frontend && npm run build)
+          (cd backend && YOG_NO_DOTENV=1 LLM_PROVIDER=fake nohup uv run python -m uvicorn app.asgi:app --port 8002 > /tmp/prod.log 2>&1 &)
+          for i in $(seq 1 60); do curl -fs localhost:8002/api/health >/dev/null && break; sleep 2; done
+          cd e2e && node prod.mjs
       - name: Server logs on failure
         if: failure()
-        run: tail -n 80 /tmp/backend.log /tmp/frontend.log
+        run: tail -n 80 /tmp/backend.log /tmp/frontend.log /tmp/prod.log
+
+  audit:
+    name: Dependency audit (npm and Python)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: npm audit (runtime dependencies, high and above)
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+      - uses: astral-sh/setup-uv@v5
+      - name: pip-audit (locked backend dependencies)
+        working-directory: backend
+        run: |
+          uv export --no-hashes --no-dev -o /tmp/req.txt -q
+          uvx pip-audit -r /tmp/req.txt --no-deps --disable-pip
 
   docker:
     name: Docker image (builds the C lexer, smoke-tests the container)

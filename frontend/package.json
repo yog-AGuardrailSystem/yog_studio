@@ -30,5 +30,8 @@
     "oxlint": "^1.88.0",
     "typescript": "~6.0.3",
     "vite": "^8.3.4"
+  },
+  "overrides": {
+    "dompurify": "3.4.17"
   }
 }

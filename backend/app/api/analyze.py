@@ -25,9 +25,12 @@ class AnalyzeResponse(BaseModel):
 def analyze_source(filename: str, source: str) -> AnalyzeResponse:
     """Static analysis only. Raises SourceError for non-Python / unparsable input."""
     tree = parse_source(source)
-    detected = detect(tree, source)
-    tools = extract_tools(tree, detected)
-    candidates = list_candidates(tree) if detected.kind == "unknown" else []
+    try:
+        detected = detect(tree, source)
+        tools = extract_tools(tree, detected)
+        candidates = list_candidates(tree) if detected.kind == "unknown" else []
+    except RecursionError as e:                          # absurdly nested code: say so instead of crashing
+        raise SourceError("this file is too deeply nested to analyse") from e
     return AnalyzeResponse(filename=filename, source=source, detect=detected, tools=tools, candidates=candidates)
 
 
