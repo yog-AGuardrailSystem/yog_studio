@@ -1,0 +1,1150 @@
+{
+  "provider": "gemini",
+  "oracle_tools": false,
+  "hybrid": true,
+  "lex_weight": 0.0,
+  "model": "gemini-3.6-flash",
+  "embed_model": "gemini-embedding-2",
+  "when": "2026-11-10T08:22:33+00:00",
+  "overall": {
+    "recall@1": {
+      "k": 106,
+      "n": 109,
+      "pct": 97.2,
+      "ci_low": 92.2,
+      "ci_high": 99.1
+    },
+    "recall@3": {
+      "k": 109,
+      "n": 109,
+      "pct": 100.0,
+      "ci_low": 96.6,
+      "ci_high": 100.0
+    },
+    "recall@5": {
+      "k": 109,
+      "n": 109,
+      "pct": 100.0,
+      "ci_low": 96.6,
+      "ci_high": 100.0
+    },
+    "mrr": 0.986,
+    "n": 109
+  },
+  "by_source": {
+    "claude-draft": {
+      "recall@1": {
+        "k": 89,
+        "n": 92,
+        "pct": 96.7,
+        "ci_low": 90.8,
+        "ci_high": 98.9
+      },
+      "recall@3": {
+        "k": 92,
+        "n": 92,
+        "pct": 100.0,
+        "ci_low": 96.0,
+        "ci_high": 100.0
+      },
+      "recall@5": {
+        "k": 92,
+        "n": 92,
+        "pct": 100.0,
+        "ci_low": 96.0,
+        "ci_high": 100.0
+      },
+      "mrr": 0.984,
+      "n": 92
+    },
+    "team": {
+      "recall@1": {
+        "k": 17,
+        "n": 17,
+        "pct": 100.0,
+        "ci_low": 81.6,
+        "ci_high": 100.0
+      },
+      "recall@3": {
+        "k": 17,
+        "n": 17,
+        "pct": 100.0,
+        "ci_low": 81.6,
+        "ci_high": 100.0
+      },
+      "recall@5": {
+        "k": 17,
+        "n": 17,
+        "pct": 100.0,
+        "ci_low": 81.6,
+        "ci_high": 100.0
+      },
+      "mrr": 1.0,
+      "n": 17
+    }
+  },
+  "by_tier": {
+    "easy": {
+      "recall@1": {
+        "k": 78,
+        "n": 79,
+        "pct": 98.7,
+        "ci_low": 93.2,
+        "ci_high": 99.8
+      },
+      "recall@3": {
+        "k": 79,
+        "n": 79,
+        "pct": 100.0,
+        "ci_low": 95.4,
+        "ci_high": 100.0
+      },
+      "recall@5": {
+        "k": 79,
+        "n": 79,
+        "pct": 100.0,
+        "ci_low": 95.4,
+        "ci_high": 100.0
+      },
+      "mrr": 0.994,
+      "n": 79
+    },
+    "hard": {
+      "recall@1": {
+        "k": 28,
+        "n": 30,
+        "pct": 93.3,
+        "ci_low": 78.7,
+        "ci_high": 98.2
+      },
+      "recall@3": {
+        "k": 30,
+        "n": 30,
+        "pct": 100.0,
+        "ci_low": 88.6,
+        "ci_high": 100.0
+      },
+      "recall@5": {
+        "k": 30,
+        "n": 30,
+        "pct": 100.0,
+        "ci_low": 88.6,
+        "ci_high": 100.0
+      },
+      "mrr": 0.967,
+      "n": 30
+    }
+  },
+  "misses": [
+    {
+      "id": "sh-never-back-door",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 2,
+      "top1": "sh-lock-always",
+      "top1_score": 0.8326,
+      "paraphrase": "The back door must stay locked as far as the agent is concerned."
+    },
+    {
+      "id": "fs-never-delete",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 2,
+      "top1": "fs-system-files-protected",
+      "top1_score": 0.7489,
+      "paraphrase": "The assistant has no permission to erase anything from disk."
+    },
+    {
+      "id": "fs-owner-edits",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 2,
+      "top1": "gen-owner-only-edit",
+      "top1_score": 0.8383,
+      "paraphrase": "Removal of a document is the owner's privilege only."
+    }
+  ],
+  "rows": [
+    {
+      "id": "db-readers-query",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "db-readers-query",
+      "top1_score": 0.8835,
+      "paraphrase": "Read-only users can issue queries, but dropping a table is off limits for them."
+    },
+    {
+      "id": "db-never-drop",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "db-never-drop",
+      "top1_score": 0.8854,
+      "paraphrase": "Dropping tables is forbidden for everybody, yet database administrators keep the ability to query."
+    },
+    {
+      "id": "db-drop-not-production",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "db-drop-not-production",
+      "top1_score": 0.9128,
+      "paraphrase": "Table drops are reserved for DBAs and are not allowed on production databases under any circumstances."
+    },
+    {
+      "id": "db-query-row-limit",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "db-query-row-limit",
+      "top1_score": 0.8896,
+      "paraphrase": "A single query must not return more than a thousand rows."
+    },
+    {
+      "id": "db-backup-night-window",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "db-backup-night-window",
+      "top1_score": 0.9233,
+      "paraphrase": "Run backups only in the early morning window from 1 to 5 am."
+    },
+    {
+      "id": "db-prod-readonly-for-agent",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "db-prod-readonly-for-agent",
+      "top1_score": 0.9339,
+      "paraphrase": "Write statements against production databases are off limits to the agent."
+    },
+    {
+      "id": "db-sensitive-tables",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "db-sensitive-tables",
+      "top1_score": 0.9254,
+      "paraphrase": "Querying tables that hold personal information is restricted to database administrators."
+    },
+    {
+      "id": "db-backup-approved-destinations",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "db-backup-approved-destinations",
+      "top1_score": 0.9136,
+      "paraphrase": "Only approved storage locations may receive backups."
+    },
+    {
+      "id": "db-no-peak-hours-maintenance",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "db-no-peak-hours-maintenance",
+      "top1_score": 0.9181,
+      "paraphrase": "During working hours, 9 to 18, maintenance jobs such as dropping tables or taking backups are not allowed."
+    },
+    {
+      "id": "db-dba-two-roles",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "db-dba-two-roles",
+      "top1_score": 0.9331,
+      "paraphrase": "Engineers and DBAs can both query, but taking backups belongs to DBAs alone."
+    },
+    {
+      "id": "fs-read-any",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fs-read-any",
+      "top1_score": 0.8728,
+      "paraphrase": "Reading is fine for any file; writing and deleting are not permitted."
+    },
+    {
+      "id": "fs-never-delete",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fs-never-delete",
+      "top1_score": 0.9311,
+      "paraphrase": "File deletion is never allowed for the agent."
+    },
+    {
+      "id": "fs-write-sandbox-only",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fs-write-sandbox-only",
+      "top1_score": 0.9072,
+      "paraphrase": "Writes are limited to the sandbox directory."
+    },
+    {
+      "id": "fs-system-files-protected",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fs-system-files-protected",
+      "top1_score": 0.9266,
+      "paraphrase": "System files can neither be written nor removed by anyone, administrators included."
+    },
+    {
+      "id": "fs-delete-temp-only",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fs-delete-temp-only",
+      "top1_score": 0.9051,
+      "paraphrase": "Deleting is only permitted for files that live in the temp directory."
+    },
+    {
+      "id": "fs-write-size-limit",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fs-write-size-limit",
+      "top1_score": 0.8522,
+      "paraphrase": "No single write may exceed 1 MB, which is 1024 KB."
+    },
+    {
+      "id": "fs-env-files-secret",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fs-env-files-secret",
+      "top1_score": 0.9291,
+      "paraphrase": "Files containing secrets, like .env files, must be neither read nor modified by the agent."
+    },
+    {
+      "id": "fs-readonly-config",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fs-readonly-config",
+      "top1_score": 0.8712,
+      "paraphrase": "A file flagged read-only can never be changed."
+    },
+    {
+      "id": "fs-business-hours-write",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fs-business-hours-write",
+      "top1_score": 0.9406,
+      "paraphrase": "Only between 9 and 17 may the agent write to files."
+    },
+    {
+      "id": "fs-owner-edits",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fs-owner-edits",
+      "top1_score": 0.9227,
+      "paraphrase": "A user is allowed to delete a file only if they are its owner."
+    },
+    {
+      "id": "fs-list-directory-public",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fs-list-directory-public",
+      "top1_score": 0.9346,
+      "paraphrase": "Staff members may list directories; the private directory can only be listed by managers."
+    },
+    {
+      "id": "fin-transfer-cap",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fin-transfer-cap",
+      "top1_score": 0.9271,
+      "paraphrase": "Each transaction the finance bot makes is capped at 10000."
+    },
+    {
+      "id": "fin-large-needs-approval",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fin-large-needs-approval",
+      "top1_score": 0.9457,
+      "paraphrase": "Any transfer larger than 10000 requires a person to approve it, while smaller ones go through freely."
+    },
+    {
+      "id": "fin-frozen-accounts",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fin-frozen-accounts",
+      "top1_score": 0.8888,
+      "paraphrase": "Money must not leave an account that is frozen."
+    },
+    {
+      "id": "fin-weekend-freeze",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fin-weekend-freeze",
+      "top1_score": 0.9106,
+      "paraphrase": "Transfers are blocked on weekends."
+    },
+    {
+      "id": "fin-balance-anyone",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fin-balance-anyone",
+      "top1_score": 0.926,
+      "paraphrase": "All staff may look up a balance, while moving money is for tellers only."
+    },
+    {
+      "id": "fin-currency-whitelist",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fin-currency-whitelist",
+      "top1_score": 0.9109,
+      "paraphrase": "Only USD and EUR transfers are acceptable."
+    },
+    {
+      "id": "fin-approved-beneficiaries",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fin-approved-beneficiaries",
+      "top1_score": 0.9155,
+      "paraphrase": "Funds can only be sent to beneficiary accounts that have been approved."
+    },
+    {
+      "id": "fin-daily-limit",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fin-daily-limit",
+      "top1_score": 0.9287,
+      "paraphrase": "After the finance bot has transferred 50000 in a day it cannot transfer any more that day."
+    },
+    {
+      "id": "fin-receipt-internal",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fin-receipt-internal",
+      "top1_score": 0.9398,
+      "paraphrase": "Send receipts to customers only, never to staff email addresses."
+    },
+    {
+      "id": "fin-refund-small-auto",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "fin-refund-small-auto",
+      "top1_score": 0.9443,
+      "paraphrase": "The bot refunds amounts of 100 or less automatically and may not refund anything bigger."
+    },
+    {
+      "id": "gen-admin-all",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "gen-admin-all",
+      "top1_score": 0.911,
+      "paraphrase": "Administrators have full permissions; all other users are limited to reading documents."
+    },
+    {
+      "id": "gen-owner-only-edit",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "gen-owner-only-edit",
+      "top1_score": 0.94,
+      "paraphrase": "Editing a document is limited to its owner."
+    },
+    {
+      "id": "gen-suspended-users",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "gen-suspended-users",
+      "top1_score": 0.8684,
+      "paraphrase": "A suspended account cannot do anything at all."
+    },
+    {
+      "id": "gen-clearance-levels",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "gen-clearance-levels",
+      "top1_score": 0.9167,
+      "paraphrase": "Reading a document needs a clearance level equal to or above the document's level."
+    },
+    {
+      "id": "gen-deny-overrides-allow",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "gen-deny-overrides-allow",
+      "top1_score": 0.9509,
+      "paraphrase": "Managers may export data but never confidential datasets, which no one can export."
+    },
+    {
+      "id": "gen-deploy-not-friday",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "gen-deploy-not-friday",
+      "top1_score": 0.9516,
+      "paraphrase": "Engineers can deploy services every day other than Friday."
+    },
+    {
+      "id": "gen-restart-production-approval",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "gen-restart-production-approval",
+      "top1_score": 0.9494,
+      "paraphrase": "Restarting a production server needs sign-off, whereas engineers can restart development servers whenever they like."
+    },
+    {
+      "id": "gen-group-membership-rule",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "gen-group-membership-rule",
+      "top1_score": 0.9629,
+      "paraphrase": "Finance team members are allowed to see invoices."
+    },
+    {
+      "id": "gen-grant-access-two-roles",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "gen-grant-access-two-roles",
+      "top1_score": 0.9489,
+      "paraphrase": "Granting someone access is limited to admins and security officers."
+    },
+    {
+      "id": "gen-no-self-grant",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "gen-no-self-grant",
+      "top1_score": 0.9077,
+      "paraphrase": "No one, admins included, can give themselves access."
+    },
+    {
+      "id": "gen-maintenance-window",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "gen-maintenance-window",
+      "top1_score": 0.9431,
+      "paraphrase": "Server restarts are allowed only inside the 2am to 4am maintenance slot."
+    },
+    {
+      "id": "gen-share-external-ban",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "gen-share-external-ban",
+      "top1_score": 0.9353,
+      "paraphrase": "Internal documents may be shared with employees but not with contractors."
+    },
+    {
+      "id": "gen-rate-limit",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "gen-rate-limit",
+      "top1_score": 0.9329,
+      "paraphrase": "Block an agent after it has made 100 calls within the hour."
+    },
+    {
+      "id": "gen-default-deny-explicit",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "gen-default-deny-explicit",
+      "top1_score": 0.8971,
+      "paraphrase": "Registered users may read public documents, and everything else is denied."
+    },
+    {
+      "id": "net-email-internal-only",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "net-email-internal-only",
+      "top1_score": 0.8861,
+      "paraphrase": "Email may only be sent to addresses inside the company."
+    },
+    {
+      "id": "net-email-blocklist",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "net-email-blocklist",
+      "top1_score": 0.9346,
+      "paraphrase": "The agent can email anybody apart from blocklisted addresses."
+    },
+    {
+      "id": "net-email-recipient-cap",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "net-email-recipient-cap",
+      "top1_score": 0.9378,
+      "paraphrase": "No more than five recipients per email."
+    },
+    {
+      "id": "net-email-no-attachments",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "net-email-no-attachments",
+      "top1_score": 0.9491,
+      "paraphrase": "Emails sent by the agent must not carry attachments."
+    },
+    {
+      "id": "net-email-working-hours",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "net-email-working-hours",
+      "top1_score": 0.9377,
+      "paraphrase": "Sending email is limited to 8 in the morning through 8 at night."
+    },
+    {
+      "id": "net-http-allowlist",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "net-http-allowlist",
+      "top1_score": 0.8817,
+      "paraphrase": "Fetching is only permitted for URLs on approved hosts."
+    },
+    {
+      "id": "net-delete-user-data-admin",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "net-delete-user-data-admin",
+      "top1_score": 0.9256,
+      "paraphrase": "User data deletion is for admins only, and hard deletes are never permitted."
+    },
+    {
+      "id": "net-delete-user-self-only",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "net-delete-user-self-only",
+      "top1_score": 0.8893,
+      "paraphrase": "Users can erase only their own data."
+    },
+    {
+      "id": "sh-night-lock",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "sh-night-lock",
+      "top1_score": 0.9542,
+      "paraphrase": "Between 11 at night and 6 in the morning the agent is never allowed to open a door lock."
+    },
+    {
+      "id": "sh-thermostat-range",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "sh-thermostat-range",
+      "top1_score": 0.9169,
+      "paraphrase": "Keep the thermostat setting from dropping below 16 or rising above 28 degrees."
+    },
+    {
+      "id": "sh-valve-max-open",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "sh-valve-max-open",
+      "top1_score": 0.8766,
+      "paraphrase": "A valve must never be opened beyond half, which is 50 percent."
+    },
+    {
+      "id": "sh-lock-always",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "sh-lock-always",
+      "top1_score": 0.9534,
+      "paraphrase": "Locking any door is always permitted for the agent."
+    },
+    {
+      "id": "sh-front-door-only",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "sh-front-door-only",
+      "top1_score": 0.9399,
+      "paraphrase": "The only door the agent may unlock is the front door."
+    },
+    {
+      "id": "sh-never-back-door",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 2,
+      "top1": "sh-lock-always",
+      "top1_score": 0.8326,
+      "paraphrase": "The back door must stay locked as far as the agent is concerned."
+    },
+    {
+      "id": "sh-no-water-main",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "sh-no-water-main",
+      "top1_score": 0.88,
+      "paraphrase": "Hands off the main water valve for the agent."
+    },
+    {
+      "id": "sh-bedroom-evening-only",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "sh-bedroom-evening-only",
+      "top1_score": 0.9625,
+      "paraphrase": "Changing the bedroom thermostat is only allowed from 8 in the evening until 8 in the morning."
+    },
+    {
+      "id": "sh-unlock-only-when-home",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "sh-unlock-only-when-home",
+      "top1_score": 0.9365,
+      "paraphrase": "Doors may be unlocked by the agent solely while a person is at home."
+    },
+    {
+      "id": "sh-night-heat-cap",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "sh-night-heat-cap",
+      "top1_score": 0.9261,
+      "paraphrase": "Between 10pm and 6am do not let the thermostat go above 22."
+    },
+    {
+      "id": "sh-vacation-mode",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "sh-vacation-mode",
+      "top1_score": 0.9175,
+      "paraphrase": "In vacation mode the agent is barred from unlocking doors and adjusting the thermostat."
+    },
+    {
+      "id": "sh-admin-valve-assistant-status",
+      "source": "claude-draft",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "sh-admin-valve-assistant-status",
+      "top1_score": 0.9277,
+      "paraphrase": "Valves may be opened by the admin alone, and the assistant is restricted to checking device status."
+    },
+    {
+      "id": "team-a",
+      "source": "team",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "team-a",
+      "top1_score": 0.9149,
+      "paraphrase": "Database deletion is an admin-only action."
+    },
+    {
+      "id": "team-b",
+      "source": "team",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "team-b",
+      "top1_score": 0.9058,
+      "paraphrase": "A developer is allowed to deploy only to the staging environment."
+    },
+    {
+      "id": "team-c",
+      "source": "team",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "team-c",
+      "top1_score": 0.9102,
+      "paraphrase": "If your team owns a database you are allowed to modify it."
+    },
+    {
+      "id": "team-d",
+      "source": "team",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "team-d",
+      "top1_score": 0.9336,
+      "paraphrase": "Production deletes require being an admin, the production environment and the finance team as owner, all together."
+    },
+    {
+      "id": "team-e",
+      "source": "team",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "team-e",
+      "top1_score": 0.9435,
+      "paraphrase": "Reading a file is something only admins are allowed to do."
+    },
+    {
+      "id": "team-f",
+      "source": "team",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "team-f",
+      "top1_score": 0.9351,
+      "paraphrase": "Email to any address is open to admins; support staff are restricted to internal addresses."
+    },
+    {
+      "id": "team-g",
+      "source": "team",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "team-g",
+      "top1_score": 0.8788,
+      "paraphrase": "Admins can change any config file; devops engineers only the staging ones."
+    },
+    {
+      "id": "team-h",
+      "source": "team",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "team-h",
+      "top1_score": 0.9249,
+      "paraphrase": "Admins create users in any department; the HR bot only in departments that are non-technical."
+    },
+    {
+      "id": "team-i",
+      "source": "team",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "team-i",
+      "top1_score": 0.9061,
+      "paraphrase": "Finance admins have no transfer limit, while a customer may only transfer up to their personal limit that arrives with the request."
+    },
+    {
+      "id": "team-j",
+      "source": "team",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "team-j",
+      "top1_score": 0.9109,
+      "paraphrase": "Any shell command is fine for admins, but sandboxed agents are limited to commands marked safe."
+    },
+    {
+      "id": "team-k",
+      "source": "team",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "team-k",
+      "top1_score": 0.9165,
+      "paraphrase": "Uploading is unrestricted for admins; analysts may put only non-confidential files into the staging bucket."
+    },
+    {
+      "id": "team-l",
+      "source": "team",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "team-l",
+      "top1_score": 0.9058,
+      "paraphrase": "Admins may reach every API, researchers only the research-approved ones."
+    },
+    {
+      "id": "team-mnopq",
+      "source": "team",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "team-mnopq",
+      "top1_score": 0.9095,
+      "paraphrase": "Five different actions are each gated behind a single required role."
+    },
+    {
+      "id": "team-r",
+      "source": "team",
+      "tier": "easy",
+      "rank": 1,
+      "top1": "team-r",
+      "top1_score": 0.9136,
+      "paraphrase": "Every employee can open documents apart from confidential ones, because a deny always beats an allow."
+    },
+    {
+      "id": "db-query-row-limit",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "db-query-row-limit",
+      "top1_score": 0.7815,
+      "paraphrase": "Result sets from the database are truncated at a thousand records."
+    },
+    {
+      "id": "db-backup-night-window",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "db-backup-night-window",
+      "top1_score": 0.8094,
+      "paraphrase": "Snapshots of the data store are permitted solely in the small hours."
+    },
+    {
+      "id": "db-sensitive-tables",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "db-sensitive-tables",
+      "top1_score": 0.8334,
+      "paraphrase": "Only the people who administer the database get to look inside tables with private customer details."
+    },
+    {
+      "id": "db-backup-approved-destinations",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "db-backup-approved-destinations",
+      "top1_score": 0.765,
+      "paraphrase": "Copies of the database may be stored solely at sanctioned targets."
+    },
+    {
+      "id": "fs-never-delete",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 2,
+      "top1": "fs-system-files-protected",
+      "top1_score": 0.7489,
+      "paraphrase": "The assistant has no permission to erase anything from disk."
+    },
+    {
+      "id": "fs-write-size-limit",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "fs-write-size-limit",
+      "top1_score": 0.7745,
+      "paraphrase": "A payload bigger than a megabyte cannot be saved in one go."
+    },
+    {
+      "id": "fs-env-files-secret",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "fs-env-files-secret",
+      "top1_score": 0.8029,
+      "paraphrase": "Credential-bearing dotfiles are completely off limits, for opening and for editing."
+    },
+    {
+      "id": "fs-owner-edits",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 2,
+      "top1": "gen-owner-only-edit",
+      "top1_score": 0.8383,
+      "paraphrase": "Removal of a document is the owner's privilege only."
+    },
+    {
+      "id": "fin-transfer-cap",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "fin-transfer-cap",
+      "top1_score": 0.8798,
+      "paraphrase": "The payments bot cannot move more than ten thousand in one go."
+    },
+    {
+      "id": "fin-frozen-accounts",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "fin-frozen-accounts",
+      "top1_score": 0.8044,
+      "paraphrase": "A locked bank account cannot be a source of outgoing funds."
+    },
+    {
+      "id": "fin-weekend-freeze",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "fin-weekend-freeze",
+      "top1_score": 0.8731,
+      "paraphrase": "Saturday and Sunday are blackout days for sending money."
+    },
+    {
+      "id": "fin-currency-whitelist",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "fin-currency-whitelist",
+      "top1_score": 0.7807,
+      "paraphrase": "Payments in any currency other than dollars or euros are refused."
+    },
+    {
+      "id": "fin-daily-limit",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "fin-daily-limit",
+      "top1_score": 0.8266,
+      "paraphrase": "Once fifty thousand has gone out in a day, the bot must stop sending funds."
+    },
+    {
+      "id": "gen-suspended-users",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "gen-suspended-users",
+      "top1_score": 0.8618,
+      "paraphrase": "Accounts under suspension lose every capability."
+    },
+    {
+      "id": "gen-no-self-grant",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "gen-no-self-grant",
+      "top1_score": 0.8673,
+      "paraphrase": "A person may not elevate their own permissions."
+    },
+    {
+      "id": "gen-rate-limit",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "gen-rate-limit",
+      "top1_score": 0.7969,
+      "paraphrase": "Throttle callers that exceed a hundred invocations in sixty minutes."
+    },
+    {
+      "id": "gen-deploy-not-friday",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "gen-deploy-not-friday",
+      "top1_score": 0.8275,
+      "paraphrase": "Shipping a release is okay for developers on any weekday except the one before the weekend."
+    },
+    {
+      "id": "net-email-no-attachments",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "net-email-no-attachments",
+      "top1_score": 0.8213,
+      "paraphrase": "Messages with files attached must not be sent by the bot."
+    },
+    {
+      "id": "net-email-recipient-cap",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "net-email-recipient-cap",
+      "top1_score": 0.8565,
+      "paraphrase": "A message addressed to six people or more is not allowed."
+    },
+    {
+      "id": "net-http-allowlist",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "net-http-allowlist",
+      "top1_score": 0.8312,
+      "paraphrase": "Web requests may only go to whitelisted domains."
+    },
+    {
+      "id": "net-delete-user-self-only",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "net-delete-user-self-only",
+      "top1_score": 0.8185,
+      "paraphrase": "People are only entitled to wipe the information that belongs to themselves."
+    },
+    {
+      "id": "sh-night-lock",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "sh-night-lock",
+      "top1_score": 0.8485,
+      "paraphrase": "Unlatching entrances is prohibited overnight, from eleven until six."
+    },
+    {
+      "id": "sh-valve-max-open",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "sh-valve-max-open",
+      "top1_score": 0.7654,
+      "paraphrase": "Never let a tap run past the halfway mark."
+    },
+    {
+      "id": "sh-thermostat-range",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "sh-thermostat-range",
+      "top1_score": 0.8802,
+      "paraphrase": "The heating target has to stay inside sixteen to twenty-eight degrees."
+    },
+    {
+      "id": "sh-no-water-main",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "sh-no-water-main",
+      "top1_score": 0.8373,
+      "paraphrase": "The primary water shutoff is not to be operated by the assistant."
+    },
+    {
+      "id": "sh-vacation-mode",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "sh-vacation-mode",
+      "top1_score": 0.8188,
+      "paraphrase": "While nobody is living in the house for a holiday, the bot cannot open entrances or touch the heating."
+    },
+    {
+      "id": "sh-unlock-only-when-home",
+      "source": "claude-draft",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "sh-unlock-only-when-home",
+      "top1_score": 0.8269,
+      "paraphrase": "Opening an entrance requires that an occupant be present."
+    },
+    {
+      "id": "team-a",
+      "source": "team",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "team-a",
+      "top1_score": 0.8678,
+      "paraphrase": "Only an administrator can wipe a database."
+    },
+    {
+      "id": "team-r",
+      "source": "team",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "team-r",
+      "top1_score": 0.8405,
+      "paraphrase": "Staff can open any document except those flagged confidential, as a prohibition outranks a permission."
+    },
+    {
+      "id": "team-j",
+      "source": "team",
+      "tier": "hard",
+      "rank": 1,
+      "top1": "team-j",
+      "top1_score": 0.8097,
+      "paraphrase": "Administrators may execute arbitrary terminal commands, whereas an isolated bot can only run whitelisted harmless ones."
+    }
+  ]
+}
