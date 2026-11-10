@@ -37,7 +37,7 @@ await page.waitForSelector('[data-testid=stage]')
 await scrollAll()
 
 // ---- workbench
-await page.goto(BASE + '/studio')
+await page.goto(BASE + '/studio/workbench')
 await page.waitForSelector('[data-testid=yog-editor] .monaco-editor', { timeout: 20000 })
 await page.getByTestId('tour-skip').click().catch(() => {})
 for (const tab of ['Tests', 'Tokens', 'AST', 'Checks', 'Readback']) {

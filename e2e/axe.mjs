@@ -27,7 +27,9 @@ for (const sel of ['[data-testid=compiler-scenes]', '[data-testid=pipeline-flow]
 }
 await page.goto(BASE + '/how-it-works'); await page.waitForSelector('[data-testid=stage]'); await settle(1500); await scan('how it works')
 
-await page.goto(BASE + '/studio')
+await page.goto(BASE + '/studio'); await page.waitForSelector('[data-testid=tool-count]'); await settle(1500); await scan('studio hub')
+
+await page.goto(BASE + '/studio/workbench')
 await page.waitForSelector('[data-testid=yog-editor] .monaco-editor', { timeout: 20000 })
 await page.getByTestId('tour-skip').click().catch(() => {})
 await settle(1200)

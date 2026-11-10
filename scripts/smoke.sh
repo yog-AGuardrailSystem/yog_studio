@@ -36,4 +36,5 @@ check /api/health '"ok"'
 check / 'id="root"'
 check /how-it-works 'id="root"'
 check /studio 'id="root"'
+check /studio/workbench 'id="root"'
 exit $fail

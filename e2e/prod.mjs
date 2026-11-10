@@ -27,15 +27,15 @@ const info = await api.json()
 check('/info reports the live-AI state', typeof info.live_ready === 'boolean' && 'default_mode' in info)
 
 // every main screen renders with no CSP violation and no console error
-for (const path of ['/', '/how-it-works', '/studio', '/agent']) {
+for (const path of ['/', '/how-it-works', '/studio', '/studio/workbench', '/agent']) {
   await page.goto(BASE + path)
-  await page.waitForTimeout(path === '/studio' ? 3500 : 2000)
+  await page.waitForTimeout(path === '/studio/workbench' ? 3500 : 2000)
   const v = await page.evaluate(() => window.__csp || [])
   check(`no CSP violation on ${path}`, v.length === 0, [...new Set(v)].join(' | '))
 }
 
 // the editor (Monaco from the CDN, workers from blob:) and the compiler work in production
-await page.goto(BASE + '/studio')
+await page.goto(BASE + '/studio/workbench')
 check('Monaco renders under the policy', await page.waitForSelector('[data-testid=yog-editor] .monaco-editor', { timeout: 20000 }).then(() => true).catch(() => false))
 await page.getByTestId('tour-skip').click().catch(() => {})
 await page.getByTestId('tab-Tokens').click()

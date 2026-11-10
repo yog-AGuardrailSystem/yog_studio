@@ -10,6 +10,7 @@ node workbench.mjs   # the YOG workbench at /studio
 node landing.mjs     # landing + how-it-works: live explorer, example cards, finished-product wording, overflow
 node hero.mjs        # black + gold hero: gold globe forms YOG, hover/click/drag, pause, fallback (needs no backend)
 node motion.mjs      # motion registry count (target 300), pause control, OS reduced motion
+node hub.mjs         # Studio tool hub: all tools listed, ready ones open, old share links forward (needs no backend)
 node axe.mjs         # axe contrast and structure on every main screen
 node ui.mjs          # agent tools flow: upload, rules, review/approve, patch, device 3am block
 node prod.mjs        # production build (uvicorn app.asgi:app --port 8002 after npm run build): CSP, cookie, visitor isolation

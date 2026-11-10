@@ -46,7 +46,7 @@ export function decodeShare(code: string): string | null {
   }
 }
 
-export const shareUrl = (source: string) => `${location.origin}/studio#p=${encodeShare(source)}`
+export const shareUrl = (source: string) => `${location.origin}/studio/workbench#p=${encodeShare(source)}`
 
 export function sourceFromHash(hash: string): string | null {
   const m = /[#&]p=([A-Za-z0-9_-]+)/.exec(hash)
