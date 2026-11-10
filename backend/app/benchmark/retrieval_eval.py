@@ -18,7 +18,7 @@ import yaml
 
 from app.benchmark.stats import fmt, proportion
 from app.core.config import REPO_ROOT
-from app.llm.provider import LLMProvider
+from app.llm.provider import LLMProvider, embed_texts
 from app.rag.examples import PolicyExample, load_retrieval_examples
 from app.rag.retriever import Retriever
 
@@ -32,7 +32,8 @@ def load_paraphrases(path: Path = PARAPHRASES) -> list[dict]:
 
 
 def evaluate_retrieval(provider: LLMProvider, examples: list[PolicyExample] | None = None,
-                       paraphrases: list[dict] | None = None, ks: tuple[int, ...] = KS, hybrid: bool = True) -> dict:
+                       paraphrases: list[dict] | None = None, ks: tuple[int, ...] = KS, hybrid: bool = True, lex_weight: float | None = None,
+                       oracle_tools: bool = False) -> dict:
     examples = examples if examples is not None else load_retrieval_examples()
     paraphrases = paraphrases if paraphrases is not None else load_paraphrases()
     by_id = {e.id: e for e in examples}
@@ -40,11 +41,13 @@ def evaluate_retrieval(provider: LLMProvider, examples: list[PolicyExample] | No
     if missing:
         raise ValueError(f"paraphrases reference unknown examples: {missing}")
     with tempfile.TemporaryDirectory() as tmp:
-        retriever = Retriever(provider, examples, Path(tmp) / "index.npz", hybrid=hybrid)
+        retriever = Retriever(provider, examples, Path(tmp) / "index.npz", hybrid=hybrid, lex_weight=lex_weight)
+        embed_texts(provider, [p["paraphrase"] for p in paraphrases], task="query")   # one batched call fills the cache
         rows = []
         for p in paraphrases:
             ex = by_id[p["id"]]
-            tools = [t.split("(")[0] for t in ex.tools_context]
+            # tools are NOT given by default: handing each example its own tool names would flatter the result
+            tools = [t.split("(")[0] for t in ex.tools_context] if oracle_tools else []
             hits = retriever.search(p["paraphrase"], tools, max(ks))
             ids = [h.id for h in hits]
             rank = ids.index(p["id"]) + 1 if p["id"] in ids else None
@@ -61,7 +64,7 @@ def evaluate_retrieval(provider: LLMProvider, examples: list[PolicyExample] | No
     sources = sorted({r["source"] for r in rows})
     tiers = sorted({r["tier"] for r in rows})
     return {
-        "provider": provider.name, "hybrid": hybrid, "model": provider.model, "embed_model": provider.embed_model,
+        "provider": provider.name, "oracle_tools": oracle_tools, "hybrid": hybrid, "lex_weight": retriever.lex_weight, "model": provider.model, "embed_model": provider.embed_model,
         "when": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "overall": metrics(rows),
         "by_source": {s: metrics([r for r in rows if r["source"] == s]) for s in sources},
@@ -109,6 +112,7 @@ def calibrate_floor(provider: LLMProvider, examples: list[PolicyExample] | None 
     by_id = {e.id: e for e in examples}
     with tempfile.TemporaryDirectory() as tmp:
         retriever = Retriever(provider, examples, Path(tmp) / "index.npz")
+        embed_texts(provider, [p["paraphrase"] for p in paraphrases] + [n["query"] for n in negatives], task="query")
         pos = []
         for p in paraphrases:
             tools = [t.split("(")[0] for t in by_id[p["id"]].tools_context]

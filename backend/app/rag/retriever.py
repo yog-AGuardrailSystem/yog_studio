@@ -3,8 +3,9 @@
 Pipeline for one query:
   1. dense   cosine similarity between the query embedding and every example embedding (the provider's embedding model)
   2. lexical BM25 over stemmed words (same normaliser as the offline provider), catches exact terms embeddings blur
-  3. fusion  reciprocal-rank fusion of the two rankings (no tuning, works on tiny sets) + a small boost when the example
-             is about the same tool names as the uploaded agent
+  3. fusion  reciprocal-rank fusion of the two rankings, weighted (default keyword weight 0: measured to help neither
+             embedder, see default_lex_weight) + a small boost when the example is about the same tool names as the
+             uploaded agent
   4. floor   an example is `relevant` only if its dense cosine clears a per-provider floor calibrated on held-out
              paraphrases and off-topic queries (benchmark/retrieval_floors.json). Nothing relevant => the caller must
              treat the draft as ungrounded instead of presenting weak matches as "similar solved examples".
@@ -100,6 +101,19 @@ def floor_for(provider: LLMProvider, path: Path = FLOORS_PATH) -> tuple[float, b
     return PROVISIONAL_FLOOR, False
 
 
+def default_lex_weight(provider: LLMProvider) -> float:
+    """How much the keyword ranking counts next to the embedding ranking (1.0 = equally; RETRIEVAL_LEX_WEIGHT overrides).
+
+    MEASURED (benchmark/paraphrases.yaml, 109 reworded rules, tools not given): fusing BM25 with the embedding rank
+    made retrieval worse for BOTH embedders, and more so the more weight it got (Gemini recall@1 99.1% at 0, 93.6% at
+    0.5, 83.5% at 1.0; offline 85.3% at 0, 80.7% at 1.0). Reworded rules share few words with their example, so the
+    keyword ranking mostly adds noise. The default is therefore 0: the embedding decides, keywords are only reported."""
+    try:
+        return float(os.environ["RETRIEVAL_LEX_WEIGHT"])
+    except (KeyError, ValueError):
+        return 0.0
+
+
 class _Lexical:
     """Okapi BM25 over the examples' words (k1=1.5, b=0.75)."""
 
@@ -127,9 +141,10 @@ class _Lexical:
 
 class Retriever:
     def __init__(self, provider: LLMProvider, examples: list[PolicyExample] | None = None,
-                 index_path: Path | None = None, *, hybrid: bool = True) -> None:
+                 index_path: Path | None = None, *, hybrid: bool = True, lex_weight: float | None = None) -> None:
         self.provider = provider
         self.hybrid = hybrid                                # False = dense only (used to measure the embedding alone)
+        self.lex_weight = lex_weight if lex_weight is not None else default_lex_weight(provider)
         self.examples = examples if examples is not None else load_examples()
         self.index_path = index_path if index_path is not None else index_path_for(provider)
         self._matrix: np.ndarray | None = None
@@ -186,7 +201,7 @@ class Retriever:
         lex_rank[np.argsort(-lexical, kind="stable")] = np.arange(n)
         fused = 1.0 / (RRF_K + dense_rank + 1)
         if self.hybrid:
-            fused = fused + np.where(lexical > 0, 1.0 / (RRF_K + lex_rank + 1), 0.0)
+            fused = fused + self.lex_weight * np.where(lexical > 0, 1.0 / (RRF_K + lex_rank + 1), 0.0)
         wanted = {t for t in (tools or []) if t}
         if self.hybrid and wanted:
             fused = fused + TOOL_BOOST * np.array([len(wanted & names) / len(wanted) for names in self._tool_names])

@@ -251,3 +251,29 @@ def test_translate_uses_the_reranker_only_when_asked_and_only_for_a_real_llm(ret
     calls.clear()
     assert not _run(retriever, Scripted(llm), [NIGHT.english]).reranked and "rerank" not in calls
     assert not _run(retriever, FakeProvider(), [NIGHT.english], rerank=True).reranked   # offline cannot judge
+
+
+# ------------------------------------------------------------------ measured defaults
+def test_keyword_fusion_is_off_by_default_and_overridable(monkeypatch):
+    """Measured to hurt both embedders (docs/decisions.md #21); the knob stays for experiments."""
+    from app.rag.retriever import default_lex_weight
+    monkeypatch.delenv("RETRIEVAL_LEX_WEIGHT", raising=False)
+    assert default_lex_weight(FakeProvider()) == 0.0
+    monkeypatch.setenv("RETRIEVAL_LEX_WEIGHT", "0.5")
+    assert default_lex_weight(FakeProvider()) == 0.5
+    monkeypatch.setenv("RETRIEVAL_LEX_WEIGHT", "junk")
+    assert default_lex_weight(FakeProvider()) == 0.0
+
+
+def test_the_query_is_the_rule_alone_so_tool_names_cannot_inflate_relevance(retriever):
+    everything = len(EXAMPLES)
+    with_tools = retriever.search(OFF_TOPIC, ["unlock_door", "open_valve"], everything)
+    without = retriever.search(OFF_TOPIC, [], everything)
+    assert {r.id: r.score for r in with_tools} == {r.id: r.score for r in without}   # similarity ignores tools
+    assert not any(r.relevant for r in with_tools)
+
+
+def test_retrieval_eval_does_not_hand_out_the_answers_tool_names():
+    from app.benchmark.retrieval_eval import evaluate_retrieval, load_paraphrases
+    res = evaluate_retrieval(FakeProvider(), paraphrases=load_paraphrases()[:5])
+    assert res["oracle_tools"] is False

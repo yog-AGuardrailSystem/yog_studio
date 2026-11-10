@@ -10,5 +10,17 @@
     "positives_kept": 0.578,
     "separable": false,
     "when": "2026-11-10T07:49:05+00:00"
+  },
+  "gemini:gemini-embedding-2": {
+    "floor": 0.754,
+    "n_negative": 20,
+    "n_positive": 109,
+    "negative_max": 0.698,
+    "negatives_rejected": 1.0,
+    "positive_median": 0.911,
+    "positive_p10": 0.81,
+    "positives_kept": 0.991,
+    "separable": true,
+    "when": "2026-11-10T08:21:07+00:00"
   }
 }
