@@ -11,21 +11,29 @@ export function ScrollRail() {
 
 /** Section dots on the right edge; the current section's dot glows. Sections are found by [data-section]. */
 export function SectionDots() {
-  const [ids, setIds] = useState<string[]>([])
+  const [items, setItems] = useState<{ id: string; label: string }[]>([])
   const [active, setActive] = useState(0)
   useEffect(() => {
     const els = [...document.querySelectorAll<HTMLElement>('[data-section]')]
-    setIds(els.map((e) => e.dataset.section!))
+    // the tag next to a dot is the section's own heading (or its data-label when it has no heading)
+    const label = (e: HTMLElement) => (e.dataset.label || e.querySelector('h1, h2')?.textContent || e.dataset.section || '').replace(/\s+/g, ' ').trim()
+    setItems(els.map((e) => ({ id: e.dataset.section!, label: label(e) })))
     const io = new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting && setActive(els.indexOf(e.target as HTMLElement))), { rootMargin: '-45% 0px -45% 0px' })
     els.forEach((e) => io.observe(e))
     return () => io.disconnect()
   }, [])
-  if (!ids.length) return null
+  if (!items.length) return null
   return (
     <nav aria-label="Sections" className="fixed right-3 top-1/2 z-20 hidden -translate-y-1/2 flex-col gap-2 xl:flex">
-      {ids.map((id, i) => (
-        <a key={id} href={`#${id}`} aria-label={id} aria-current={i === active} {...m(`fx:dot:${i}`)}
-          className={`h-2.5 w-2.5 rounded-full border border-sky-300 transition-all ${i === active ? 'scale-150 bg-sky-300 shadow-[0_0_10px_rgba(255,211,109,.9)]' : 'bg-transparent hover:bg-sky-300/50'}`} />
+      {items.map(({ id, label }, i) => (
+        <span key={id} className="group relative flex h-3 w-3 items-center justify-center">
+          <a href={`#${id}`} aria-label={label} aria-current={i === active} data-testid={`section-dot-${id}`} {...m(`fx:dot:${i}`)}
+            className={`block h-2.5 w-2.5 rounded-full border border-sky-300 transition-all ${i === active ? 'scale-150 bg-sky-300 shadow-[0_0_10px_rgba(255,211,109,.9)]' : 'bg-transparent hover:bg-sky-300/50'}`} />
+          <span role="tooltip" data-testid={`section-tag-${id}`}
+            className="pointer-events-none absolute right-6 top-1/2 w-max max-w-[17rem] -translate-y-1/2 rounded-md border border-sky-400/50 bg-black/90 px-2.5 py-1 text-right text-xs font-medium leading-snug text-sky-100 opacity-0 shadow-lg shadow-black/60 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+            {label}
+          </span>
+        </span>
       ))}
     </nav>
   )

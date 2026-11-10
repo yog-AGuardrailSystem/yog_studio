@@ -124,7 +124,7 @@ export default function LandingPage() {
       </section>
 
       {/* 2. Live compiler explorer */}
-      <section id="explorer" data-section="explorer" className="pb-16 sm:pb-24" aria-label="Compiler explorer">
+      <section id="explorer" data-section="explorer" data-label="Try the compiler" className="pb-16 sm:pb-24" aria-label="Compiler explorer">
         <div className="mx-auto w-full max-w-6xl px-5">
           <Reveal>
             <CompilerExplorer />

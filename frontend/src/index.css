@@ -313,3 +313,7 @@ html[data-motion="paused"] *:not(.spinner), html[data-motion="paused"] *:not(.sp
 @keyframes bar-grow { from { transform: scaleX(0); } }
 .compile-ring { width: .9rem; height: .9rem; border-radius: 9999px; border: 2px solid rgba(56,189,248,.35); }
 .compile-ring.is-busy { border-top-color: #38bdf8; animation: spin .7s linear infinite; }
+
+/* Marketing pages hide the browser's big scrollbar (the page still scrolls; the section dots and the top progress line show where you are) */
+html:has(.mkt) { scrollbar-width: none; }
+html:has(.mkt)::-webkit-scrollbar { display: none; }
