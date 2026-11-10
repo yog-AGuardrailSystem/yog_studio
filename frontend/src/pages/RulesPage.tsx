@@ -143,7 +143,16 @@ export default function RulesPage() {
             {generating ? <><Spinner label="Generating" /> Generating…</> : 'Generate YOG draft'}
           </button>
         </div>
-        {error && <div className="mt-3 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</div>}
+        {error && (
+          <div className="mt-3 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">
+            <p>{error}</p>
+            {ai.mode === 'real' && (
+              <button type="button" className="btn-secondary mt-2" data-testid="fallback-offline" onClick={() => { ai.setMode('offline'); setError(null) }}>
+                Continue in Offline mode
+              </button>
+            )}
+          </div>
+        )}
       </section>
 
       {examples.length > 0 && (

@@ -277,7 +277,7 @@ function RetrievedList({ data }: { data: RetrieveResult }) {
 export function AssistPanel({ current, onInsert, onReplace }: {
   current: string; onInsert: (yog: string) => void; onReplace: (yog: string) => void
 }) {
-  const { mode, liveReady, rerank, setRerank } = useAiMode()
+  const { mode, setMode, liveReady, rerank, setRerank } = useAiMode()
   const [english, setEnglish] = useState('')
   const [found, setFound] = useState<RetrieveResult | null>(null)
   const [events, setEvents] = useState<Ev[]>([])
@@ -349,7 +349,16 @@ export function AssistPanel({ current, onInsert, onReplace }: {
         <button type="button" className="btn-primary" onClick={draftIt} disabled={!english.trim() || status === 'running'} data-testid="assist-draft">{status === 'running' ? 'Drafting…' : 'Draft YOG'}</button>
         {status === 'running' && <button type="button" className="btn-secondary" onClick={cancel}>Cancel</button>}
       </div>
-      {error && <p className="text-red-700" role="alert" data-testid="assist-error">{error}</p>}
+      {error && (
+        <div className="rounded border border-red-300 bg-red-50 p-2 text-red-800" role="alert" data-testid="assist-error">
+          <p>{error}</p>
+          {mode === 'real' && (
+            <button type="button" className="btn-secondary mt-2" data-testid="fallback-offline" onClick={() => { setMode('offline'); setError(null) }}>
+              Continue in Offline mode
+            </button>
+          )}
+        </div>
+      )}
       {found && <RetrievedList data={found} />}
       {events.length > 0 && (
         <ol className="space-y-1 text-xs text-slate-600" data-testid="attempt-log">
