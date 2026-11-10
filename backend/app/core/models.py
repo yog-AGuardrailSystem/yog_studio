@@ -69,3 +69,4 @@ class DetectResult(BaseModel):
     kind: Literal["mcp_server", "function_calling_agent", "unknown"]
     confidence: float
     evidence: list[str]
+    framework: str | None = None       # additive: langchain | openai_agents | crewai | pydantic_ai when one was recognised

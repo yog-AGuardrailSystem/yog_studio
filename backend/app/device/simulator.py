@@ -50,6 +50,7 @@ TOOLS = {
     "get_status": ["device_id"],
 }
 DAYS = facts.DAYS
+MAX_LOG = 500
 
 
 class DeviceSim:
@@ -60,6 +61,7 @@ class DeviceSim:
         self.state = DeviceState()
         self.clock = Clock()
         self.log: list[LogEntry] = []
+        self._n = 0
 
     def set_clock(self, hour: int, day: str) -> Clock:
         if not 0 <= hour <= 23:
@@ -129,10 +131,13 @@ class DeviceSim:
             decision, reason, trace = "UNGUARDED", "guard is switched off: the command runs without any policy check", []
         executed = decision in ("ALLOW", "UNGUARDED")
         message = self._apply(tool, a) if executed else f"BLOCKED by YOG: device unchanged ({reason})"
-        entry = LogEntry(n=len(self.log) + 1, at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        self._n += 1
+        entry = LogEntry(n=self._n, at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
                          sim_hour=self.clock.hour, sim_day=self.clock.day, tool=tool, args=a, guarded=guard,
                          decision=decision, reason=reason, executed=executed, message=message, facts=ctx, trace=trace)
         self.log.append(entry)
+        if len(self.log) > MAX_LOG:                  # the in-memory log is a window; the audit log keeps the record
+            del self.log[: len(self.log) - MAX_LOG]
         return entry
 
 

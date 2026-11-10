@@ -53,6 +53,7 @@ class ApproveRequest(BaseModel):
     # (the review screen sends both), not an authentication boundary.
     grounded: bool = True
     ungrounded_confirmed: bool = False
+    note: str = Field(default="", max_length=500)            # what changed (shown in Version History)
 
 
 @router.post("/policies/approve", response_model=PolicyRecord)
@@ -76,8 +77,10 @@ def approve(req: ApproveRequest, adapter: EngineAdapter = Depends(get_adapter),
     # client says about evaluation is trusted or stored.
     rep = evaluate(adapter, req.yog_source)
     evaluation = {"summary": rep.summary.model_dump(), "warnings": rep.warnings}
+    previous = store.latest()
     return store.save(req.yog_source, english_rules=req.english_rules, retrieved_examples=req.retrieved_examples,
-                      attempts=req.attempts, evaluation=evaluation,
+                      attempts=req.attempts, evaluation=evaluation, note=req.note,
+                      parent_id=previous.id if previous else None,
                       readback=[f"line {c.line}: {c.text}" for c in rb.clauses])
 
 

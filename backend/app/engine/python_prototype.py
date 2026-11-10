@@ -9,8 +9,8 @@ from functools import lru_cache
 from types import ModuleType
 
 from app.core.config import ENGINE_PATH
-from app.engine.adapter import (AskResult, CheckResult, CompileInfo, EngineAdapter, EngineError, PredicateInfo,
-                                QuerySpec, TokenInfo)
+from app.engine.adapter import (AskResult, CheckResult, ClauseWhy, CompileInfo, EngineAdapter, EngineError,
+                                PredicateInfo, QuerySpec, TokenInfo, WhyResult, WhyStep)
 from app.engine.diagnostics import classify
 
 
@@ -134,6 +134,117 @@ class PythonPrototypeAdapter(EngineAdapter):
             return CheckResult(decision="DENY", trace=[],
                                reason=f"engine error, failing closed: comparison between incompatible types ({e})")
         return CheckResult(decision=raw["decision"], reason=raw["reason"], trace=list(raw["trace"]))
+
+    # -- why: the proof behind a decision ---------------------------------------
+    def _render(self, goal, s) -> str:
+        yog = self.yog
+        def one(t):
+            t = yog.walk(t, s)
+            return repr(t)
+        if isinstance(goal, yog.Cmp):
+            return f"{one(goal.lhs)} {goal.op} {one(goal.rhs)}"
+        if isinstance(goal, yog.Neg):
+            return f"not {yog.fmt(goal.goal, s)}"
+        return yog.fmt(goal, s)
+
+    def _prove(self, engine, goals: list, s: dict):
+        """Backtracking proof of a clause body, like the engine's own, that also remembers how far it got.
+        Returns (final substitution or None, deepest goal index reached, substitution at that point)."""
+        best = {"depth": -1, "s": s}
+
+        def rec(i: int, sub: dict):
+            if i == len(goals):
+                return sub
+            for s2 in engine.solve(goals[i], sub, [], 0):
+                r = rec(i + 1, s2)
+                if r is not None:
+                    return r
+            if i > best["depth"]:
+                best["depth"], best["s"] = i, sub
+            return None
+
+        final = rec(0, s)
+        return final, best["depth"], best["s"]
+
+    def _fail_note(self, goal, s) -> str:
+        yog = self.yog
+        if isinstance(goal, yog.Cmp):
+            return "this comparison is false"
+        if isinstance(goal, yog.Neg):
+            return "this holds, so the 'not' fails"
+        return "no fact or rule matches"
+
+    def explain(self, policy, actor, action, resource, context=None) -> WhyResult:
+        yog = self.yog
+        engine = self._engine(policy)
+        atoms = self._context_atoms(context or [])
+        ctx_text = [repr(a) for a in atoms]
+        for f in atoms:                                       # per-request facts, like Engine.check
+            engine.facts.setdefault(f.key, []).append(f)
+        try:
+            goal = yog.Atom(action, [yog.Const(actor), yog.Const(resource)])
+            if goal.key not in engine.decisions:
+                return WhyResult(decision="DENY", reason=f"no allow/deny clause defines action {action}/2",
+                                 verdict=f"DENY: no allow or deny rule is written for {action}, so it is denied.",
+                                 context=ctx_text)
+            out: list[ClauseWhy] = []
+            try:
+                for kind in ("deny", "allow"):
+                    for clause in [c for c in engine.decisions[goal.key] if c.kind == kind]:
+                        c = engine.rename(clause)
+                        s0 = engine.unify_atom(goal, c.head, {})
+                        if s0 is None:
+                            out.append(ClauseWhy(kind=kind, line=clause.line, head=repr(clause.head),
+                                                 status="head_mismatch"))
+                            continue
+                        final, depth, s_at = self._prove(engine, c.body, s0)
+                        if final is not None:
+                            steps = [WhyStep(text=self._render(g, final), ok=True) for g in c.body]
+                            out.append(ClauseWhy(kind=kind, line=clause.line, head=repr(clause.head),
+                                                 status="matched", steps=steps))
+                            continue
+                        steps = []
+                        for i, g in enumerate(c.body):
+                            if i < depth:
+                                steps.append(WhyStep(text=self._render(g, s_at), ok=True))
+                            elif i == depth:
+                                steps.append(WhyStep(text=self._render(g, s_at), ok=False, note=self._fail_note(g, s_at)))
+                            else:
+                                steps.append(WhyStep(text=self._render(g, s_at), ok=None, note="not reached"))
+                        out.append(ClauseWhy(kind=kind, line=clause.line, head=repr(clause.head),
+                                             status="failed", steps=steps, failed_at=depth))
+            except TypeError as e:                            # engine issue #7: fail closed
+                return WhyResult(decision="DENY", error=True, clauses=out, context=ctx_text,
+                                 reason=f"engine error, failing closed: comparison between incompatible types ({e})",
+                                 verdict="DENY: the engine hit an error comparing a number with a name, so it failed closed.")
+            deny = next((c for c in out if c.kind == "deny" and c.status == "matched"), None)
+            allow = next((c for c in out if c.kind == "allow" and c.status == "matched"), None)
+            if deny:
+                extra = f" An allow rule at line {allow.line} also matched, but DENY beats ALLOW." if allow else ""
+                return WhyResult(decision="DENY", winner_line=deny.line, clauses=out, context=ctx_text,
+                                 reason=f"deny clause at line {deny.line} matched",
+                                 verdict=f"DENY: the deny rule at line {deny.line} matched.{extra}")
+            if allow:
+                return WhyResult(decision="ALLOW", winner_line=allow.line, clauses=out, context=ctx_text,
+                                 reason=f"allow clause at line {allow.line} matched",
+                                 verdict=f"ALLOW: the allow rule at line {allow.line} matched and no deny rule matched.")
+            allows = [c for c in out if c.kind == "allow"]
+            near = max(allows, key=lambda c: (c.failed_at if c.failed_at is not None else -1), default=None)
+            if near is None:
+                hint = " There is no allow rule for this action."
+            elif near.status == "head_mismatch":
+                hint = f" The allow rule at line {near.line} is about a different actor or resource."
+            else:
+                bad = near.steps[near.failed_at] if near.failed_at is not None else None
+                hint = f" The closest allow rule (line {near.line}) stopped at: {bad.text}." if bad else ""
+            return WhyResult(decision="DENY", clauses=out, context=ctx_text,
+                             reason="default deny: no allow clause was satisfied",
+                             verdict=f"DENY by default: no allow rule matched.{hint}")
+        finally:
+            for f in atoms:
+                lst = engine.facts.get(f.key, [])
+                if f in lst:
+                    lst.remove(f)
 
     def validate(self, policy: str) -> list[str]:
         try:

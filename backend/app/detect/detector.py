@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 
 from app.core.models import DetectResult
 from app.core.pyast import const_value, dotted, evidence
+from app.detect.frameworks import LABELS, scan_frameworks
 
 THRESHOLD = 0.5
 MCP_CTORS = {"FastMCP", "Server", "MCPServer", "FastMCPServer"}
@@ -182,8 +183,19 @@ def detect(tree: ast.Module, source: str) -> DetectResult:
         fc_score += 0.2
         fc_ev += [evidence(lines, n) for n in sorted(set(kw))]
 
-    if mcp_score >= THRESHOLD and mcp_score >= fc_score:
+    # decorated-function frameworks (LangChain, OpenAI Agents SDK, CrewAI, PydanticAI): import 0.35 + tools 0.60
+    fw = scan_frameworks(tree)
+    fw_score, fw_ev = 0.0, []
+    if fw.framework and fw.tools:
+        fw_score = 0.95
+        fw_ev = [evidence(lines, n) for n in fw.import_lines] + \
+                [f"line {t.dec_line}: tool '{t.name}' ({LABELS[fw.framework]})" for t in fw.tools]
+
+    if mcp_score >= THRESHOLD and mcp_score >= fc_score and mcp_score >= fw_score:
         return DetectResult(kind="mcp_server", confidence=round(mcp_score, 2), evidence=_cap(mcp_ev))
+    if fw_score >= THRESHOLD and fw_score > fc_score:
+        return DetectResult(kind="function_calling_agent", confidence=round(fw_score, 2), evidence=_cap(fw_ev),
+                            framework=fw.framework)
     if fc_score >= THRESHOLD:
         return DetectResult(kind="function_calling_agent", confidence=round(fc_score, 2), evidence=_cap(fc_ev))
     weak = _cap(mcp_ev + fc_ev)
