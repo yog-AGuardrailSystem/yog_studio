@@ -30,6 +30,9 @@ export default function StudioLayout() {
           <Stepper />
           <div className="ml-auto flex items-center gap-4 text-sm">
             <MotionToggle />
+            <NavLink to="/studio" end className="text-slate-600 hover:text-slate-900" title="Back to the list of Studio tools" data-testid="all-tools">
+              All tools
+            </NavLink>
             <NavLink to="/check" className={({ isActive }) => (isActive ? 'font-semibold text-link' : 'text-slate-600 hover:text-slate-900')} title="Try a policy against one action, without uploading anything">
               Sandbox
             </NavLink>

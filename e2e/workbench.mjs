@@ -9,7 +9,7 @@ const errors = []
 watch(page, errors)
 const settle = (ms = 700) => page.waitForTimeout(ms)
 
-await page.goto(BASE + '/studio')
+await page.goto(BASE + '/studio/workbench')
 await page.waitForSelector('[data-testid=workbench]')
 await page.waitForSelector('[data-testid=yog-editor] .monaco-editor', { timeout: 20000 })
 check('workbench renders with the editor', true)
@@ -116,7 +116,7 @@ check('confirming enables inserting', !(await page.getByTestId('draft-insert').i
     await route.fulfill({ response: res, json: { ...j, live_available: true, live_allowed: true, live_ready: true, live_reason: null, live_provider: 'gemini', default_mode: 'real' } })
   })
   await p3.route('**/api/translate/start', (route) => route.fulfill({ status: 429, contentType: 'application/json', json: { detail: 'The live AI budget for today is used up. Switch to Offline mode, or try again tomorrow.' } }))
-  await p3.goto(BASE + '/studio')
+  await p3.goto(BASE + '/studio/workbench')
   await p3.waitForSelector('[data-testid=ai-mode-toggle]')
   await p3.getByTestId('tab-Assist').click()
   await p3.waitForFunction(() => document.querySelector('[data-testid=ai-mode-toggle]')?.getAttribute('aria-checked') === 'true', null, { timeout: 8000 })

@@ -115,7 +115,7 @@ export default function LandingPage() {
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Magnetic id="try"><a href="#explorer" className="btn-primary btn-lg">Try the compiler</a></Magnetic>
-                <Magnetic id="workbench"><Link to="/studio" className="btn-secondary btn-lg">Open the workbench</Link></Magnetic>
+                <Magnetic id="workbench"><Link to="/studio/workbench" className="btn-secondary btn-lg">Open the workbench</Link></Magnetic>
               </div>
             </Reveal>
           </div>
@@ -238,7 +238,8 @@ export default function LandingPage() {
           ))}
         </div>
         <div className="mt-8 flex flex-wrap gap-3">
-          <Link to="/studio" className="btn-primary btn-lg">Open the workbench</Link>
+          <Link to="/studio" className="btn-primary btn-lg">Browse all tools</Link>
+          <Link to="/studio/workbench" className="btn-secondary btn-lg">Open the workbench</Link>
           <Link to="/how-it-works" className="btn-secondary btn-lg">How Studio works</Link>
         </div>
       </Section>
