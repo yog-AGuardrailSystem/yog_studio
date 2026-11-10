@@ -91,6 +91,9 @@ jobs:
       - name: Landing and how-it-works
         working-directory: e2e
         run: node landing.mjs
+      - name: Hero globe (black and gold, forms the logo, hover/click/drag, pause, fallback)
+        working-directory: e2e
+        run: node hero.mjs
       - name: Motion tour (registry target, pause control, reduced motion)
         working-directory: e2e
         run: node motion.mjs

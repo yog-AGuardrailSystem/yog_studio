@@ -6,26 +6,34 @@ import { m, useCalm } from '../../lib/motion'
 export function ScrollRail() {
   const { scrollYProgress } = useScroll()
   const scaleX = useSpring(scrollYProgress, { stiffness: 140, damping: 30 })
-  return <motion.div aria-hidden className="fixed inset-x-0 top-0 z-30 h-0.5 origin-left bg-gradient-to-r from-sky-400 to-emerald-400" style={{ scaleX }} {...m('fx:scroll-rail')} />
+  return <motion.div aria-hidden className="fixed inset-x-0 top-0 z-30 h-0.5 origin-left bg-gradient-to-r from-sky-300 to-orange-400" style={{ scaleX }} {...m('fx:scroll-rail')} />
 }
 
 /** Section dots on the right edge; the current section's dot glows. Sections are found by [data-section]. */
 export function SectionDots() {
-  const [ids, setIds] = useState<string[]>([])
+  const [items, setItems] = useState<{ id: string; label: string }[]>([])
   const [active, setActive] = useState(0)
   useEffect(() => {
     const els = [...document.querySelectorAll<HTMLElement>('[data-section]')]
-    setIds(els.map((e) => e.dataset.section!))
+    // the tag next to a dot is the section's own heading (or its data-label when it has no heading)
+    const label = (e: HTMLElement) => (e.dataset.label || e.querySelector('h1, h2')?.textContent || e.dataset.section || '').replace(/\s+/g, ' ').trim()
+    setItems(els.map((e) => ({ id: e.dataset.section!, label: label(e) })))
     const io = new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting && setActive(els.indexOf(e.target as HTMLElement))), { rootMargin: '-45% 0px -45% 0px' })
     els.forEach((e) => io.observe(e))
     return () => io.disconnect()
   }, [])
-  if (!ids.length) return null
+  if (!items.length) return null
   return (
     <nav aria-label="Sections" className="fixed right-3 top-1/2 z-20 hidden -translate-y-1/2 flex-col gap-2 xl:flex">
-      {ids.map((id, i) => (
-        <a key={id} href={`#${id}`} aria-label={id} aria-current={i === active} {...m(`fx:dot:${i}`)}
-          className={`h-2.5 w-2.5 rounded-full border border-sky-300 transition-all ${i === active ? 'scale-150 bg-sky-300 shadow-[0_0_10px_rgba(125,211,252,.9)]' : 'bg-transparent hover:bg-sky-300/50'}`} />
+      {items.map(({ id, label }, i) => (
+        <span key={id} className="group relative flex h-3 w-3 items-center justify-center">
+          <a href={`#${id}`} aria-label={label} aria-current={i === active} data-testid={`section-dot-${id}`} {...m(`fx:dot:${i}`)}
+            className={`block h-2.5 w-2.5 rounded-full border border-sky-300 transition-all ${i === active ? 'scale-150 bg-sky-300 shadow-[0_0_10px_rgba(255,211,109,.9)]' : 'bg-transparent hover:bg-sky-300/50'}`} />
+          <span role="tooltip" data-testid={`section-tag-${id}`}
+            className="pointer-events-none absolute right-6 top-1/2 w-max max-w-[17rem] -translate-y-1/2 rounded-md border border-sky-400/50 bg-black/90 px-2.5 py-1 text-right text-xs font-medium leading-snug text-sky-100 opacity-0 shadow-lg shadow-black/60 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+            {label}
+          </span>
+        </span>
       ))}
     </nav>
   )
@@ -51,10 +59,10 @@ export function ParticleField() {
       for (const p of pts) { p.x = (p.x + p.vx * 16 + 1) % 1; p.y = (p.y + p.vy * 16 + 1) % 1 }
       for (let i = 0; i < pts.length; i++) {
         const a = pts[i]
-        ctx!.fillStyle = 'rgba(125,211,252,.55)'; ctx!.beginPath(); ctx!.arc(a.x * w, a.y * h, 1.6, 0, 7); ctx!.fill()
+        ctx!.fillStyle = 'rgba(255,225,160,.6)'; ctx!.beginPath(); ctx!.arc(a.x * w, a.y * h, 1.6, 0, 7); ctx!.fill()
         for (let j = i + 1; j < pts.length; j++) {
           const b = pts[j], d = Math.hypot((a.x - b.x) * w, (a.y - b.y) * h)
-          if (d < 130) { ctx!.strokeStyle = `rgba(56,189,248,${0.16 * (1 - d / 130)})`; ctx!.beginPath(); ctx!.moveTo(a.x * w, a.y * h); ctx!.lineTo(b.x * w, b.y * h); ctx!.stroke() }
+          if (d < 130) { ctx!.strokeStyle = `rgba(245,185,66,${0.16 * (1 - d / 130)})`; ctx!.beginPath(); ctx!.moveTo(a.x * w, a.y * h); ctx!.lineTo(b.x * w, b.y * h); ctx!.stroke() }
         }
       }
       raf = requestAnimationFrame(tick)

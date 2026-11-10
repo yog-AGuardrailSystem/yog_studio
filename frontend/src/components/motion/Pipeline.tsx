@@ -32,7 +32,7 @@ export function Pipeline({ steps }: { steps: readonly PipeStep[] }) {
       <div className="relative mb-4 hidden h-3 md:block" aria-hidden>
         <div className="absolute inset-x-0 top-1/2 h-px bg-slate-700" />
         <motion.div
-          className="absolute left-0 top-1/2 h-px bg-gradient-to-r from-sky-400 to-emerald-400"
+          className="absolute left-0 top-1/2 h-px bg-gradient-to-r from-sky-400 to-orange-400"
           initial={false}
           animate={{ width: `${(Math.min(shown, steps.length) / steps.length) * 100}%` }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -53,8 +53,8 @@ export function Pipeline({ steps }: { steps: readonly PipeStep[] }) {
               className="glass p-4"
               initial={false}
               animate={{
-                borderColor: on ? 'rgba(56,189,248,.65)' : 'rgba(148,163,184,.16)',
-                boxShadow: on ? '0 0 28px -8px rgba(56,189,248,.6)' : '0 0 0 0 rgba(0,0,0,0)',
+                borderColor: on ? 'rgba(245,185,66,.65)' : 'rgba(148,163,184,.16)',
+                boxShadow: on ? '0 0 28px -8px rgba(245,185,66,.6)' : '0 0 0 0 rgba(0,0,0,0)',
                 y: on ? 0 : 6,
               }}
               transition={{ duration: 0.4 }}

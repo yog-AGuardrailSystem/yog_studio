@@ -13,6 +13,8 @@ import { CompilerScenes } from '../components/scenes/CompilerScenes'
 import { Reveal } from '../components/motion/Reveal'
 import { Spotlight } from '../components/motion/Spotlight'
 import { Gate } from '../components/three/Gate'
+import { HeroGlobeView } from '../components/three/HeroGlobeView'
+import { WhenNear } from '../components/three/WhenNear'
 
 const ENGINE_REPO = 'https://github.com/yog-AGuardrailSystem/yog_engine'
 
@@ -98,28 +100,31 @@ export default function LandingPage() {
     <main>
       <ScrollRail /><SectionDots /><ParticleField /><CursorGlow /><ClickRipple />
       {/* 1. Hero */}
-      <section data-section="hero" id="hero" className="py-14 sm:py-20">
-        <div className="mx-auto w-full max-w-6xl px-5">
-          <motion.p className="mb-4 text-xs font-semibold uppercase tracking-widest text-glow" initial={reduce ? false : { opacity: 0 }} animate={{ opacity: 1 }}>
-            YOG · deterministic policy for AI agents
-          </motion.p>
-          <Parallax id="hero-title" speed={0.05}><h1 className="font-display max-w-4xl text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
-            {HEAD.map((w, i) => word(w, i, i >= 5 ? 'grad-text' : ''))}
-          </h1></Parallax>
-          <Reveal delay={0.4}>
-            <p className="mt-6 max-w-2xl text-lg text-slate-300">
-              Write a rule once. YOG compiles it, checks it, and answers ALLOW or DENY for every action, the same way every time, with the reason attached.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Magnetic id="try"><a href="#explorer" className="btn-primary btn-lg">Try the compiler</a></Magnetic>
-              <Magnetic id="workbench"><Link to="/studio" className="btn-secondary btn-lg">Open the workbench</Link></Magnetic>
-            </div>
-          </Reveal>
+      <section data-section="hero" id="hero" className="py-10 sm:py-14 lg:py-16">
+        <div className="mx-auto grid w-full max-w-6xl items-center gap-6 px-5 lg:grid-cols-[1.05fr_0.95fr] lg:gap-4">
+          <div>
+            <motion.p className="mb-4 text-xs font-semibold uppercase tracking-widest text-glow" initial={reduce ? false : { opacity: 0 }} animate={{ opacity: 1 }}>
+              YOG · deterministic policy for AI agents
+            </motion.p>
+            <Parallax id="hero-title" speed={0.05}><h1 className="font-display max-w-4xl text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl lg:text-5xl xl:text-6xl">
+              {HEAD.map((w, i) => word(w, i, i >= 5 ? 'grad-text' : ''))}
+            </h1></Parallax>
+            <Reveal delay={0.4}>
+              <p className="mt-6 max-w-xl text-lg text-slate-300">
+                Write a rule once. YOG compiles it, checks it, and answers ALLOW or DENY for every action, the same way every time, with the reason attached.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Magnetic id="try"><a href="#explorer" className="btn-primary btn-lg">Try the compiler</a></Magnetic>
+                <Magnetic id="workbench"><Link to="/studio" className="btn-secondary btn-lg">Open the workbench</Link></Magnetic>
+              </div>
+            </Reveal>
+          </div>
+          <HeroGlobeView className="h-[24rem] sm:h-[30rem] lg:h-[38rem]" />
         </div>
       </section>
 
       {/* 2. Live compiler explorer */}
-      <section id="explorer" data-section="explorer" className="pb-16 sm:pb-24" aria-label="Compiler explorer">
+      <section id="explorer" data-section="explorer" data-label="Try the compiler" className="pb-16 sm:pb-24" aria-label="Compiler explorer">
         <div className="mx-auto w-full max-w-6xl px-5">
           <Reveal>
             <CompilerExplorer />
@@ -213,7 +218,7 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="relative h-[26rem] sm:h-[30rem]" data-testid="hero-visual">
-            <Gate className="h-full w-full" fallback={<HeroCard />} />
+            <WhenNear className="h-full w-full"><Gate className="h-full w-full" fallback={<HeroCard />} /></WhenNear>
           </div>
         </div>
       </Section>

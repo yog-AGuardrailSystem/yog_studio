@@ -71,7 +71,7 @@ export function CompilerScenes() {
         <div key={round.lexer} className="space-y-1">
           {[...byLine.entries()].slice(0, 14).map(([ln, ts], li) => (
             <motion.div key={ln} className="flex flex-wrap items-center gap-1" {...m(`scene:lexer:line:${li}`)}
-              initial={play ? { backgroundColor: 'rgba(56,189,248,0.25)' } : false} animate={{ backgroundColor: 'rgba(56,189,248,0)' }}
+              initial={play ? { backgroundColor: 'rgba(245,185,66,0.25)' } : false} animate={{ backgroundColor: 'rgba(245,185,66,0)' }}
               transition={{ delay: 0.35 * li + 0.1, duration: 0.8 }}>
               <span className="w-5 text-right text-xs text-slate-500">{ln}</span>
               {ts.map((t, i) => {

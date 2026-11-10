@@ -26,21 +26,32 @@ body {
 .mkt {
   position: relative;
   isolation: isolate;
-  background: var(--color-ink);
-  color: #e2e8f0;
+  background: #000;
+  color: #ece8df;
   scroll-behavior: smooth;
+  /* Black + gold. Tailwind colours are CSS variables, so re-pointing the sky ramp at gold (and the slates at neutral
+     greys) recolours every sky-*, text-glow and slate-* utility on the marketing pages in one place. ALLOW green and
+     DENY red are different ramps and stay. Studio (.studio-dark) is a different wrapper and is not affected. */
+  --color-glow: #f5b942;
+  --color-gold: #f5b942;
+  --color-sky-50: #fff8e6; --color-sky-100: #fff2cf; --color-sky-200: #ffe3a0; --color-sky-300: #ffd36d;
+  --color-sky-400: #f5b942; --color-sky-500: #e0a21f; --color-sky-600: #b9800f; --color-sky-700: #8a5f0c;
+  --color-sky-800: #5f420a; --color-sky-900: #3b2907; --color-sky-950: #241904;
+  --color-slate-200: #e4e0d8; --color-slate-300: #cfcac0; --color-slate-400: #a8a398; --color-slate-500: #8f8a80;
+  --color-slate-600: #6f6b63; --color-slate-700: #3d3a35; --color-slate-800: #24221f; --color-slate-900: #121110; --color-slate-950: #050505;
 }
-.mkt h1, .mkt h2, .mkt h3 { color: #f8fafc; }
+.mkt h1, .mkt h2, .mkt h3 { color: #fbf8f1; }
+.mkt ::selection { background: rgba(245, 185, 66, .35); color: #fff; }
 
 /* animated gradient blobs + faint grid (GlowBackground) */
 .glow-bg { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
 .glow-bg .blob { position: absolute; border-radius: 9999px; filter: blur(90px); opacity: 0.5; will-change: transform; }
-.glow-bg .b1 { width: 38rem; height: 38rem; left: -10rem; top: -8rem; background: #0369a1; animation: blob1 22s ease-in-out infinite alternate; }
-.glow-bg .b2 { width: 30rem; height: 30rem; right: -8rem; top: 10rem; background: #065f46; opacity: 0.35; animation: blob2 26s ease-in-out infinite alternate; }
-.glow-bg .b3 { width: 26rem; height: 26rem; left: 30%; top: 60rem; background: #7f1d1d; opacity: 0.22; animation: blob1 30s ease-in-out infinite alternate-reverse; }
+.glow-bg .b1 { width: 38rem; height: 38rem; left: -10rem; top: -8rem; background: #8a5f0c; opacity: 0.16; animation: blob1 22s ease-in-out infinite alternate; }
+.glow-bg .b2 { width: 30rem; height: 30rem; right: -8rem; top: 10rem; background: #5f420a; opacity: 0.14; animation: blob2 26s ease-in-out infinite alternate; }
+.glow-bg .b3 { display: none; }
 .glow-bg .grid {
   position: absolute; inset: 0;
-  background-image: linear-gradient(rgba(148,163,184,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.07) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(255,236,200,.075) 1px, transparent 1px), linear-gradient(90deg, rgba(255,236,200,.075) 1px, transparent 1px);
   background-size: 56px 56px;
   mask-image: radial-gradient(ellipse at 50% 20%, #000 20%, transparent 75%);
 }
@@ -51,22 +62,22 @@ body {
 .glass {
   position: relative;
   border-radius: 1rem;
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  background: rgba(10, 20, 36, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  background: rgba(14, 12, 8, 0.72);
   backdrop-filter: blur(8px);
   transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
 }
 .glass.spot::before {
   content: "";
   position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  background: radial-gradient(380px circle at var(--mx, 50%) var(--my, 50%), rgba(56, 189, 248, 0.16), transparent 60%);
+  background: radial-gradient(380px circle at var(--mx, 50%) var(--my, 50%), rgba(245, 185, 66, 0.15), transparent 60%);
   opacity: 0; transition: opacity 0.25s;
 }
 .glass.spot:hover::before { opacity: 1; }
-.glass.spot:hover { border-color: rgba(56, 189, 248, 0.45); transform: translateY(-2px); box-shadow: 0 10px 40px -12px rgba(56, 189, 248, 0.35); }
+.glass.spot:hover { border-color: rgba(245, 185, 66, 0.5); transform: translateY(-2px); box-shadow: 0 10px 40px -12px rgba(245, 185, 66, 0.3); }
 
 .grad-text {
-  background: linear-gradient(92deg, #7dd3fc 0%, #38bdf8 35%, #34d399 100%);
+  background: linear-gradient(92deg, #ffe9a8 0%, #f5b942 45%, #ff9b3d 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 
@@ -83,10 +94,10 @@ body {
 .btn-secondary:hover { background: #f1f5f9; transform: translateY(-1px); }
 .btn-primary:active, .btn-secondary:active { transform: translateY(1px) scale(0.98); }
 .btn-lg { padding: 0.75rem 1.5rem; font-size: 1rem; }
-.mkt .btn-primary { background: #0369a1; box-shadow: 0 0 0 1px rgba(125, 211, 252, .35), 0 8px 30px -6px rgba(56, 189, 248, .55); }
-.mkt .btn-primary:hover { background: #0478b4; box-shadow: 0 0 0 1px rgba(125, 211, 252, .6), 0 10px 40px -4px rgba(56, 189, 248, .8); }
-.mkt .btn-secondary { background: rgba(15, 23, 42, .5); border-color: rgba(148, 163, 184, .35); color: #e2e8f0; }
-.mkt .btn-secondary:hover { background: rgba(30, 41, 59, .8); border-color: rgba(125, 211, 252, .6); }
+.mkt .btn-primary { background: #f5b942; color: #0b0b0b; box-shadow: 0 0 0 1px rgba(255, 217, 120, .45), 0 8px 30px -6px rgba(245, 185, 66, .55); }
+.mkt .btn-primary:hover { background: #ffc95c; box-shadow: 0 0 0 1px rgba(255, 227, 160, .7), 0 10px 40px -4px rgba(245, 185, 66, .8); }
+.mkt .btn-secondary { background: rgba(255, 255, 255, .04); border-color: rgba(255, 255, 255, .22); color: #f3efe6; }
+.mkt .btn-secondary:hover { background: rgba(245, 185, 66, .1); border-color: rgba(245, 185, 66, .6); }
 .btn-primary:focus-visible, .btn-secondary:focus-visible, .link:focus-visible, .term:focus-visible, .chip:focus-visible {
   outline: 2px solid var(--color-glow); outline-offset: 2px;
 }
@@ -103,8 +114,21 @@ body {
 }
 .chip:hover { background: rgba(14, 116, 144, .6); border-color: #7dd3fc; transform: translateY(-1px); }
 .chip:active { transform: scale(.96); }
+.mkt .chip { border-color: rgba(245, 185, 66, .4); background: rgba(60, 40, 0, .5); color: #ffe2a0; }
+.mkt .chip:hover { background: rgba(95, 66, 10, .6); border-color: #f5b942; }
 
-.gate-skeleton { min-height: 22rem; border-radius: 1rem; background: radial-gradient(circle at 50% 50%, rgba(56,189,248,.12), transparent 60%); animation: pulse 1.6s ease-in-out infinite; }
+.gate-skeleton { min-height: 22rem; border-radius: 1rem; background: radial-gradient(circle at 50% 50%, rgba(245,185,66,.10), transparent 60%); animation: pulse 1.6s ease-in-out infinite; }
+
+/* hero globe: the no-WebGL fallback */
+.hero-logo-fallback { position: absolute; inset: 0; display: grid; place-items: center; }
+.hero-logo-fallback::before {
+  content: ""; position: absolute; width: min(78%, 26rem); aspect-ratio: 1; border-radius: 9999px;
+  border: 1px dashed rgba(245, 185, 66, .35); box-shadow: 0 0 80px -10px rgba(245, 185, 66, .25) inset;
+}
+.hero-logo-fallback span {
+  position: relative; font: 800 clamp(4rem, 14vw, 7.5rem) / 1 "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .04em; color: #f5b942; text-shadow: 0 0 40px rgba(245, 185, 66, .45);
+}
 @keyframes pulse { 50% { opacity: .5; } }
 .gate-scene canvas { display: block; width: 100% !important; height: 100% !important; touch-action: pan-y; }
 
@@ -282,3 +306,7 @@ html[data-motion="paused"] *:not(.spinner), html[data-motion="paused"] *:not(.sp
 @keyframes bar-grow { from { transform: scaleX(0); } }
 .compile-ring { width: .9rem; height: .9rem; border-radius: 9999px; border: 2px solid rgba(56,189,248,.35); }
 .compile-ring.is-busy { border-top-color: #38bdf8; animation: spin .7s linear infinite; }
+
+/* Marketing pages hide the browser's big scrollbar (the page still scrolls; the section dots and the top progress line show where you are) */
+html:has(.mkt) { scrollbar-width: none; }
+html:has(.mkt)::-webkit-scrollbar { display: none; }

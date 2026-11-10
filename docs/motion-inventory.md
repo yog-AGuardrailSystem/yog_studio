@@ -17,7 +17,7 @@ count grows with the program on screen (one id per token, per AST node, per test
   transitions stop, Motion (framer) runs with `reducedMotion="always"`, canvas/rAF effects do not start. Remembered in
   localStorage.
 - **OS "reduce motion"**: same effect, automatically. Content that animates in is shown in its final state.
-- **WebGL**: at most one live context (the decision gate); everything else is DOM, SVG, CSS or one 2D canvas.
+- **WebGL**: at most two live contexts on a page: the hero globe (stops drawing off-screen or in a hidden tab) and the decision gate (mounted only when its section is near the viewport); everything else is DOM, SVG, CSS or one 2D canvas.
 - Off-screen work stops: the particle field pauses with an IntersectionObserver; scenes start when scrolled into view.
 
 ## Families
@@ -31,6 +31,7 @@ count grows with the program on screen (one id per token, per AST node, per test
 | `pipe:node/pulse/link/label` | conveyor: each stage lights as the packet arrives; links fill | in view | stopped, all lit | e2e/landing.mjs |
 | `pipe:packet`, `pipe:packet-trail` | packet crosses the diagram | in view | stopped | e2e/motion.mjs |
 | `card:<group>:*` | per-example flow: dots travel, beam to ALLOW/DENY (drawn from the program's real counts) | always | beam not rendered, dots stopped | e2e/motion.mjs |
+| `hero:globe` | ~14,000 gold dots in an orb (rim light, faint far side, sparse halo shell) with a letter-shaped YOG core of ~9,000 dots through its depth: swings side-on to front-on on landing, turns slowly, drag with inertia, hover dents the skin and nudges the 96 dots nearest the pointer by a few pixels (only while it is over the orb), click sends a ripple and a debris burst | page load, pointer | one still frame facing the viewer; static gold wordmark without WebGL | e2e/hero.mjs |
 | `fx:scroll-rail` | progress bar from scroll position | scroll | static | e2e/motion.mjs |
 | `fx:dot:*` | section dots glow for the current section | scroll | static | e2e/motion.mjs |
 | `fx:particles` | constellation canvas | page load | not started | e2e/motion.mjs |
