@@ -103,3 +103,43 @@ export function pickTargets(mask: Mask, n: number, worldWidth: number, seed = 11
   }
   return out
 }
+
+/** A stable pseudo-random number in [0, 1) derived from a position, so a point keeps its own size/brightness forever. */
+export function hash01(x: number, y: number, z = 0): number {
+  const s = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453
+  return s - Math.floor(s)
+}
+
+/** Squared radius of the ball the logo core must stay inside (the orb has radius 1; a little margin keeps it off the skin). */
+export const CORE_R2 = 0.92
+
+/**
+ * The logo core: `n` points inside the opaque letters of a mask, EXTRUDED through the depth of the ball.
+ * Each point keeps its (x, y) inside the letters and gets a z spread over the chord of the ball at that (x, y), so the
+ * result is a letter-shaped prism that fills the sphere from front to back. Seen from the side it is a flat band;
+ * turned to face the viewer it reads as the letters. The whole cloud is then tilted by `tiltDeg` about the x axis.
+ * `depth` (0..1) is how much of the chord the prism fills: 1 = the whole depth, less keeps the letters crisper from the front.
+ * `width` is how many orb radii the word spans. Flat [x, y, z, ...]; every point satisfies x^2 + y^2 + z^2 <= CORE_R2.
+ */
+export function logoVolume(mask: Mask, n: number, width: number, tiltDeg = 10, seed = 21, depth = 1): Float32Array {
+  const flat = pickTargets(mask, n, width, seed)
+  const rnd = mulberry32(seed + 1)
+  const t = (tiltDeg * Math.PI) / 180
+  const c = Math.cos(t), s = Math.sin(t)
+  for (let i = 0; i < n; i++) {
+    const x = flat[i * 3], y = flat[i * 3 + 1]
+    const chord = Math.sqrt(Math.max(0, CORE_R2 - x * x - y * y))
+    const z = (rnd() * 2 - 1) * chord * depth
+    flat[i * 3 + 1] = c * y - s * z
+    flat[i * 3 + 2] = s * y + c * z
+  }
+  return flat
+}
+
+/** Indices of a random `keep` fraction (0..1) of `n` points: the sparse outer shell, hover cloud and debris draw only these. */
+export function subsetIndices(n: number, keep: number, seed = 5): Uint32Array {
+  const rnd = mulberry32(seed)
+  const out: number[] = []
+  for (let i = 0; i < n; i++) if (rnd() < keep) out.push(i)
+  return Uint32Array.from(out)
+}

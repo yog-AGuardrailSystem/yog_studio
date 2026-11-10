@@ -119,7 +119,7 @@ export default function LandingPage() {
               </div>
             </Reveal>
           </div>
-          <HeroGlobeView className="h-[22rem] sm:h-[28rem] lg:h-[34rem]" />
+          <HeroGlobeView className="h-[24rem] sm:h-[30rem] lg:h-[38rem]" />
         </div>
       </section>
 

@@ -1,4 +1,4 @@
-// The black + gold hero and its interactive globe. Needs only the frontend (Vite on :5173 or BASE); no backend.
+// The black + gold hero: a gold orb of dots with the YOG logo living inside it. Needs only the frontend (Vite on :5173 or BASE); no backend.
 import { BASE, check, launch, overflowX, summary } from './lib.mjs'
 
 const b = await launch()
@@ -9,27 +9,32 @@ const watchErrors = (page) => {
   page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push('console: ' + m.text()) })
 }
 const G = '[data-testid=hero-globe]'
-const phase = (page) => page.getAttribute(G, 'data-phase')
-async function until(page, name, ms = 25000) {
+const attr = (page, name) => page.getAttribute(G, name)
+const yaw = async (page) => parseFloat(await attr(page, 'data-yaw'))
+const ready = (page) => page.waitForFunction(() => document.querySelector('[data-testid=hero-globe]')?.dataset.ready === 'true', null, { timeout: 30000 }).then(() => true).catch(() => false)
+async function until(page, fn, ms = 20000) {
   const end = Date.now() + ms
-  while (Date.now() < end) { if ((await phase(page)) === name) return true; await page.waitForTimeout(120) }
+  while (Date.now() < end) { if (await fn()) return true; await page.waitForTimeout(120) }
   return false
 }
-/** counts gold-looking pixels in a screenshot of the globe, with no image library: decode it in the page */
-async function goldPixels(page) {
+/** counts pixels matching `test` (r,g,b) inside a rectangle (fractions of the globe box) of a screenshot, decoded in the page */
+async function count(page, test, rect = [0, 0, 1, 1]) {
   const buf = await page.locator(G).screenshot()
-  return page.evaluate(async (b64) => {
+  return page.evaluate(async ([b64, src, r]) => {
     const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode()
     const c = document.createElement('canvas'); c.width = img.width; c.height = img.height
     const x = c.getContext('2d'); x.drawImage(img, 0, 0)
-    const d = x.getImageData(0, 0, c.width, c.height).data
+    const f = new Function('r', 'g', 'b', 'return ' + src)
+    const x0 = Math.floor(r[0] * c.width), y0 = Math.floor(r[1] * c.height), w = Math.floor((r[2] - r[0]) * c.width), h = Math.floor((r[3] - r[1]) * c.height)
+    const d = x.getImageData(x0, y0, w, h).data
     let n = 0
-    for (let i = 0; i < d.length; i += 4) if (d[i] > 170 && d[i + 1] > 110 && d[i + 2] < 150 && d[i] > d[i + 2] + 60) n++
+    for (let i = 0; i < d.length; i += 4) if (f(d[i], d[i + 1], d[i + 2])) n++
     return n
-  }, buf.toString('base64'))
+  }, [buf.toString('base64'), test, rect])
 }
+const GOLD = 'r > 150 && g > 90 && b < 170 && r > b + 50'
 
-// ---- desktop: the sequence, the look, the interaction
+// ---- desktop: landing, interaction
 const ctx = await b.newContext({ viewport: { width: 1440, height: 900 } })
 const page = await ctx.newPage()
 watchErrors(page)
@@ -40,57 +45,77 @@ check('the globe is in the hero, to the right of the headline', await page.evalu
   const h = document.querySelector('#hero h1').getBoundingClientRect()
   return g.left >= h.right - 40 && g.top < 500
 }))
-check('the globe is ready (WebGL)', await page.waitForFunction(() => document.querySelector('[data-testid=hero-globe]')?.dataset.ready === 'true', null, { timeout: 20000 }).then(() => true).catch(() => false))
-check('dots gather, then form the logo', await until(page, 'logo'))
-check('the logo is drawn in gold dots', (await goldPixels(page)) > 1500, String(await goldPixels(page)))
-check('then it melts into the globe', await until(page, 'globe'))
-check('the globe is drawn in gold dots', (await goldPixels(page)) > 800)
+check('the globe is ready (WebGL)', await ready(page))
+check('on landing it starts turning from side-on to front-on', await until(page, async () => (await attr(page, 'data-phase')) === 'reveal', 6000))
+check('then keeps turning slowly on its own', await until(page, async () => (await attr(page, 'data-phase')) === 'orbit', 15000))
+check('the orb is drawn in gold dots', (await count(page, GOLD)) > 1500)
+const y0 = await yaw(page); await page.waitForTimeout(2200)
+check('it turns by itself', Math.abs((await yaw(page)) - y0) > 0.03, `${y0} -> ${await yaw(page)}`)
 
+// the logo is always inside: turn it to face us and the letters are bright dots in the middle of the orb
+await page.getByTestId('hero-logo-btn').focus(); await page.keyboard.press('Enter')
+check('"Show the logo" turns the orb to face the viewer (keyboard)', await until(page, async () => Math.abs(await yaw(page)) < 0.2, 8000))
+await page.mouse.move(5, 5); await page.waitForTimeout(600)
+const middle = [0.3, 0.3, 0.7, 0.6]
+const WHITE = 'r > 215 && g > 190 && b > 130'
+const faceOn = await count(page, WHITE, middle)
+check('front-on, the YOG letters are a bright cluster of dots in the middle', faceOn > 400, String(faceOn))
+
+// drag turns it side-on: the logo becomes a band, and nothing is rebuilt (same dots)
 const box = await page.locator(G).boundingBox()
-await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.4)
-await page.mouse.down(); await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.5, { steps: 10 }); await page.mouse.up()
-check('dragging does not form the logo', (await phase(page)) === 'globe')
-await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5)
-check('a click re-forms the logo', await until(page, 'logo', 8000))
-check('while the cursor rests on it the logo stays (hover-dwell)', await page.waitForTimeout(5500).then(() => phase(page)).then((p) => p === 'logo'))
-await page.mouse.move(5, 5)
-check('and it melts back into the globe once the cursor leaves', await until(page, 'globe', 15000))
 await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5)
-check('hovering for a moment re-forms the logo', await until(page, 'logo', 8000))
-await page.mouse.move(5, 5)
-check('leaving melts it back', await until(page, 'globe', 15000))
-await page.getByTestId('hero-logo-btn').focus()
-await page.keyboard.press('Enter')
-check('the "Show the logo" button works from the keyboard', await until(page, 'logo', 8000))
+const before = await yaw(page)
+await page.mouse.down(); await page.mouse.move(box.x + box.width * 0.5 + 330, box.y + box.height * 0.5, { steps: 16 }); await page.mouse.up()
+await page.waitForTimeout(500)
+check('dragging turns the orb', Math.abs((await yaw(page)) - before) > 0.6, `${before} -> ${await yaw(page)}`)
+check('and it stays in orbit (no scripted sequence takes over)', (await attr(page, 'data-phase')) === 'orbit')
+const sideOn = await count(page, WHITE, middle)
+check('the bright core is still there from another angle (same dots, nothing rearranged)', sideOn > 150, String(sideOn))
+
+// hover, click, right button
+await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.4); await page.waitForTimeout(600)
+check('hovering marks the orb as hovered', (await attr(page, 'data-hover')) === 'true')
+const imp0 = parseInt(await attr(page, 'data-impacts'))
+await page.mouse.click(box.x + box.width * 0.55, box.y + box.height * 0.45)
+await page.waitForTimeout(500)
+check('a click sends a ripple (and a burst of dots)', parseInt(await attr(page, 'data-impacts')) === imp0 + 1)
+await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5, { button: 'right' })
+await page.waitForTimeout(300)
+check('the right button does nothing', parseInt(await attr(page, 'data-impacts')) === imp0 + 1)
+await page.mouse.move(5, 5); await page.waitForTimeout(700)
+check('leaving clears the hover', (await attr(page, 'data-hover')) === 'false')
 
 // ---- look
 const look = await page.evaluate(() => ({
   mkt: getComputedStyle(document.querySelector('.mkt')).backgroundColor,
   btn: getComputedStyle(document.querySelector('.mkt .btn-primary')).backgroundColor,
-  rail: !!document.querySelector('[data-motion="fx:particles"]'),
+  net: !!document.querySelector('[data-motion="fx:particles"]'),
 }))
 check('the marketing ground is pure black', look.mkt === 'rgb(0, 0, 0)', look.mkt)
 check('the primary button is gold', look.btn === 'rgb(245, 185, 66)', look.btn)
-check('the floating connected dots are still there', look.rail)
+check('the floating connected dots are still there', look.net)
 
 // ---- one WebGL scene at first, the decision gate only when you get near it
-check('only the globe has a WebGL canvas at first', (await page.locator('canvas').count()) >= 1 && (await page.locator('[data-testid=gate-scene]').count()) === 0)
+check('the decision gate is not loaded at first', (await page.locator('[data-testid=gate-scene]').count()) === 0)
 await page.locator('[data-testid=hero-visual]').scrollIntoViewIfNeeded()
 check('the decision gate loads when you scroll to it', await page.waitForSelector('[data-testid=gate-scene]', { timeout: 15000 }).then(() => true).catch(() => false))
 
-// ---- pause control and reduced motion give one still frame with the logo formed
+// ---- pause control and reduced motion give one still frame facing the viewer
 await page.evaluate(() => window.scrollTo(0, 0))
 await page.getByTestId('motion-toggle').click()
 await page.waitForTimeout(1500)
-check('pausing shows the logo as a still frame', (await phase(page)) === 'logo' && (await page.getAttribute(G, 'data-calm')) === 'true')
+const still = await yaw(page)
+await page.waitForTimeout(1500)
+const after = await yaw(page)
+check('pausing shows a still frame facing the viewer', (await attr(page, 'data-calm')) === 'true' && Math.abs(still) < 0.05 && after === still, `calm=${await attr(page, 'data-calm')} still=${still} after=${after}`)
 await page.getByTestId('motion-toggle').click()
 await ctx.close()
 
 const rm = await b.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' })
 const prm = await rm.newPage(); watchErrors(prm)
 await prm.goto(BASE + '/'); await prm.waitForSelector(G)
-await prm.waitForTimeout(2500)
-check('OS reduced motion shows the still logo', (await prm.getAttribute(G, 'data-calm')) === 'true' && (await phase(prm)) === 'logo')
+await ready(prm); await prm.waitForTimeout(1500)
+check('OS reduced motion shows the still frame', (await attr(prm, 'data-calm')) === 'true' && Math.abs(await yaw(prm)) < 0.05)
 await rm.close()
 
 // ---- no WebGL: a static gold wordmark
