@@ -98,7 +98,7 @@ def test_a_provider_that_always_returns_the_same_vector_scores_near_chance():
     class Constant(FakeProvider):
         def embed(self, texts):
             return [[1.0] + [0.0] * 7 for _ in texts]
-    r = evaluate_retrieval(Constant(), paraphrases=PARAS[:40])
+    r = evaluate_retrieval(Constant(), paraphrases=PARAS[:40], hybrid=False)
     assert r["overall"]["recall@1"]["pct"] < 15, "ties everywhere: the harness must not flatter a useless embedder"
 
 

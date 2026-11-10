@@ -1,0 +1,14 @@
+{
+  "fake:": {
+    "floor": 0.311,
+    "n_negative": 20,
+    "n_positive": 109,
+    "negative_max": 0.306,
+    "negatives_rejected": 1.0,
+    "positive_median": 0.342,
+    "positive_p10": 0.056,
+    "positives_kept": 0.578,
+    "separable": false,
+    "when": "2026-11-10T07:49:05+00:00"
+  }
+}

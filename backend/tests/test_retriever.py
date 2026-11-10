@@ -111,8 +111,15 @@ def test_fake_generate_scripted_and_default():
     assert p.prompts == ["a", "b"]
     with pytest.raises(AssertionError):
         p.generate("c")
-    echo = FakeProvider().generate("x\n```yog\nfact a(b)\n```\n")
+    echo = FakeProvider().generate("x\nExample [ex-1]\nRule: do a thing\n```yog\nfact a(b)\n```\n")
     assert "fact a(b)" in echo and "OFFLINE FAKE" in echo
+    assert echo.rstrip().endswith("USED_EXAMPLES: ex-1")          # it cites the example it copied
+
+
+def test_fake_has_nothing_to_copy_when_no_example_is_close():
+    out = FakeProvider().generate("## Similar solved examples\n(none: no stored example is close enough)\n")
+    assert "no close example" in out and out.rstrip().endswith("USED_EXAMPLES: none")
+    assert "fact" not in out.split("USED_EXAMPLES")[0]
 
 
 def test_load_prompt_missing_raises():

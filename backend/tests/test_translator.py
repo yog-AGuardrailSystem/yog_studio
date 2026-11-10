@@ -145,7 +145,9 @@ def test_api_translate(tmp_path):
         j = r.json()
         old = {"english_rules", "yog_source", "retrieved_examples", "attempts", "valid", "errors"}
         assert old <= set(j), "every key the UI already relies on must still be present"
-        assert set(j) - old == {"retrieved", "attempt_log", "verified", "scenario_summary"}, "new fields are additive"
+        assert set(j) - old == {"retrieved", "attempt_log", "verified", "scenario_summary", "grounded", "cited_examples",
+                                "citation_problems", "floor", "floor_calibrated", "reranked"}, "new fields are additive"
         assert j["valid"] is True and "OFFLINE FAKE" in j["yog_source"]
+        assert j["grounded"] is True and j["cited_examples"] and j["cited_examples"][0] in j["retrieved_examples"]
     finally:
         app.dependency_overrides.clear()

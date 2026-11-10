@@ -21,7 +21,8 @@ Fix every problem and keep the intent of the rules. Remember: decision predicate
 arguments, every predicate used must be defined by a fact or rule, variables are Uppercase, constants lowercase, integers only,
 and per-request predicates (`hour`, `day`, `arg`, ...) need a placeholder base fact.
 
-Reply with ONE complete corrected policy in a single fenced block tagged `yog`, nothing else:
+Reply with ONE complete corrected policy in a single fenced block tagged `yog`, then the final line `USED_EXAMPLES: none`:
 ```yog
 ...
 ```
+USED_EXAMPLES: none

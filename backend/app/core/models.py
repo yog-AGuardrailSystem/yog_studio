@@ -24,6 +24,9 @@ class RetrievedExample(BaseModel):
     english: str
     score: float
     source: str = "unknown"            # team | claude-draft | reviewed-by:<name> ...
+    relevant: bool = True              # cleared the relevance floor; only relevant examples are put into the prompt
+    lexical: float = 0.0               # keyword (BM25) score, 0..1 within the query
+    rerank: float | None = None        # 0..10 from the optional LLM reranker
 
 
 class AttemptLog(BaseModel):
@@ -53,6 +56,13 @@ class PolicyDraft(BaseModel):
     attempt_log: list[AttemptLog] = Field(default_factory=list)
     verified: bool | None = None       # True/False = independent scenarios agree/disagree; None = no independent check ran
     scenario_summary: ScenarioSummary | None = None
+    # grounding: did retrieval find anything close enough to learn from, and which examples did the model say it used?
+    grounded: bool = True              # False = no retrieved example cleared the floor; the draft is the model's alone
+    cited_examples: list[str] = Field(default_factory=list)       # ids the model cited AND that were really in the prompt
+    citation_problems: list[str] = Field(default_factory=list)    # missing citation, or an id that was never retrieved
+    floor: float | None = None
+    floor_calibrated: bool | None = None
+    reranked: bool = False
 
 
 class DetectResult(BaseModel):
