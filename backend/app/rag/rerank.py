@@ -8,7 +8,8 @@ import re
 from app.llm.provider import LLMError, LLMProvider, generate_text, load_prompt
 from app.rag.retriever import Retrieved
 
-RELEVANT_AT = 5.0          # a reranker score at or above this counts as relevant
+RELEVANT_AT = 7.0          # a reranker score at or above this counts as relevant (5 = "related, needs real changes":
+                           # live run: with 5 as the bar the model cited weak examples instead of the 10/10 one)
 SCHEMA = {"type": "array", "items": {"type": "object", "properties": {
     "id": {"type": "string"}, "score": {"type": "number"}}, "required": ["id", "score"]}}
 
