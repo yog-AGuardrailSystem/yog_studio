@@ -36,6 +36,7 @@ See the "Deploy" section in docs/DEPLOY.md.
 | `/` | Landing page: live compiler explorer, four compiler scenes, pipeline conveyor, example cards A to R, 3D decision gate |
 | `/how-it-works` | Scroll-driven walkthrough of the agent tools flow, with an interactive device demo |
 | `/studio` | The tool hub: every Studio tool, how it works, what it does not do |
+| `/studio/why`, `/studio/map`, `/studio/gaps`, `/studio/red-team`, `/studio/strength`, `/studio/templates`, `/studio/history`, `/studio/audit`, `/studio/replay`, `/studio/sdk`, `/studio/export`, `/studio/scorecard` | The Studio tools (each page explains how it works); API under `/studio/*` |
 | `/studio/workbench` | The YOG workbench: editor, live compile, tests with "why", tokens/AST/readback, C lexer, Assist, evidence |
 | `/agent`, `/rules`, `/review`, `/modify`, `/device` | Agent tools: upload an agent, rules, review and approve, patch, device |
 | `/check` | Sandbox: try a policy on one action |
