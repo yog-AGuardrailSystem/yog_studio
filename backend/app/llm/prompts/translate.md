@@ -35,13 +35,17 @@ deny can_delete(User, Res):          # decision clause: forbid
 {{tools}}
 
 ## Similar solved examples
+These were retrieved because they resemble the rules below. They are references, not templates: copy a pattern only where it truly fits,
+and never carry over predicates, tools or constants that the rules and tools below do not mention.
 {{examples}}
 
 ## Rules to translate
 {{rules}}
 
 ## Output
-Reply with ONE complete policy in a single fenced block tagged `yog`, nothing else:
+Reply with ONE complete policy in a single fenced block tagged `yog`, then ONE final line naming the examples you actually relied on
+(ids from the list above, comma separated, or `none` if you relied on none):
 ```yog
 ...
 ```
+USED_EXAMPLES: <ids or none>

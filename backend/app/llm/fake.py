@@ -67,6 +67,9 @@ class FakeProvider(LLMProvider):
             if not self._replies:
                 raise AssertionError("FakeProvider ran out of scripted replies")
             return self._replies.pop(0)
-        m = re.search(r"```yog\n(.*?)```", prompt, re.S)
-        body = m.group(1) if m else ""
-        return "```yog\n# OFFLINE FAKE PROVIDER: copied from the nearest example, not translated.\n" + body + "```"
+        m = re.search(r"Example \[([^\]\n]+)\]\nRule:[^\n]*\n```yog\n(.*?)```", prompt, re.S)
+        if m is None:           # nothing was retrieved that is close enough: there is nothing to copy
+            return ("```yog\n# OFFLINE FAKE PROVIDER: no close example to copy, and this mode cannot translate.\n```\n"
+                    "USED_EXAMPLES: none")
+        return ("```yog\n# OFFLINE FAKE PROVIDER: copied from the nearest example, not translated.\n" + m.group(2) + "```\n"
+                f"USED_EXAMPLES: {m.group(1)}")

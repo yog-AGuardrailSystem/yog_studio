@@ -82,9 +82,59 @@ check('Assist shows retrieved examples with scores', true)
 await page.getByTestId('assist-draft').click()
 await page.waitForSelector('[data-testid=draft-box]', { timeout: 20000 })
 check('Assist produces a draft', true)
+check('the draft names the example it is based on', /Based on:/.test(await page.getByTestId('citations').innerText()))
 await page.getByTestId('draft-insert').click()
 await page.waitForSelector('[data-testid=toast]')
 check('draft is inserted only on click', true)
+
+// Real AI / Offline switch: starts Offline on a server with no key, and says why Real is unavailable
+const sw = page.getByTestId('ai-mode-toggle')
+check('AI mode switch is shown', await sw.isVisible())
+check('AI mode defaults to Offline here', (await sw.getAttribute('aria-checked')) === 'false' && /Offline/.test(await page.getByTestId('ai-mode-label').innerText()))
+
+// Strict RAG: an off-topic rule finds nothing relevant, the UI says so, and the draft needs an explicit confirmation
+await page.getByTestId('tab-Assist').click()                        // inserting a draft moved us to Checks
+await page.getByTestId('assist-input').fill('What is the capital of France?')
+await page.getByTestId('assist-find').click()
+await page.waitForSelector('[data-testid=no-match]')
+check('off-topic rule shows "no close example"', true)
+check('weak matches are marked below the floor', (await page.locator('[data-testid=retrieved-list] li[data-relevant=no]').count()) > 0)
+check('the relevance floor is shown', /relevance floor/.test(await page.getByTestId('floor-note').innerText()))
+await page.getByTestId('assist-draft').click()
+await page.waitForSelector('[data-testid=ungrounded-chip]', { timeout: 20000 })
+check('an ungrounded draft is labelled', true)
+check('inserting an ungrounded draft is blocked until confirmed', await page.getByTestId('draft-insert').isDisabled())
+await page.getByTestId('ungrounded-ack').check()
+check('confirming enables inserting', !(await page.getByTestId('draft-insert').isDisabled()))
+
+// Real AI refused or failing (budget, rate limit, outage): the user is never stuck, one click continues Offline.
+{
+  const p3 = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage()
+  await p3.route('**/api/info', async (route) => {
+    const res = await route.fetch()
+    const j = await res.json()
+    await route.fulfill({ response: res, json: { ...j, live_available: true, live_allowed: true, live_ready: true, live_reason: null, live_provider: 'gemini', default_mode: 'real' } })
+  })
+  await p3.route('**/api/translate/start', (route) => route.fulfill({ status: 429, contentType: 'application/json', json: { detail: 'The live AI budget for today is used up. Switch to Offline mode, or try again tomorrow.' } }))
+  await p3.goto(BASE + '/studio')
+  await p3.waitForSelector('[data-testid=ai-mode-toggle]')
+  await p3.getByTestId('tab-Assist').click()
+  await p3.waitForFunction(() => document.querySelector('[data-testid=ai-mode-toggle]')?.getAttribute('aria-checked') === 'true', null, { timeout: 8000 })
+  check('with a key on the server the switch defaults to Real AI', true)
+  check('Real AI badge is shown', await p3.getByTestId('real-badge').isVisible())
+  check('re-rank option is available in Real mode', !(await p3.getByTestId('rerank-toggle').isDisabled()))
+  await p3.getByTestId('assist-input').fill('Only admins may delete a database.')
+  await p3.getByTestId('assist-draft').click()
+  await p3.waitForSelector('[data-testid=assist-error]')
+  check('a refused live request shows the reason', /budget/.test(await p3.getByTestId('assist-error').innerText()))
+  await p3.getByTestId('fallback-offline').click()
+  check('one click continues in Offline mode', (await p3.getByTestId('ai-mode-toggle').getAttribute('aria-checked')) === 'false')
+  await p3.unroute('**/api/translate/start')
+  await p3.getByTestId('assist-draft').click()
+  await p3.waitForSelector('[data-testid=draft-box]', { timeout: 20000 })
+  check('and the draft then works offline', true)
+  await p3.context().close()
+}
 
 // Evidence tab never invents numbers
 await page.getByTestId('tab-Evidence').click()

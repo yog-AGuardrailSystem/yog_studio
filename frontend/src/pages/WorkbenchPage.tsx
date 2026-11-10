@@ -2,10 +2,11 @@ import { motion } from 'motion/react'
 import { Link } from "react-router-dom"
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  compile, getInfo, runProgram, teamExamples,
-  type CompileInfo, type Info, type RunResponse, type TeamGroup,
+  compile, runProgram, teamExamples,
+  type CompileInfo, type RunResponse, type TeamGroup,
 } from '../api/compile'
 import { YogEditor } from '../components/YogEditor'
+import { AiModeToggle, useAiMode } from '../lib/aiMode'
 import { CommandPalette, Tour, type Command } from '../components/workbench/Overlays'
 import {
   AssistPanel, AstPanel, BenchmarkPanel, CLexerPanel, ChecksPanel, ReadbackPanel, TestsPanel, TokensPanel,
@@ -24,7 +25,6 @@ export default function WorkbenchPage() {
   const [tab, setTab] = useState<Tab>('Checks')
   const [info, setInfo] = useState<CompileInfo | null>(null)
   const [run, setRun] = useState<RunResponse | null>(null)
-  const [server, setServer] = useState<Info | null>(null)
   const [groups, setGroups] = useState<TeamGroup[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [adhoc, setAdhoc] = useState({ actor: 'alice', action: 'can_delete', resource: 'db1', context: '' })
@@ -36,7 +36,7 @@ export default function WorkbenchPage() {
   const editor = useRef<{ focusLine: (n: number) => void } | null>(null)
   const seq = useRef(0)
 
-  useEffect(() => { getInfo().then(setServer).catch(() => undefined) }, [])
+  const ai = useAiMode()
   useEffect(() => { teamExamples().then(setGroups).catch((e) => setLoadError(e instanceof Error ? e.message : String(e))) }, [])
 
   // autosave + debounced live compile
@@ -96,7 +96,7 @@ export default function WorkbenchPage() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette((p) => !p) }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); e.stopPropagation(); setPalette((p) => !p) }
     }
     window.addEventListener('keydown', onKey, true) // capture: Monaco would otherwise swallow Ctrl+K as a chord prefix
     return () => window.removeEventListener('keydown', onKey, true)
@@ -110,8 +110,9 @@ export default function WorkbenchPage() {
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <h1 className="font-display text-xl font-bold">YOG workbench</h1>
         <span className={`compile-ring ${busy ? 'is-busy' : ''}`} aria-hidden data-motion="wb:compile-ring" title={busy ? 'Compiling…' : 'Up to date'} />
-        {server?.offline_demo && <span className="chip" data-testid="offline-chip" title="No AI model is configured; Assist copies the nearest example">Offline demo mode</span>}
+        {ai.mode === 'offline' && <span className="chip" data-testid="offline-chip" title="No AI model is used; Assist copies the nearest example">Offline demo mode</span>}
         <span className="flex-1" />
+        <AiModeToggle compact />
         <button type="button" className="btn-secondary" onClick={() => setPalette(true)} data-testid="open-palette">Commands <kbd className="ml-1 text-xs" style={{ color: '#475569' }}>Ctrl K</kbd></button>
         <button type="button" className="btn-secondary" onClick={copyShare} data-testid="share">Share link</button>
         <button type="button" className="btn-secondary" onClick={() => downloadText('policy.yog', source)}>Download .yog</button>
@@ -156,8 +157,8 @@ export default function WorkbenchPage() {
             {tab === 'Tokens' && <TokensPanel info={info} />}
             {tab === 'AST' && <AstPanel info={info} />}
             {tab === 'Readback' && <ReadbackPanel source={source} ok={!!info?.ok} />}
-            {tab === 'C lexer' && <CLexerPanel source={source} available={!!server?.c_lexer} />}
-            {tab === 'Assist' && <AssistPanel info={server} current={source} onInsert={insert} onReplace={(y) => { setSource(y); setTab('Checks') }} />}
+            {tab === 'C lexer' && <CLexerPanel source={source} available={!!ai.info?.c_lexer} />}
+            {tab === 'Assist' && <AssistPanel current={source} onInsert={insert} onReplace={(y) => { setSource(y); setTab('Checks') }} />}
             {tab === 'Evidence' && <BenchmarkPanel />}
           </div>
         </section>

@@ -6,7 +6,8 @@ export interface Retrieved {
   tools_context: string[]
   gold_yog: string
   score: number
+  relevant?: boolean
 }
 
-export const retrieve = (english: string, tools: string[], k = 3) =>
-  postJson<{ results: Retrieved[] }>('/retrieve', { english, tools, k }).then((r) => r.results)
+export const retrieve = (english: string, tools: string[], k = 3, mode?: 'real' | 'offline') =>
+  postJson<{ results: Retrieved[] }>('/retrieve', { english, tools, k, mode }).then((r) => r.results)

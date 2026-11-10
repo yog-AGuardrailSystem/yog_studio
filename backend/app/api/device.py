@@ -1,10 +1,12 @@
-from functools import lru_cache
+import threading
+from collections import OrderedDict
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.api.deps import get_adapter
 from app.api.policies import get_store
+from app.core import session
 from app.device.simulator import (DEMO_SCRIPT, Clock, DeviceError, DeviceSim, DeviceState, LogEntry,
                                   NoPolicyError)
 from app.engine.adapter import EngineAdapter, EngineError
@@ -13,9 +15,23 @@ from app.policies.store import PolicyStore
 router = APIRouter(prefix="/device")
 
 
-@lru_cache(maxsize=1)
-def get_sim() -> DeviceSim:
-    return DeviceSim()
+_SIMS: "OrderedDict[str, DeviceSim]" = OrderedDict()
+_SIMS_LOCK = threading.Lock()
+MAX_SIMS = 500
+
+
+def get_sim(request: Request) -> DeviceSim:
+    """Each visitor drives their own device (state, clock and log); the least recently used are dropped."""
+    sid = session.session_id(request)
+    with _SIMS_LOCK:
+        sim = _SIMS.pop(sid, None) or DeviceSim()
+        _SIMS[sid] = sim
+        while len(_SIMS) > MAX_SIMS:
+            _SIMS.popitem(last=False)
+        return sim
+
+
+get_sim.cache_clear = _SIMS.clear          # type: ignore[attr-defined]  # tests reset visitors between cases
 
 
 class Snapshot(BaseModel):

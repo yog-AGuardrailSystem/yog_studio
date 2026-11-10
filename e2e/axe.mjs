@@ -34,7 +34,7 @@ await settle(1200)
 await scan('workbench (tour closed)')
 for (const tab of ['Checks', 'Tests', 'Tokens', 'AST', 'Readback', 'C lexer', 'Assist', 'Evidence']) {
   await page.getByTestId(`tab-${tab.replace(' ', '-')}`).click()
-  await settle(900)
+  await settle(tab === 'Tokens' || tab === 'AST' ? 2400 : 900)       // tokens and tree nodes fade in one after another
   await scan(`workbench ${tab}`)
 }
 await page.getByTestId('tab-Tests').click(); await page.getByTestId('query-row').nth(1).click(); await settle(700); await scan('workbench why box')

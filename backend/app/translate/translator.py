@@ -8,14 +8,30 @@ from app.llm.provider import LLMError, LLMProvider, generate_text, load_prompt
 from app.rag.retriever import Retrieved, Retriever
 
 MAX_ATTEMPTS = 3
+RERANK_POOL = 8           # candidates handed to the optional LLM reranker
 FENCE = re.compile(r"```[ \t]*(?:yog)?[ \t]*\n(.*?)```", re.S | re.I)
 
 
+CITE = re.compile(r"^[ \t]*USED_EXAMPLES[ \t]*:[ \t]*(.*)$", re.M | re.I)
+
+
 def extract_yog(text: str) -> str:
-    """Pull the policy out of the model reply: first fenced block, else the whole reply."""
+    """Pull the policy out of the model reply: first fenced block, else the whole reply (minus the citation line)."""
     m = FENCE.search(text)
-    body = m.group(1) if m else text
+    body = m.group(1) if m else CITE.sub("", text)
     return body.strip("\n") + "\n" if body.strip() else ""
+
+
+def parse_citations(reply: str, allowed: set[str]) -> tuple[list[str], list[str], bool]:
+    """(valid ids, problems, said_none). An id the model cites that was never in the prompt is a problem, not a source."""
+    m = CITE.search(reply)
+    if not m:
+        return [], (["the model did not say which examples it used"] if allowed else []), False
+    raw = [x.strip(" `'\"[]()") for x in re.split(r"[,\s]+", m.group(1))]
+    ids = [x for x in raw if x and x.lower() not in ("none", "n/a", "-", "null")]
+    valid = list(dict.fromkeys(i for i in ids if i in allowed))
+    problems = [f"cited '{i}', which was not among the retrieved examples" for i in dict.fromkeys(ids) if i not in allowed]
+    return valid, problems, not ids
 
 
 def decision_name(tool_name: str) -> str:
@@ -36,8 +52,9 @@ def format_tools(tools: list[Tool]) -> str:
 
 def format_examples(examples: list[Retrieved]) -> str:
     if not examples:
-        return "(none)"
-    return "\n\n".join(f"Rule: {e.english}\n```yog\n{e.gold_yog.rstrip()}\n```" for e in examples)
+        return ("(none: no stored example is close enough to these rules to learn from. Write the policy from the rules, "
+                "the tools and the language reference alone, and finish with USED_EXAMPLES: none)")
+    return "\n\n".join(f"Example [{e.id}]\nRule: {e.english}\n```yog\n{e.gold_yog.rstrip()}\n```" for e in examples)
 
 
 def format_rules(rules: list[str]) -> str:
@@ -105,6 +122,7 @@ def check_against_scenarios(adapter: EngineAdapter, policy: str, scenarios) -> t
 
 def translate(rules: list[str], tools: list[Tool], provider: LLMProvider, retriever: Retriever,
               adapter: EngineAdapter, max_attempts: int = MAX_ATTEMPTS, *, verify: bool = False,
+              rerank: bool = False,
               on_event: Callable[[dict], None] | None = None,
               should_cancel: Callable[[], bool] | None = None) -> PolicyDraft:
     """Draft a policy. `verify=True` adds the semantic check: independent scenarios (written from the English only)
@@ -127,19 +145,34 @@ def translate(rules: list[str], tools: list[Tool], provider: LLMProvider, retrie
     seen: dict[str, Retrieved] = {}
     emit(phase="retrieving")
     stop_if_cancelled()
+    use_rerank = rerank and provider.name != "fake"         # the offline provider cannot judge relevance
     try:
         for r in rules:
-            for e in retriever.search(r, names, 3):
-                if e.id not in seen or e.score > seen[e.id].score:
+            for e in retriever.search(r, names, RERANK_POOL if use_rerank else 3):
+                if e.id not in seen or e.fused > seen[e.id].fused or (e.fused == seen[e.id].fused and e.score > seen[e.id].score):
                     seen[e.id] = e
     except LLMError as e:
         emit(phase="done", valid=False, error=f"retrieval failed: {e}")
         return PolicyDraft(english_rules=rules, yog_source="", retrieved_examples=[], attempts=0, valid=False,
                            errors=[f"retrieval failed: {e}"])
-    examples = sorted(seen.values(), key=lambda e: -e.score)[:5]
+    candidates = sorted(seen.values(), key=lambda e: (-e.fused, -e.score))
+    reranked = False
+    if use_rerank:
+        stop_if_cancelled()
+        emit(phase="reranking", candidates=len(candidates))
+        from app.rag.rerank import rerank as llm_rerank          # lazy: keeps the offline path import-light
+        candidates, problem = llm_rerank(provider, rules, candidates, top=5)
+        reranked = problem is None
+        emit(phase="reranked", ok=reranked, problem=problem)
+    examples = candidates[:5]
+    floor_info = retriever.floor_info() if hasattr(retriever, "floor_info") else {}
+    relevant = [e for e in examples if e.relevant]
+    grounded = bool(relevant)                               # strict: weak matches are shown, never fed to the model
     example_ids = [e.id for e in examples]
-    shown = [RetrievedExample(id=e.id, english=e.english, score=e.score, source=e.source) for e in examples]
-    emit(phase="retrieved", examples=[x.model_dump() for x in shown])
+    shown = [RetrievedExample(id=e.id, english=e.english, score=e.score, source=e.source, relevant=e.relevant,
+                              lexical=e.lexical, rerank=e.rerank) for e in examples]
+    emit(phase="retrieved", examples=[x.model_dump() for x in shown], grounded=grounded,
+         floor=floor_info.get("floor"), calibrated=floor_info.get("calibrated"), reranked=reranked)
 
     scenarios: list = []
     scenario_note: list[str] = []
@@ -150,12 +183,19 @@ def translate(rules: list[str], tools: list[Tool], provider: LLMProvider, retrie
         scenarios, scenario_note = generate_independent(rules, tools, provider)
         emit(phase="scenarios", state="ready", count=len(scenarios), problems=scenario_note)
 
+    cites: dict[int, tuple[list[str], list[str]]] = {}      # attempt -> (cited ids, citation problems)
+
     def draft(**kw) -> PolicyDraft:
-        base = dict(english_rules=rules, retrieved_examples=example_ids, retrieved=shown, attempt_log=log)
+        base = dict(english_rules=rules, retrieved_examples=example_ids, retrieved=shown, attempt_log=log,
+                    grounded=grounded, floor=floor_info.get("floor"), floor_calibrated=floor_info.get("calibrated"),
+                    reranked=reranked)
+        n = kw.get("attempts", 0)
+        if n in cites:
+            base["cited_examples"], base["citation_problems"] = cites[n]
         return PolicyDraft(**{**base, **kw})
 
     tools_txt, rules_txt = format_tools(tools), format_rules(rules)
-    prompt = render(load_prompt("translate"), tools=tools_txt, examples=format_examples(examples), rules=rules_txt)
+    prompt = render(load_prompt("translate"), tools=tools_txt, examples=format_examples(relevant), rules=rules_txt)
     log: list[AttemptLog] = []
     best: tuple[int, str, int, int] | None = None          # (disagreements, policy, attempt, checked_total) among compiling drafts
     policy, errors, attempts = "", [], 0
@@ -171,6 +211,10 @@ def translate(rules: list[str], tools: list[Tool], provider: LLMProvider, retrie
             emit(phase="done", valid=False, error=msg)
             return draft(yog_source=policy, attempts=attempts, valid=False, errors=[msg])
         policy = extract_yog(reply)
+        cited, problems, _ = parse_citations(reply, {e.id for e in relevant})
+        if attempts > 1 and not cited and not problems:     # a repair round does not see the examples: keep what attempt 1 cited
+            cited, problems = cites.get(attempts - 1, ([], []))
+        cites[attempts] = (cited, problems)
         errors = lint(adapter, policy, tools)
         failures: list[str] = []
         counted = passed = 0

@@ -15,7 +15,7 @@ export function CommandPalette({ open, onClose, commands }: { open: boolean; onC
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-24" onMouseDown={onClose} data-testid="palette">
       <div className="pop-in w-full max-w-lg rounded-lg border border-slate-300 bg-white p-2 shadow-2xl" data-motion="wb:palette" role="dialog" aria-label="Command palette" onMouseDown={(e) => e.stopPropagation()}>
         <input
-          ref={input} value={q} onChange={(e) => { setQ(e.target.value); setSel(0) }} aria-label="Type a command"
+          ref={input} autoFocus value={q} onChange={(e) => { setQ(e.target.value); setSel(0) }} aria-label="Type a command"
           placeholder="Type a command…" className="field mb-2"
           onKeyDown={(e) => {
             if (e.key === 'Escape') onClose()

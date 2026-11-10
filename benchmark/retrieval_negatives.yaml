@@ -1,0 +1,24 @@
+# Queries that NO example in examples/policies should be retrieved for. Used only to calibrate the retrieval relevance
+# floor (python -m app.benchmark.retrieval_eval --calibrate). source: claude-draft; a teammate may add to it.
+#   clear  = nothing to do with agent policies
+#   near   = sounds like a rule, but about a domain no example covers
+- {tier: clear, query: "What is the capital of France?"}
+- {tier: clear, query: "Bake the cake at 180 degrees for forty minutes."}
+- {tier: clear, query: "Translate this sentence into Spanish."}
+- {tier: clear, query: "The football match starts at eight on Saturday."}
+- {tier: clear, query: "Recommend a good science fiction novel."}
+- {tier: clear, query: "Summarise the quarterly earnings call."}
+- {tier: clear, query: "How do I reset my router password?"}
+- {tier: clear, query: "Write a poem about autumn leaves."}
+- {tier: clear, query: "The sunset over the mountains was beautiful."}
+- {tier: clear, query: "Order two pizzas with extra cheese."}
+- {tier: near, query: "Drones may not fly above 120 metres."}
+- {tier: near, query: "Vehicles must stop at red traffic lights."}
+- {tier: near, query: "Students may borrow at most five library books."}
+- {tier: near, query: "Hotel guests must check out before noon."}
+- {tier: near, query: "Employees get twenty days of annual leave."}
+- {tier: near, query: "Parking is free on Sundays."}
+- {tier: near, query: "The elevator must not carry more than eight people."}
+- {tier: near, query: "Customers may return a product within thirty days."}
+- {tier: near, query: "Plants should be watered every morning."}
+- {tier: near, query: "Visitors must wear a badge inside the building."}

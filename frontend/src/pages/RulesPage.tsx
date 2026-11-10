@@ -9,10 +9,12 @@ import { EmptyState } from '../components/EmptyState'
 import { PageIntro } from '../components/PageIntro'
 import { Spinner } from '../components/Spinner'
 import { HintChip } from '../components/ToolsTable'
+import { AiModeToggle, useAiMode } from '../lib/aiMode'
 import { useAppState } from '../state'
 
 export default function RulesPage() {
   const { tools, rules, setRules, draft, setDraft } = useAppState()
+  const ai = useAiMode()
   const [generating, setGenerating] = useState(false)
   const [examples, setExamples] = useState<Retrieved[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -29,7 +31,7 @@ export default function RulesPage() {
     setError(null)
     try {
       const toolNames = tools.map((t) => t.name)
-      const lists = await Promise.all(filled.map((r) => retrieve(r, toolNames, 3)))
+      const lists = await Promise.all(filled.map((r) => retrieve(r, toolNames, 3, ai.mode)))
       // merge across rules, keep best score per example id
       const best = new Map<string, Retrieved>()
       lists.flat().forEach((e) => {
@@ -59,7 +61,7 @@ export default function RulesPage() {
     setGenerating(true)
     setError(null)
     try {
-      setDraft(await translate(filled, tools))
+      setDraft(await translate(filled, tools, ai.mode, ai.rerank))
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -94,7 +96,11 @@ export default function RulesPage() {
       </section>
 
       <section>
-        <h2 className="mb-2 font-semibold">Rules in plain English</h2>
+        <div className="mb-2 flex flex-wrap items-center gap-3">
+          <h2 className="font-semibold">Rules in plain English</h2>
+          <span className="flex-1" />
+          <AiModeToggle />
+        </div>
         <div className="space-y-2">
           {rules.map((r, i) => (
             <div key={i} className="flex gap-2">
@@ -137,7 +143,16 @@ export default function RulesPage() {
             {generating ? <><Spinner label="Generating" /> Generating…</> : 'Generate YOG draft'}
           </button>
         </div>
-        {error && <div className="mt-3 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</div>}
+        {error && (
+          <div className="mt-3 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">
+            <p>{error}</p>
+            {ai.mode === 'real' && (
+              <button type="button" className="btn-secondary mt-2" data-testid="fallback-offline" onClick={() => { ai.setMode('offline'); setError(null) }}>
+                Continue in Offline mode
+              </button>
+            )}
+          </div>
+        )}
       </section>
 
       {examples.length > 0 && (
@@ -157,7 +172,16 @@ export default function RulesPage() {
             {draft.retrieved_examples.length > 0 && (
               <span className="text-xs text-slate-500">examples: {draft.retrieved_examples.join(', ')}</span>
             )}
+            {draft.grounded === false && (
+              <span className="rounded border border-amber-400 bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900" data-testid="ungrounded-chip">ungrounded</span>
+            )}
           </div>
+          {draft.grounded === false && (
+            <p className="mb-2 rounded border border-amber-600 bg-amber-50 p-2 text-sm text-amber-900" role="note">
+              No stored example is close enough to these rules, so this draft comes from the model alone. You will be asked to confirm that before you can approve it.
+            </p>
+          )}
+          {!!draft.cited_examples?.length && <p className="mb-2 text-xs text-slate-600">Based on: {draft.cited_examples.join(', ')}</p>}
           {draft.errors.length > 0 && (
             <ul className="mb-2 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
               {draft.errors.map((e) => <li key={e}>{e}</li>)}

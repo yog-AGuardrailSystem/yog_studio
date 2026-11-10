@@ -49,8 +49,17 @@ export interface CLexerResponse {
   [k: string]: unknown
 }
 export interface TeamGroup { id: string; title: string; english: string; source: string; queries: number; uses_context: boolean }
-export interface Info { provider: string; model: string | null; offline_demo: boolean; engine: string; c_lexer: boolean; commit: string }
-export interface Retrieved { id: string; english: string; tools_context: string[]; gold_yog: string; score: number; source: string }
+export interface Info {
+  provider: string; model: string | null; offline_demo: boolean; engine: string; c_lexer: boolean; commit: string
+  default_mode: 'real' | 'offline'
+  live_available: boolean; live_allowed: boolean; live_ready: boolean; live_reason: string | null; live_provider: string | null
+}
+export interface Retrieved {
+  id: string; english: string; tools_context: string[]; gold_yog: string; score: number; source: string
+  relevant?: boolean; lexical?: number; rerank?: number | null
+}
+export interface RetrieveResult { results: Retrieved[]; floor: number | null; floor_calibrated: boolean | null; grounded: boolean; provider: string | null }
+export type Mode = 'real' | 'offline'
 export interface Readback {
   actions: { action: string; predicate: string; allow: string[]; deny: string[] }[]
   definitions: string[]
@@ -73,12 +82,12 @@ export const runProgram = (source: string, adhoc?: AdHoc) => postJson<RunRespons
 export const compareCLexer = (source: string) => postJson<CLexerResponse>('/compile/c-lexer', { source })
 export const teamExamples = () => getJson<TeamGroup[]>('/examples/team')
 export const getInfo = () => getJson<Info>('/info')
-export const retrieve = (english: string, tools: string[] = [], k = 3) =>
-  postJson<{ results: Retrieved[] }>('/retrieve', { english, tools, k })
+export const retrieve = (english: string, tools: string[] = [], k = 3, mode?: Mode) =>
+  postJson<RetrieveResult>('/retrieve', { english, tools, k, mode })
 export const explain = (yog_source: string) =>
   postJson<{ valid: boolean; errors: string[]; readback: Readback | null }>('/explain', { yog_source })
-export const startTranslate = (english_rules: string[]) =>
-  postJson<{ job_id: string }>('/translate/start', { english_rules, tools: [] })
+export const startTranslate = (english_rules: string[], opts: { mode?: Mode; rerank?: boolean } = {}) =>
+  postJson<{ job_id: string }>('/translate/start', { english_rules, tools: [], mode: opts.mode, rerank: !!opts.rerank })
 export const pollTranslate = (id: string, since: number) => getJson<JobView>(`/translate/${id}?since=${since}`)
 export const cancelTranslate = (id: string) => postJson<{ cancelled: boolean }>(`/translate/${id}/cancel`, {})
 export const benchmarkLatest = () =>

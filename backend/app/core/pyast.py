@@ -22,11 +22,13 @@ def parse_source(source: str) -> ast.Module:
 
 def dotted(node: ast.AST) -> str | None:
     """`os.path.join` -> 'os.path.join'; None for anything that isn't a plain dotted name."""
+    parts: list[str] = []
+    while isinstance(node, ast.Attribute):              # iterative: a hostile `a.b.b.b...` chain must not hit the recursion limit
+        parts.append(node.attr)
+        node = node.value
     if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Attribute):
-        base = dotted(node.value)
-        return f"{base}.{node.attr}" if base else None
+        parts.append(node.id)
+        return ".".join(reversed(parts))
     return None
 
 
