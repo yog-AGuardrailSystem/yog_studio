@@ -14,6 +14,12 @@ const KIND_LABEL = {
   function_calling_agent: 'Function-calling agent',
   unknown: 'Unknown',
 } as const
+const FRAMEWORK_LABEL: Record<string, string> = {
+  langchain: 'LangChain',
+  openai_agents: 'OpenAI Agents SDK',
+  crewai: 'CrewAI',
+  pydantic_ai: 'PydanticAI',
+}
 
 function evidenceLines(evidence: string[]): number[] {
   return evidence.map((e) => /^line (\d+):/.exec(e)?.[1]).filter(Boolean).map(Number)
@@ -130,6 +136,7 @@ export default function AnalyzePage() {
               <h2 className="font-mono text-sm font-semibold">{analysis.filename}</h2>
               <span className={`rounded border px-2 py-0.5 text-sm font-semibold ${badge}`} data-testid="detect-badge">
                 {KIND_LABEL[detect.kind]}
+                {detect.framework && ` (${FRAMEWORK_LABEL[detect.framework] ?? detect.framework})`}
                 {detect.kind !== 'unknown' && `, ${detect.confidence.toFixed(2)}`}
               </span>
             </div>

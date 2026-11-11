@@ -97,6 +97,9 @@ jobs:
       - name: Studio hub (all tools listed, Open links, old share links)
         working-directory: e2e
         run: node hub.mjs
+      - name: Studio tools (why, map, gaps, red-team, strength, templates, history, audit, replay, guard, export, scorecard)
+        working-directory: e2e
+        run: node tools.mjs
       - name: Motion tour (registry target, pause control, reduced motion)
         working-directory: e2e
         run: node motion.mjs

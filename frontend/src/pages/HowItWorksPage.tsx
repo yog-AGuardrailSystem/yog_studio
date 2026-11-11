@@ -1,6 +1,7 @@
 import { motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { TOOLS } from '../lib/tools'
 import { Reveal } from '../components/motion/Reveal'
 import { useIsDesktop } from '../components/motion/useIsDesktop'
 import {
@@ -112,6 +113,22 @@ export default function HowItWorksPage() {
           </div>
         )}
       </div>
+
+      <section id="tools" className="mx-auto max-w-6xl px-5 py-16" aria-labelledby="tools-h">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-glow">The tools</p>
+        <h2 id="tools-h" className="font-display max-w-3xl text-3xl font-extrabold sm:text-4xl">Beyond the seven steps.</h2>
+        <p className="mt-3 max-w-2xl text-slate-300">Each tool answers one question about a policy. Pick any of them from the tool hub.</p>
+        <ul className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-testid="how-tools">
+          {TOOLS.map((t) => (
+            <li key={t.id} className="glass rounded-xl p-4">
+              <p className="font-display text-lg font-bold">{t.name}</p>
+              <p className="mt-1 text-sm text-slate-300">{t.purpose}</p>
+              <p className="mt-2 text-xs text-slate-400"><span className="font-semibold text-slate-300">It does not: </span>{t.limit}</p>
+              {t.status === 'ready' && <Link to={t.to} className="link mt-2 inline-block text-sm">Open {t.name}</Link>}
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <section className="border-t border-white/10 bg-black/30 py-20">
         <div className="mx-auto max-w-6xl px-5">

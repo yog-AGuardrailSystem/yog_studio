@@ -11,13 +11,13 @@ page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resourc
 await page.goto(BASE + '/studio')
 await page.waitForSelector('[data-testid=tool-count]')
 const names = await page.locator('[data-testid^=tool-name-]').allTextContents()
-check('hub lists 13 tools', names.length === 13, String(names.length))
+check('hub lists 17 tools', names.length === 17, String(names.length))
 check('five groups', (await page.locator('[data-testid^=group-]').count()) === 5)
 check('black landing theme (.mkt)', (await page.locator('.mkt').count()) === 1)
 const counts = await page.getByTestId('tool-count').textContent()
-check('count line matches the page', /5 ready, 8 planned/.test(counts ?? ''), counts)
-check('every card explains how it works', (await page.locator('li').getByText('How it works', { exact: true }).count()) === 13)
-check('planned tools have no Open link', (await page.locator('[data-testid^=tool-soon-]').count()) === 8)
+check('count line matches the page', /17 tools, all ready/.test(counts ?? ''), counts)
+check('every card explains how it works', (await page.locator('li').getByText('How it works', { exact: true }).count()) === 17)
+check('no tool is marked planned', (await page.locator('[data-testid^=tool-soon-]').count()) === 0)
 
 // every ready tool opens a real page
 for (const [id, url] of [['workbench', '/studio/workbench'], ['agent', '/agent'], ['evaluate', '/review'], ['patch', '/modify'], ['device', '/device']]) {

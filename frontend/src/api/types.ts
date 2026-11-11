@@ -18,6 +18,7 @@ export interface DetectResult {
   kind: 'mcp_server' | 'function_calling_agent' | 'unknown'
   confidence: number
   evidence: string[]
+  framework?: string | null           // langchain | openai_agents | crewai | pydantic_ai when one was recognised
 }
 
 export interface AnalyzeResponse {
@@ -58,6 +59,9 @@ export interface PolicyRecord {
   readback: string[]
   evaluation: Record<string, unknown> | null
   yog_source: string
+  parent_id?: string | null
+  note?: string
+  restored_from?: string | null
 }
 
 export interface PolicyDraft {

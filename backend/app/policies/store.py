@@ -2,7 +2,7 @@
 import hashlib
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -21,6 +21,10 @@ class PolicyRecord(BaseModel):
     readback: list[str] = Field(default_factory=list)       # one line per clause, as the human saw it
     evaluation: dict | None = None                          # scenario summary shown at approval (W6)
     yog_source: str = ""
+    # additive (version history): older records simply have the defaults
+    parent_id: str | None = None                            # the approved policy this one replaced
+    note: str = ""                                          # what the human said changed
+    restored_from: str | None = None                        # set when this record is a restore of an older one
 
 
 class PolicyStore:
@@ -32,6 +36,9 @@ class PolicyStore:
         now = datetime.now(timezone.utc)
         digest = hashlib.sha256(yog_source.encode()).hexdigest()[:8]
         pid = f"p-{now:%Y%m%d%H%M%S}-{digest}"
+        while (self.dir / f"{pid}.json").exists():       # same text saved again within the same second: never overwrite
+            now += timedelta(seconds=1)
+            pid = f"p-{now:%Y%m%d%H%M%S}-{digest}"
         rec = PolicyRecord(id=pid, approved_at=now.isoformat(), yog_source=yog_source, **meta)
         (self.dir / f"{pid}.yog").write_text(yog_source, encoding="utf-8")
         (self.dir / f"{pid}.json").write_text(rec.model_dump_json(indent=2), encoding="utf-8")

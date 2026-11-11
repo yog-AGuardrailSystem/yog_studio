@@ -1,0 +1,12 @@
+{"tool": "unlock_door", "args": {"door_id": "front_door"}, "hour": 8, "day": "mon"}
+{"tool": "set_thermostat", "args": {"zone": "living_room", "temperature": 22}, "hour": 8, "day": "mon"}
+{"tool": "set_thermostat", "args": {"zone": "bedroom", "temperature": 31}, "hour": 9, "day": "mon"}
+{"tool": "open_valve", "args": {"valve_id": "garden_tap", "percent": 40}, "hour": 10, "day": "mon"}
+{"tool": "open_valve", "args": {"valve_id": "water_main", "percent": 100}, "hour": 11, "day": "mon"}
+{"tool": "lock_door", "args": {"door_id": "front_door"}, "hour": 18, "day": "mon"}
+{"tool": "unlock_door", "args": {"door_id": "back_door"}, "hour": 23, "day": "mon"}
+{"tool": "unlock_door", "args": {"door_id": "front_door"}, "hour": 3, "day": "tue"}
+{"tool": "get_status", "args": {"device_id": "front_door"}, "hour": 3, "day": "tue"}
+{"tool": "set_thermostat", "args": {"zone": "living_room", "temperature": 12}, "hour": 5, "day": "tue"}
+{"tool": "unlock_door", "args": {"door_id": "garage_door"}, "hour": 7, "day": "tue"}
+{"tool": "format_disk", "args": {"drive": "c"}, "hour": 14, "day": "wed"}

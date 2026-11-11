@@ -11,6 +11,7 @@ from app.device.simulator import (DEMO_SCRIPT, Clock, DeviceError, DeviceSim, De
                                   NoPolicyError)
 from app.engine.adapter import EngineAdapter, EngineError
 from app.policies.store import PolicyStore
+from app.studio.audit import AuditLog
 
 router = APIRouter(prefix="/device")
 
@@ -83,12 +84,30 @@ class CommandReq(BaseModel):
     policy_id: str | None = None
 
 
-def _run(sim, adapter, store, tool, args, guard, policy_id) -> LogEntry:
+def get_audit(request: Request) -> AuditLog:
+    """The visitor's own audit log (one JSON line per decision, hash-chained)."""
+    return AuditLog(session.session_dir(session.session_id(request)))
+
+
+def _record(audit: AuditLog | None, e: LogEntry, policy_id: str | None) -> None:
+    if audit is None:
+        return
+    try:
+        audit.append({"at": e.at, "source": "device", "tool": e.tool, "args": e.args, "sim_hour": e.sim_hour,
+                      "sim_day": e.sim_day, "guarded": e.guarded, "decision": e.decision, "reason": e.reason,
+                      "executed": e.executed, "policy_id": policy_id, "facts": e.facts})
+    except OSError:                       # the audit trail is best effort; it must never break the device
+        pass
+
+
+def _run(sim, adapter, store, tool, args, guard, policy_id, audit: AuditLog | None = None) -> LogEntry:
     rec = _policy(store, policy_id)
     if guard and rec is None:
         raise HTTPException(status_code=409, detail="no approved policy: approve a policy on the Review page first")
     try:
-        return sim.command(tool, args, adapter, rec.yog_source if rec else None, guard)
+        entry = sim.command(tool, args, adapter, rec.yog_source if rec else None, guard)
+        _record(audit, entry, rec.id if rec else None)
+        return entry
     except DeviceError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except NoPolicyError as e:
@@ -99,8 +118,8 @@ def _run(sim, adapter, store, tool, args, guard, policy_id) -> LogEntry:
 
 @router.post("/command", response_model=LogEntry)
 def command(req: CommandReq, sim: DeviceSim = Depends(get_sim), adapter: EngineAdapter = Depends(get_adapter),
-            store: PolicyStore = Depends(get_store)) -> LogEntry:
-    return _run(sim, adapter, store, req.tool, req.args, req.guard, req.policy_id)
+            store: PolicyStore = Depends(get_store), audit: AuditLog = Depends(get_audit)) -> LogEntry:
+    return _run(sim, adapter, store, req.tool, req.args, req.guard, req.policy_id, audit)
 
 
 class DemoReq(BaseModel):
@@ -110,12 +129,12 @@ class DemoReq(BaseModel):
 
 @router.post("/demo", response_model=Snapshot)
 def demo(req: DemoReq, sim: DeviceSim = Depends(get_sim), adapter: EngineAdapter = Depends(get_adapter),
-         store: PolicyStore = Depends(get_store)) -> Snapshot:
+         store: PolicyStore = Depends(get_store), audit: AuditLog = Depends(get_audit)) -> Snapshot:
     """Resets the device, then replays the scripted agent day, setting the simulated clock before each step."""
     if req.guard and _policy(store, req.policy_id) is None:
         raise HTTPException(status_code=409, detail="no approved policy: approve a policy on the Review page first")
     sim.reset()
     for step in DEMO_SCRIPT:
         sim.set_clock(step["hour"], step["day"])
-        _run(sim, adapter, store, step["tool"], step["args"], req.guard, req.policy_id)
+        _run(sim, adapter, store, step["tool"], step["args"], req.guard, req.policy_id, audit)
     return _snap(sim, store, req.policy_id)

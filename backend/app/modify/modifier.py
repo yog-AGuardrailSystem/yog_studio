@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from app.core.models import DetectResult, Tool
 from app.core.pyast import parse_source
 from app.detect.detector import detect, scan_mcp, tool_decorator_base
+from app.detect.frameworks import scan_frameworks
 from app.extract.ast_extractor import extract_tools
 
 IMPORT_LINE = "from yog_runtime import yog_guard"
@@ -80,11 +81,20 @@ def modify(source: str, only: list[str] | None = None, filename: str = "agent.py
                     break
     else:
         by_name = {n.name: n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+        framework = scan_frameworks(tree)
+        framework_names = {t.name for t in framework.tools}
         for t in tools:
+            if t.name in framework_names:
+                continue                                  # decorated functions are added below, by node
             if t.name in by_name:
                 targets.append((t.name, by_name[t.name]))
             else:
                 skipped.append(f"{t.name}: declared in the tools schema but no function with that name was found in this file")
+        placed = {id(fn) for _, fn in targets}
+        for ft in framework.tools:                        # the guard goes directly above `def`, under the framework's decorator
+            if id(ft.node) not in placed:
+                targets.append((ft.name, ft.node))
+                placed.add(id(ft.node))
 
     guarded, already = [], []
     inserts: list[tuple[int, str]] = []            # (0-based line index to insert before, text w/o eol)

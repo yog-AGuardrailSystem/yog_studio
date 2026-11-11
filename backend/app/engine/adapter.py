@@ -62,6 +62,33 @@ class AskResult(BaseModel):
     trace: list[str] = Field(default_factory=list)
 
 
+class WhyStep(BaseModel):
+    """One condition of a clause body, with the values the engine had at that point."""
+    text: str
+    ok: bool | None                    # True held, False failed here, None never reached
+    note: str = ""
+
+
+class ClauseWhy(BaseModel):
+    kind: Literal["allow", "deny"]
+    line: int
+    head: str
+    status: Literal["matched", "failed", "head_mismatch", "error"]
+    steps: list[WhyStep] = Field(default_factory=list)
+    failed_at: int | None = None       # index into steps
+
+
+class WhyResult(BaseModel):
+    """The proof behind one decision: every allow/deny clause of the action, matched or not, and where it stopped."""
+    decision: Literal["ALLOW", "DENY"]
+    reason: str                        # the engine's own reason (same as check())
+    verdict: str                       # plain English, built from the clause results
+    winner_line: int | None = None
+    clauses: list[ClauseWhy] = Field(default_factory=list)
+    context: list[str] = Field(default_factory=list)
+    error: bool = False                # engine error: failed closed, explanation incomplete
+
+
 class EngineAdapter(ABC):
     """Everything Studio needs from a YOG engine. Swap implementations here only."""
 
@@ -88,3 +115,7 @@ class EngineAdapter(ABC):
 
     def ask(self, policy: str, pred: str, terms: list[dict]) -> AskResult:
         raise EngineError("this engine cannot answer plain queries")
+
+    def explain(self, policy: str, actor: str, action: str, resource: str,
+                context: list[str] | None = None) -> WhyResult:
+        raise EngineError("this engine cannot explain its decisions clause by clause")

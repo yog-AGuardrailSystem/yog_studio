@@ -4,6 +4,7 @@ import ast
 from app.core.models import DetectResult, Param, Tool
 from app.core.pyast import const_value
 from app.detect.detector import SchemaTool, scan_mcp, scan_schema_tools, tool_decorator_base
+from app.detect.frameworks import scan_frameworks
 from app.extract.hints import hints_from_body, hints_from_name, ordered
 
 FuncDef = ast.FunctionDef | ast.AsyncFunctionDef
@@ -86,11 +87,18 @@ def extract_schema_tools(tree: ast.Module) -> list[Tool]:
     return tools
 
 
+def extract_framework_tools(tree: ast.Module) -> list[Tool]:
+    """Tools declared as decorated functions (LangChain, OpenAI Agents SDK, CrewAI, PydanticAI)."""
+    return [_tool_from_function(t.node, t.name) for t in scan_frameworks(tree).tools]
+
+
 def extract_tools(tree: ast.Module, detected: DetectResult) -> list[Tool]:
     if detected.kind == "mcp_server":
         return extract_mcp_tools(tree)
     if detected.kind == "function_calling_agent":
-        return extract_schema_tools(tree)
+        tools = extract_schema_tools(tree)
+        seen = {t.name for t in tools}
+        return tools + [t for t in extract_framework_tools(tree) if t.name not in seen]
     return []
 
 
