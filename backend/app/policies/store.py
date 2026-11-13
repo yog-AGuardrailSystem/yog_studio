@@ -7,6 +7,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from app.core import quota
 from app.core.config import DATA_DIR
 
 ID_RE = re.compile(r"^p-\d{14}-[0-9a-f]{8}$")
@@ -40,6 +41,7 @@ class PolicyStore:
             now += timedelta(seconds=1)
             pid = f"p-{now:%Y%m%d%H%M%S}-{digest}"
         rec = PolicyRecord(id=pid, approved_at=now.isoformat(), yog_source=yog_source, **meta)
+        quota.check_room(self.dir, len(yog_source.encode()) + len(rec.model_dump_json(indent=2).encode()))
         (self.dir / f"{pid}.yog").write_text(yog_source, encoding="utf-8")
         (self.dir / f"{pid}.json").write_text(rec.model_dump_json(indent=2), encoding="utf-8")
         return rec

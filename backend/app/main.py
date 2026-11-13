@@ -8,7 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.core import guard, log, metrics, session
+from app.core import guard, log, metrics, quota, session
 
 from app.api import analyze, benchmark, check, compile, device, evaluate, examples, modify, policies, retrieve, samples, studio, translate
 
@@ -21,6 +21,11 @@ async def invalid_request(request: Request, exc: RequestValidationError) -> JSON
     """422 without echoing the request body back (FastAPI's default does, and fails on non-UTF-8 bytes)."""
     errors = [{"loc": list(e.get("loc", [])), "msg": e.get("msg", ""), "type": e.get("type", "")} for e in exc.errors()]
     return JSONResponse(status_code=422, content={"detail": errors})
+
+
+@app.exception_handler(quota.QuotaExceeded)
+async def storage_full(request: Request, exc: quota.QuotaExceeded) -> JSONResponse:
+    return JSONResponse(status_code=507, content={"detail": str(exc)})
 
 
 @app.exception_handler(Exception)
