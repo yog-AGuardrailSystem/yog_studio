@@ -49,8 +49,16 @@ jobs:
       - name: Backend install
         working-directory: backend
         run: uv sync --extra dev
-      - name: Backend tests (offline, fake LLM; builds and runs the real C lexer, gcc is on the runner)
+      - name: Backend tests (offline, fake LLM; builds the real C engine, gcc is on the runner; a missing C engine fails)
         working-directory: backend
+        env:
+          YOG_REQUIRE_C: "1"
+        run: uv run python -m pytest -q -m "not c_differential"
+      - name: Backend tests again with the C engine making every decision
+        working-directory: backend
+        env:
+          YOG_REQUIRE_C: "1"
+          YOG_ENGINE: c
         run: uv run python -m pytest -q -m "not c_differential"
       - name: "C lexer vs Python reference on mutated programs (informational, a finding is reported but does not block)"
         working-directory: backend
@@ -112,7 +120,7 @@ jobs:
       - name: Production build under its real security headers (CSP, session cookie, visitor isolation)
         run: |
           (cd frontend && npm run build)
-          (cd backend && YOG_NO_DOTENV=1 LLM_PROVIDER=fake nohup uv run python -m uvicorn app.asgi:app --port 8002 > /tmp/prod.log 2>&1 &)
+          (cd backend && YOG_NO_DOTENV=1 YOG_ENGINE=c LLM_PROVIDER=fake nohup uv run python -m uvicorn app.asgi:app --port 8002 > /tmp/prod.log 2>&1 &)
           for i in $(seq 1 60); do curl -fs localhost:8002/api/health >/dev/null && break; sleep 2; done
           cd e2e && node prod.mjs
       - name: Server logs on failure

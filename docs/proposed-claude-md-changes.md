@@ -39,3 +39,24 @@ Apply them by hand (or ask for them to be applied) once you agree.
 +Replaced by: compiler API → real LLM/RAG with semantic gate → evaluation + dataset review → workbench → landing →
 +measured motion → quality gate (see docs/decisions.md #11-#19).
 ```
+
+## Added with the C engine (Nov 2026) - proposed, not applied
+
+```diff
+ ## 4. Architecture
+-                 └ CEngineAdapter (later, via ctypes)
++                 └ CEngineAdapter (yogc subprocess, `yogc batch`; decisions only - structure/explain come from the reference parser)
+```
+
+```diff
+ ## 5. Tech stack
+-- **Engine:** `yog.py` from `yog_engine` vendored under `engine/` ... Wrapped by `PythonPrototypeAdapter`.
++- **Engine:** `yog.py` and the C compiler (`engine/c_front/`, pinned in its VERSION) from `yog_engine`, vendored. Wrapped by `PythonPrototypeAdapter` and `CEngineAdapter`. Docker/CI default to C (`YOG_ENGINE=c`).
+```
+
+```diff
+ ## 7. YOG language reference
+-- Prototype **forbids recursion** (rule cycles are a compile error).
++- Prototype **forbids recursion** (rule cycles are a compile error). The grammar is now frozen in the engine repo's docs/COMPILER.md.
++- C engine limits: integers are 64-bit, tabs are rejected, evaluation depth is 256 (docs/engine_issues.md #15-#17).
+```

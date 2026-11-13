@@ -22,7 +22,8 @@ Claims the site makes that are not yet demonstrable: `python scripts/claims_chec
 
 ## Configuration (`backend/.env`, see `.env.example`)
 - `LLM_PROVIDER=fake` (default, offline), `gemini` with `GEMINI_API_KEY`, or `claude` with `ANTHROPIC_API_KEY`; `EMBED_PROVIDER` for embeddings. Every setting is documented in `.env.example`.
-- `YOG_ENGINE=python` (default) or `c` (not yet available, see app/engine/c_engine.py).
+- `YOG_ENGINE=python` (default locally) or `c` (default in the Docker image). `c` runs the engine team's `yogc` (vendored in `engine/c_front/`, pinned commit in its VERSION): Studio builds it on first use with `cc`/`gcc`/`clang` into `backend/data/c_front/`, or use `YOG_YOGC=/path/to/yogc`. A missing `yogc` is an error, never a silent fallback. `YOG_REQUIRE_C=1` makes the tests fail instead of skip when C is unavailable (CI sets it).
+- Run the suite on the C engine: `cd backend && YOG_ENGINE=c YOG_REQUIRE_C=1 uv run pytest`. Re-vendoring: replace `engine/c_front/` from `yog_engine` and update both VERSION files (a changed VERSION triggers a rebuild).
 
 ## Data
 Approved policies are saved to `backend/data/policies/` (git-ignored). The retrieval index is `backend/data/index.npz`.
