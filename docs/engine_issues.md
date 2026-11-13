@@ -32,3 +32,9 @@ Studio runs `yogc` as a subprocess (`backend/app/engine/c_engine.py`); the vendo
 | 19 | Comparing an integer with a name is a runtime error in both engines (Python TypeError, #7; C "cannot compare a string with an integer") with different text; both end as DENY in Studio. | Fail closed in the adapters. |
 
 Agreement checked (Nov 2026): the 95 gold policies / 298 scenarios, 82 shipped policies (validity), the context-fact edge cases (a context fact for a rule predicate, an unused undefined context predicate, resource `"42"` vs fact `x(42)`, unknown action, empty context, quoted vs bare names, negative integers, long strings) and the engine repo's own `diff_vs_python.py` give identical decision AND reason on both engines. Only #15, #16, #17 and #19 differ.
+
+| # | Issue | Studio workaround |
+|---|---|---|
+| 20 | `yogc run` reports a decision query (`query can_x(bob, db)`) as TRUE when only a **deny** clause matches: the same as Python issue #1. | Studio answers decision queries with `check()` only; `run` is used for fact/rule queries. |
+| 21 | `yogc run` prints bindings unquoted and comma-joined: a value `"a, Y=b"` prints as `X=a, Y=b, …`, and the string `"5"` and the integer `5` look the same. | `CEngineAdapter.ask()` takes TRUE/FALSE and the trace from C; bindings come from the reference engine and are shown only when it gives the same answer. |
+| 22 | An evaluation error in one query makes `yogc run` stop with exit status 2: later queries get no answer. | Studio runs one query per `yogc run` (the program's own queries are blanked); an error is "failing closed". |
