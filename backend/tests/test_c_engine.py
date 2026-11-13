@@ -268,3 +268,26 @@ def test_c_ir_unavailable_is_reported_not_raised(monkeypatch):
     monkeypatch.setattr(c_ir, "find_tool", lambda name, build=True: None)
     r = c_ir.run_c_ir("fact a(b)\n")
     assert not r.available and not r.ok and "not built" in r.error
+
+
+def test_c_answers_plain_queries_and_bindings_come_from_the_agreeing_reference(c):
+    from app.engine.python_prototype import PythonPrototypeAdapter
+    p = PythonPrototypeAdapter()
+    pol = ('fact role(alice, admin)\nfact role(bob, admin)\nfact role(carol, user)\nfact t("a, Y=b", 1)\nfact t("5", 3)\n'
+           'fact t(5, 4)\nrule boss(U):\n    role(U, admin)\nquery role(X, user)\n')
+    cases = [("role", [{"var": "X"}, {"const": "admin"}]), ("role", [{"var": "X"}, {"var": "Y"}]),
+             ("boss", [{"var": "U"}]), ("role", [{"wildcard": True}, {"const": "user"}]),
+             ("role", [{"const": "dave"}, {"var": "R"}]), ("t", [{"var": "X"}, {"var": "N"}]),
+             ("t", [{"const": 5}, {"var": "N"}]), ("t", [{"const": "5"}, {"var": "N"}])]
+    for pred, terms in cases:
+        got, want = c.ask(pol, pred, terms), p.ask(pol, pred, terms)
+        assert (got.answer, got.bindings) == (want.answer, want.bindings), (pred, terms)
+        assert any(t.startswith("?-") for t in got.trace)          # the trace is the C engine's own
+
+
+def test_c_ask_fails_closed_on_an_evaluation_error_and_refuses_unsafe_values(c):
+    pol = 'fact t(a, 1)\nrule big(X):\n    t(X, N)\n    X > 3\n'
+    r = c.ask(pol, "big", [{"var": "X"}])
+    assert r.answer is False and r.trace[0].startswith("engine error, failing closed")
+    with pytest.raises(EngineError):
+        c.ask(pol, "t", [{"const": 'x"; fact t(b, 2)'}, {"var": "N"}])

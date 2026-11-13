@@ -309,7 +309,39 @@ class CEngineAdapter(EngineAdapter):
         return self._ref.queries(policy)
 
     def ask(self, policy: str, pred: str, terms: list[dict]) -> AskResult:
-        return self._ref.ask(policy, pred, terms)
+        """C answers TRUE/FALSE (`yogc run`) and gives the trace. `yogc run` prints bindings unquoted (`X=a, Y=b` is
+        ambiguous, "5" and 5 look the same: engine_issues #21), so the bindings come from the reference engine, and
+        only when it gives the same answer; otherwise none are shown and the trace says the engines disagree."""
+        self._policies.get(policy, self._yogc)                       # CompileError if the policy does not compile
+        try:
+            args = ", ".join(t["var"] if "var" in t else "_" if t.get("wildcard") else _render_const(t["const"])
+                             for t in terms)
+        except _Refused as e:
+            raise EngineError(f"cannot ask the C engine about that value: {e}") from e
+        # blank the program's own queries (keeping line numbers) so only this one runs
+        lines = ["" if ln.startswith("query") else ln for ln in policy.split("\n")]
+        program = "\n".join(lines).rstrip("\n") + f"\nquery {pred}({args})\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "ask.yog"
+            path.write_bytes(program.encode("utf-8", "surrogatepass"))
+            try:
+                p = subprocess.run([str(self._yogc), "run", str(path), "--trace"], stdin=subprocess.DEVNULL,
+                                   capture_output=True, timeout=BATCH_TIMEOUT_BASE_S)
+            except subprocess.TimeoutExpired:
+                return AskResult(answer=False, trace=[FAIL + "the C engine did not answer in time"])
+        out = p.stdout.decode("utf-8", "replace").splitlines()
+        if p.returncode != 0 or not any(ln.strip() in ("-> TRUE", "-> FALSE") for ln in out):
+            err = p.stderr.decode("utf-8", "replace").strip().splitlines()
+            msg = err[-1].replace(str(path) + ":", "", 1) if err else f"status {p.returncode}"
+            if p.returncode == 1:
+                raise EngineError(msg)
+            return AskResult(answer=False, trace=[FAIL + msg[:200]])
+        answer = "-> TRUE" in (ln.strip() for ln in out)
+        trace = [ln[2:] for ln in out if ln.startswith("> ")]
+        ref = self._ref.ask(policy, pred, terms)
+        if ref.answer != answer:
+            return AskResult(answer=answer, trace=trace + [f"(the reference engine answered {ref.answer}; bindings hidden)"])
+        return AskResult(answer=answer, bindings=ref.bindings if answer else [], trace=trace)
 
     def explain(self, policy, actor, action, resource, context=None) -> WhyResult:
         """The proof is derived by the reference engine; it is shown only if C made the same decision."""

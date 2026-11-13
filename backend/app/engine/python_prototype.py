@@ -372,7 +372,9 @@ class PythonPrototypeAdapter(EngineAdapter):
     def ask(self, policy: str, pred: str, terms: list[dict]) -> AskResult:
         yog = self.yog
         engine = self._engine(policy)
-        goal = yog.Atom(pred, [yog.Var(t["var"]) if "var" in t else yog.Const(t["const"]) for t in terms])
+        # a wildcard (`query role(_, admin)`) is a fresh hidden variable, like the parser makes it ("_G" = not shown)
+        goal = yog.Atom(pred, [yog.Var(t["var"]) if "var" in t else yog.Var(f"_Gask{i}") if t.get("wildcard")
+                               else yog.Const(t["const"]) for i, t in enumerate(terms)])
         try:
             ok, sols, trace = engine.ask(goal)
         except TypeError as e:           # engine bug #7 (int vs name comparison): fail closed, never a 500
