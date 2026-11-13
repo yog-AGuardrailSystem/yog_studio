@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { hashFor, hubReducer, parseHash, type HubState } from '../../lib/hubModel'
+import { captionFor, hashFor, hubReducer, parseHash, type HubState } from '../../lib/hubModel'
 import { m, MotionToggle, useCalm } from '../../lib/motion'
 import { TOOLS, type ToolGroup } from '../../lib/tools'
 import { webglOk } from '../three/webgl'
 import './hub.css'
 import { HubStageView } from './HubStageView'
 import { ENTER_MS, newUi, type HitMap } from './hubShared'
-import { HubOverlay, hubCaption } from './HubOverlay'
+import { HubOverlay } from './HubOverlay'
+import { Scrambled } from './Scrambled'
 import { YogMonogram } from './YogMonogram'
 
 /**
@@ -16,7 +17,7 @@ import { YogMonogram } from './YogMonogram'
  * and with no WebGL the same flow runs on plain tiles. `status` (tool count, approved policy) sits bottom right.
  */
 export function HubSection({ status }: { status: ReactNode }) {
-  const { hash } = useLocation()
+  const { hash, key } = useLocation()
   const navigate = useNavigate()
   const calm = useCalm()
   const ui = useRef(newUi())
@@ -32,7 +33,16 @@ export function HubSection({ status }: { status: ReactNode }) {
   const base = parseHash(hash)
   const state: HubState = entering && base.mode === 'box' ? hubReducer(base, { type: 'enter', tool: entering }) : base
 
-  useEffect(() => { setEntering(null) }, [hash])
+  // Any navigation ends a card's flight. While a tool page is still loading, React keeps showing this page (the router
+  // navigates inside a transition, so this instance never sees the new location). Pressing Back in that moment returns to
+  // this same instance, which must not stay frozen mid-flight: the browser's popstate tells us. The pending jump is cancelled.
+  const flight = useRef<number | undefined>(undefined)
+  useEffect(() => {
+    setEntering(null)
+    const reset = () => { window.clearTimeout(flight.current); setEntering(null) }
+    window.addEventListener('popstate', reset)
+    return () => { window.removeEventListener('popstate', reset); window.clearTimeout(flight.current) }
+  }, [key])
 
   const open = useCallback((g: ToolGroup) => { pushed.current = true; navigate({ hash: hashFor({ mode: 'box', group: g }) }) }, [navigate])
   const back = useCallback(() => {
@@ -42,7 +52,8 @@ export function HubSection({ status }: { status: ReactNode }) {
     const t = TOOLS.find((x) => x.id === id)
     if (!t) return
     setEntering(id)
-    window.setTimeout(() => navigate(t.to), calm ? 0 : ENTER_MS)
+    window.clearTimeout(flight.current)
+    flight.current = window.setTimeout(() => navigate(t.to), calm ? 0 : ENTER_MS)
   }, [navigate, calm])
 
   useEffect(() => {
@@ -52,7 +63,7 @@ export function HubSection({ status }: { status: ReactNode }) {
     return () => document.removeEventListener('keydown', key)
   }, [state.mode, aside, back])
 
-  const cap = hubCaption(state, ui.current.hoverBox, ui.current.hoverCard)
+  const cap = captionFor(state, ui.current.hoverBox, ui.current.hoverCard)
   const onHover = useCallback(() => setTick((n) => n + 1), [])
   const onReady = useCallback(() => setReady(true), [])
   const onFail = useCallback(() => setFailed(true), [])
@@ -76,7 +87,11 @@ export function HubSection({ status }: { status: ReactNode }) {
       </nav>
 
       <div className="hub-caption" aria-live="polite" data-testid="hub-caption" data-aside={aside ? 'true' : 'false'}>
-        <p className="hub-caption-lead" style={cap.color ? { color: cap.color } : undefined}>{cap.lead}</p>
+        <p className="hub-caption-lead" style={cap.color ? { color: cap.color } : undefined}>
+          {cap.index && <span className="hub-caption-index">{cap.index}</span>}
+          <span className="hub-caption-name"><Scrambled key={cap.name} text={cap.name} /></span>
+          {cap.arrow && <span className="hub-caption-arrow" aria-hidden>↗</span>}
+        </p>
         <p className="hub-caption-text">{cap.text}</p>
       </div>
 

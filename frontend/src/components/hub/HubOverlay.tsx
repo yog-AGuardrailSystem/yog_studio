@@ -1,7 +1,7 @@
 import { useEffect, useRef, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { accentFor, boxLabel, cardIndex, toolsIn, type HubState } from '../../lib/hubModel'
-import { GROUPS, TOOLS, type ToolGroup } from '../../lib/tools'
+import { GROUPS, type ToolGroup } from '../../lib/tools'
 import type { HitsRef, UiRef } from './hubShared'
 
 interface Props {
@@ -46,19 +46,22 @@ export function HubOverlay({ state, projected, hits, ui, onOpen, onEnter, onBack
   const openGroup = state.mode === 'rest' ? null : state.group
   useEffect(() => {
     let raf = 0
-    // The scene shows each button only once its 3D shape is on screen, and a hidden element cannot take focus: try for a moment.
-    const focusWhenShown = (get: () => HTMLElement | null | undefined, left: number) => {
+    // The scene places and shows each button only once its 3D shape is on screen (a card rises for a moment first), and a
+    // hidden or not-yet-placed element would lose the focus again. So wait until it is really on screen, then focus it.
+    const until = performance.now() + 10_000
+    const shown = (el: HTMLElement) => el.style.display !== 'none' && el.getBoundingClientRect().width > 4
+    const focusWhenShown = (get: () => HTMLElement | null | undefined) => {
       const el = get()
-      el?.focus({ preventScroll: true })
-      if (el && document.activeElement !== el && left > 0) raf = requestAnimationFrame(() => focusWhenShown(get, left - 1))
+      if (el && shown(el)) el.focus({ preventScroll: true })
+      if ((!el || document.activeElement !== el) && performance.now() < until) raf = requestAnimationFrame(() => focusWhenShown(get))
     }
     if (mode === 'box') {
       lastBox.current = openGroup
-      if (byKeyboard.current) focusWhenShown(() => firstCard.current, 90)
+      if (byKeyboard.current) focusWhenShown(() => firstCard.current)
     } else if (lastBox.current) {
       const back = lastBox.current
       lastBox.current = null
-      if (byKeyboard.current && (!document.activeElement || document.activeElement === document.body)) focusWhenShown(() => hits.current.get(`box:${back}`), 90)
+      if (byKeyboard.current && (!document.activeElement || document.activeElement === document.body)) focusWhenShown(() => hits.current.get(`box:${back}`))
     }
     return () => cancelAnimationFrame(raf)
   }, [mode, openGroup, hits])
@@ -105,19 +108,3 @@ export function HubOverlay({ state, projected, hits, ui, onOpen, onEnter, onBack
   )
 }
 
-/** The line under the stage: names the box or card the pointer is on, or tells you what to do. */
-export function hubCaption(state: HubState, hoverBox: ToolGroup | null, hoverCard: string | null) {
-  if (state.mode === 'rest') {
-    if (hoverBox) {
-      const { title, count } = boxLabel(hoverBox)
-      return { lead: title, text: `${count} tools. ${GROUPS.find((g) => g.id === hoverBox)!.blurb}`, color: null as string | null }
-    }
-    return { lead: 'Pick a box', text: 'Each one holds the tools for one stage.', color: null }
-  }
-  if (hoverCard) {
-    const t = TOOLS.find((x) => x.id === hoverCard)!
-    return { lead: `${cardIndex(state.group, t.id)}  ${t.name} ↗`, text: t.purpose, color: accentFor(t.id) }
-  }
-  const g = GROUPS.find((x) => x.id === state.group)!
-  return { lead: g.title, text: g.blurb, color: null }
-}

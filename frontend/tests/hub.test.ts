@@ -60,6 +60,29 @@ test('deep link: #box=<group> opens it; the old #p= share links and junk stay at
   for (const g of GROUPS) assert.deepEqual(parseHash(hashFor({ mode: 'box', group: g.id })), { mode: 'box', group: g.id })
 })
 
+test('every tool has its own line icon, written as plain SVG path data', async () => {
+  const { ICONS } = await import('../src/lib/hubIcons.ts')
+  for (const t of TOOLS) {
+    const d = ICONS[t.id]
+    assert.ok(d && d.length > 8, `${t.id}: no icon`)
+    assert.match(d, /^M[0-9MmLlHhVvCcSsQqTtAaZz.,\s-]+$/, `${t.id}: not path data`)
+  }
+  assert.equal(new Set(TOOLS.map((t) => ICONS[t.id])).size, TOOLS.length)       // no two tools share an icon
+  assert.deepEqual(Object.keys(ICONS).sort(), TOOLS.map((t) => t.id).sort())   // and no icon for a tool that does not exist
+})
+
+test('caption under the stage: index, name and accent of what is pointed at', async () => {
+  const { captionFor } = await import('../src/lib/hubModel.ts')
+  assert.deepEqual(captionFor(REST, null, null), { index: '', name: 'Pick a box', arrow: false, text: 'Each one holds the tools for one stage.', color: null })
+  const box = captionFor(REST, 'test', null)
+  assert.equal(box.index, '03'); assert.equal(box.name, 'Test it'); assert.ok(box.arrow && box.text.startsWith('4 tools.'))
+  const card = captionFor({ mode: 'box', group: 'test' }, null, 'redteam')
+  assert.equal(card.index, '02'); assert.equal(card.name, 'Red-Team'); assert.equal(card.color, accentFor('redteam'))
+  const open = captionFor({ mode: 'box', group: 'ship' }, null, null)
+  assert.equal(open.name, 'Ship it'); assert.equal(open.arrow, false)
+  assert.equal(captionFor({ mode: 'box', group: 'ship' }, null, 'nope').name, 'Ship it')       // an unknown id never breaks it
+})
+
 test('labels: box title with a count, cards numbered from 01', () => {
   assert.deepEqual(boxLabel('test'), { title: 'Test it', count: 4 })
   assert.equal(cardIndex('test', toolsIn('test')[0].id), '01')

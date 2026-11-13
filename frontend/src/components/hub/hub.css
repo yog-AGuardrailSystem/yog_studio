@@ -2,8 +2,7 @@
 .hub-stage { position: relative; height: 100svh; min-height: 560px; overflow: hidden; background: #000; isolation: isolate; }
 .hub-world { position: absolute; inset: 0; transition: transform .8s cubic-bezier(.2,.7,.2,1), opacity .6s, filter .6s; transform-origin: 70% 50%; }
 .hub-world[data-aside="true"] { transform: translateX(24%) scale(.86); opacity: .3; filter: blur(2px); pointer-events: none; }
-.hub-world[data-entering="true"] { opacity: 0; transition: opacity .45s .1s; }
-.hub-fade { position: absolute; inset: 0; background: radial-gradient(circle at 50% 55%, rgba(245,185,66,.25), #000 70%); opacity: 0; pointer-events: none; transition: opacity .45s .05s; z-index: 15; }
+.hub-fade { position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, rgba(0,0,0,.2), #000 75%); opacity: 0; pointer-events: none; transition: opacity .18s .8s; z-index: 15; }   /* darkens only once the card has filled the screen */
 .hub-fade[data-on="true"] { opacity: 1; }
 
 /* The real buttons: invisible over the 3D shapes, outlined when focused from the keyboard. */
@@ -30,7 +29,10 @@
 
 .hub-caption { position: absolute; left: 50%; bottom: 4.6rem; z-index: 5; width: min(34rem, 88vw); transform: translateX(-50%); text-align: center; pointer-events: none; transition: opacity .5s; }
 .hub-caption[data-aside="true"] { opacity: 0; }
-.hub-caption-lead { font-family: var(--font-mono); font-size: .95rem; letter-spacing: .04em; color: #f5b942; transition: color .2s; }
+.hub-caption-lead { display: inline-flex; align-items: baseline; gap: .7rem; font-family: var(--font-display); font-weight: 500; font-size: clamp(1.1rem, 2vw, 1.45rem); color: #f5b942; transition: color .25s; }
+.hub-caption-index { font-family: var(--font-mono); font-size: .8em; opacity: .85; }
+.hub-caption-name { white-space: pre; }
+.hub-caption-arrow { font-size: .8em; }
 .hub-caption-text { margin-top: .2rem; font-size: .85rem; color: #b9b3a5; }
 
 .hub-status { position: absolute; right: 1.25rem; bottom: 1.25rem; z-index: 8; max-width: min(21rem, calc(100vw - 2.5rem)); padding: .7rem .9rem; border: 1px solid rgba(245,185,66,.3);

@@ -16,4 +16,4 @@ export type HitsRef = MutableRefObject<HitMap>
 export type UiRef = MutableRefObject<HubUi>
 
 /** How long the camera takes to fly in, and how long a card takes to fill the screen, before the page changes. */
-export const ENTER_MS = 480
+export const ENTER_MS = 950

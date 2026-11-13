@@ -1,37 +1,12 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { useCalm } from '../../lib/motion'
-import { revealProgress, scrambleFrame } from '../../lib/scramble'
+import { revealProgress } from '../../lib/scramble'
 import { GROUPS } from '../../lib/tools'
+import { Scrambled } from './Scrambled'
 
 const HEADLINE = 'A rulebook your AI agent can’t break.'
 const P1 = 'YOG is a small policy language and engine. Every action an AI agent wants to take gets one answer, ALLOW or DENY, the same every time, with the reason.'
 const P2 = 'Studio is the toolkit around it. Upload your agent, write the rules in plain English, let an AI draft the policy and let the engine check it. Nothing goes live until you approve it, and DENY always beats ALLOW.'
-
-/** Text that builds in with a scramble when `run` turns true, and is simply the text when motion is calm. */
-function useScramble(text: string, run: boolean, delay: number, duration: number): string {
-  const calm = useCalm()
-  const [out, setOut] = useState(calm ? text : scrambleFrame(text, 0))
-  useEffect(() => {
-    if (calm) { setOut(text); return }
-    if (!run) { setOut(scrambleFrame(text, 0)); return }
-    let raf = 0
-    const t0 = performance.now()
-    const tick = () => {
-      const p = revealProgress(performance.now() - t0, delay, duration)
-      setOut(scrambleFrame(text, p))
-      if (p < 1) raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [text, run, delay, duration, calm])
-  return out
-}
-
-/** The scrambling text for the eye, and the real text for screen readers (they never hear the flicker). */
-function Scrambled({ text, run, delay, duration }: { text: string; run: boolean; delay: number; duration: number }) {
-  const shown = useScramble(text, run, delay, duration)
-  return (<><span aria-hidden>{shown}</span><span className="sr-only">{text}</span></>)
-}
 
 /** A halftone "YOG": gold dots on black whose size follows the letter shapes, swept in from the left. */
 function HalftoneMark({ run }: { run: boolean }) {

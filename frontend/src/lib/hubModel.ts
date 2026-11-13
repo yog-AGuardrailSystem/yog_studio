@@ -94,6 +94,36 @@ export function boxLabel(group: ToolGroup): { title: string; count: number } {
   return { title: g.title, count: toolsIn(group).length }
 }
 
+export interface Caption {
+  /** "03", in mono, before the name; empty when nothing is pointed at. */
+  index: string
+  /** The name that scrambles in. */
+  name: string
+  /** True when the label points somewhere you can go (shows the ↗). */
+  arrow: boolean
+  text: string
+  /** The card's accent, or null for gold. */
+  color: string | null
+}
+
+/** The label under the stage, like the reference's "06  Hive — Experiments ↗": the box or card being pointed at. */
+export function captionFor(state: HubState, hoverBox: ToolGroup | null, hoverCard: string | null): Caption {
+  if (state.mode === 'rest') {
+    if (hoverBox) {
+      const i = GROUPS.findIndex((g) => g.id === hoverBox)
+      const { title, count } = boxLabel(hoverBox)
+      return { index: String(i + 1).padStart(2, '0'), name: title, arrow: true, text: `${count} tools. ${GROUPS[i].blurb}`, color: null }
+    }
+    return { index: '', name: 'Pick a box', arrow: false, text: 'Each one holds the tools for one stage.', color: null }
+  }
+  if (hoverCard) {
+    const t = TOOLS.find((x) => x.id === hoverCard)
+    if (t) return { index: cardIndex(state.group, t.id), name: t.name, arrow: true, text: t.purpose, color: accentFor(t.id) }
+  }
+  const g = GROUPS.find((x) => x.id === state.group)!
+  return { index: '', name: g.title, arrow: false, text: `${g.blurb} Point at a card.`, color: null }
+}
+
 /** Two-digit number shown in the hover label ("02"). */
 export function cardIndex(group: ToolGroup, toolId: string): string {
   const i = toolsIn(group).findIndex((t) => t.id === toolId)
