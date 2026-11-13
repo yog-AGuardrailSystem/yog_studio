@@ -74,6 +74,10 @@ class Budget:
         if self.used > self.limit:
             raise BudgetExceeded(f"this would need more than {self.limit} engine checks; narrow the request")
 
+    def room(self) -> int:
+        """Checks still allowed before spend() raises."""
+        return max(0, self.limit - self.used)
+
 
 def budget_error(e: BudgetExceeded) -> HTTPException:
     return HTTPException(status_code=422, detail=str(e))
@@ -86,6 +90,19 @@ def safe_check(adapter: EngineAdapter, policy: str, actor: str, action: str, res
         return adapter.check(policy, actor, action, resource, context)
     except EngineError as e:
         return CheckResult(decision="DENY", reason=f"could not evaluate: {e}", trace=[])
+
+
+def safe_check_many(adapter: EngineAdapter, policy: str, rows: list[tuple]) -> list[CheckResult]:
+    """Many checks against one policy in one engine call (one process on the C engine). Rows are
+    (actor, action, resource, context). Same answers as calling safe_check row by row: if any row's context is malformed
+    the batch raises, and we redo it row by row so only that row becomes a DENY."""
+    if not rows:
+        return []
+    reqs = [(a, act, r, list(c or [])) for a, act, r, c in rows]
+    try:
+        return adapter.check_many(policy, reqs)
+    except EngineError:
+        return [safe_check(adapter, policy, *q) for q in reqs]
 
 
 def call_request(tool: str, args: dict, hour: int, day: str, actor: str = "agent") -> tuple[str, str, str, list[str]]:

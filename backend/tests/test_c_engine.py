@@ -226,3 +226,25 @@ def test_hostile_policies_never_crash_hang_or_allow_by_accident(c, source):
     except EngineError:
         assert c.validate(source)                        # an error is reported, consistently
     assert time.time() - t < 20
+
+
+def test_studio_tools_give_the_same_report_on_both_engines_and_are_fast_on_c(c):
+    """The tools batch their checks (one yogc process per policy), so C is not slower in practice; the reports match."""
+    import time
+    from app.api.samples import DEMO_POLICY
+    from app.engine.python_prototype import PythonPrototypeAdapter
+    from app.studio import gaps, mutation, redteam, scorecard
+    from app.studio.common import Budget, shape
+    src, p = DEMO_POLICY.read_text(), PythonPrototypeAdapter()
+
+    def reports(a):
+        sh = shape(a.program_info(src))
+        return (mutation.run(a, src, sh, [], 60, Budget(8000)).model_dump(),
+                redteam.run(a, src, sh, [], Budget()).model_dump(),
+                gaps.analyze(a, src, budget=Budget(6000)).model_dump(),
+                scorecard.compute(a, src).model_dump())
+
+    t = time.time()
+    on_c = reports(c)
+    assert time.time() - t < 3
+    assert on_c == reports(p)

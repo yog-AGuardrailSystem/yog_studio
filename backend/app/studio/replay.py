@@ -11,7 +11,7 @@ from app.core import facts
 from app.core.facts import FactError
 from app.engine.adapter import CheckResult
 from app.engine.adapter import EngineAdapter
-from app.studio.common import Budget, PolicyRef, call_request, safe_check
+from app.studio.common import Budget, PolicyRef, call_request, safe_check_many
 
 MAX_ROWS = 500
 MAX_TEXT = 200_000
@@ -128,17 +128,23 @@ def _num(v: str):
 
 def replay(adapter: EngineAdapter, source: str, other: str | None, rows: list[CallRow], budget: Budget) -> tuple[list[ReplayRow], ReplaySummary]:
     out: list[ReplayRow] = []
+    budget.spend(len(rows) * (2 if other else 1))
+    reqs: dict[int, tuple] = {}
+    refused: dict[int, str] = {}
     for n, r in enumerate(rows, 1):
-        budget.spend(2 if other else 1)
         try:
-            actor, action, resource, ctx = call_request(r.tool, r.args, r.hour, r.day, r.actor)
+            reqs[n] = call_request(r.tool, r.args, r.hour, r.day, r.actor)
         except FactError as e:                    # a decimal or a path-like value: the real guard would deny it
-            refused = CheckResult(decision="DENY", trace=[], reason=f"refused, failing closed: {e}")
-            out.append(ReplayRow(n=n, tool=r.tool, args=r.args, hour=r.hour, day=r.day, decision="DENY", reason=refused.reason,
-                                 other="DENY" if other else None, other_reason=refused.reason if other else ""))
+            refused[n] = f"refused, failing closed: {e}"
+    keys = list(reqs)
+    got_a = dict(zip(keys, safe_check_many(adapter, source, [reqs[k] for k in keys])))
+    got_b = dict(zip(keys, safe_check_many(adapter, other, [reqs[k] for k in keys]))) if other else {}
+    for n, r in enumerate(rows, 1):
+        if n in refused:
+            out.append(ReplayRow(n=n, tool=r.tool, args=r.args, hour=r.hour, day=r.day, decision="DENY", reason=refused[n],
+                                 other="DENY" if other else None, other_reason=refused[n] if other else ""))
             continue
-        a = safe_check(adapter, source, actor, action, resource, ctx)
-        b = safe_check(adapter, other, actor, action, resource, ctx) if other else None
+        a, b = got_a[n], got_b.get(n)
         out.append(ReplayRow(n=n, tool=r.tool, args=r.args, hour=r.hour, day=r.day, decision=a.decision, reason=a.reason,
                              other=b.decision if b else None, other_reason=b.reason if b else "",
                              changed=bool(b and b.decision != a.decision)))
