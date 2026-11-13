@@ -10,6 +10,7 @@ Applying re-validates (compiles, and passes the item's own scenarios) BEFORE fli
 `reviewed-by:<name>`; a revision that fails is refused and the item stays claude-draft.
 """
 import argparse
+import os
 import re
 import sys
 from pathlib import Path
@@ -129,9 +130,10 @@ def apply(adapter: EngineAdapter, sheets: dict[str, str], files: list[Path] | No
 
 
 def main() -> int:
-    from app.engine.python_prototype import PythonPrototypeAdapter
-    adapter = PythonPrototypeAdapter()
+    from app.api.deps import make_adapter
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--engine", choices=["python", "c"], default=os.environ.get("YOG_ENGINE", "python"),
+                    help="which YOG engine validates the revised policies (default: $YOG_ENGINE or python)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("pack")
     p.add_argument("--reviewers", required=True)
@@ -140,6 +142,7 @@ def main() -> int:
     a.add_argument("sheets", nargs="+", type=Path)
     a.add_argument("--dry", action="store_true")
     args = ap.parse_args()
+    adapter = make_adapter(args.engine)
     if args.cmd == "pack":
         names = [n.strip() for n in args.reviewers.split(",") if n.strip()]
         args.out.mkdir(parents=True, exist_ok=True)
