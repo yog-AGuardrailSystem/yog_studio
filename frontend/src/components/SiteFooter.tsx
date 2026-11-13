@@ -18,6 +18,7 @@ export function SiteFooter() {
               github.com/yog-AGuardrailSystem
             </a>
           </p>
+          <p className="mt-1"><a className="link" href="/download">Download yogc for Windows or Linux</a></p>
         </div>
       </div>
     </footer>

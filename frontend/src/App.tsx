@@ -15,6 +15,7 @@ import WorkbenchPage from './pages/WorkbenchPage'
 // Marketing pages carry three.js + motion: load them as separate chunks so Studio stays light.
 const LandingPage = lazy(() => import('./pages/LandingPage'))
 const HowItWorksPage = lazy(() => import('./pages/HowItWorksPage'))
+const DownloadPage = lazy(() => import('./pages/DownloadPage'))
 const StudioHubPage = lazy(() => import('./pages/StudioHubPage'))
 
 // Each Studio tool is its own chunk: opening the workbench never downloads the Red-Team page.
@@ -45,6 +46,7 @@ export default function App() {
       <Route element={<MarketingLayout />}>
         <Route path="/" element={<Suspense fallback={<div className="min-h-screen" />}><LandingPage /></Suspense>} />
         <Route path="/how-it-works" element={<Suspense fallback={<div className="min-h-screen" />}><HowItWorksPage /></Suspense>} />
+        <Route path="/download" element={<Suspense fallback={<div className="min-h-screen" />}><DownloadPage /></Suspense>} />
       </Route>
       <Route element={<HubLayout />}>
         <Route path="/studio" element={<Suspense fallback={<div className="min-h-screen bg-black" />}><StudioHubPage /></Suspense>} />

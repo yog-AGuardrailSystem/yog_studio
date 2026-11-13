@@ -22,6 +22,9 @@ export default function MarketingLayout() {
             <NavLink to="/how-it-works" className={navCls}>
               How it works
             </NavLink>
+            <NavLink to="/download" className={(s) => `hidden sm:inline ${navCls(s)}`}>
+              Download
+            </NavLink>
             <MotionToggle />
             <Link to="/studio" className="btn-primary">
               Open Studio

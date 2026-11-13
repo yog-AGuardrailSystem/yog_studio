@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.core import guard, log, metrics, quota, session
 
-from app.api import analyze, benchmark, check, compile, device, evaluate, examples, modify, policies, retrieve, samples, studio, translate
+from app.api import analyze, benchmark, check, compile, device, downloads, evaluate, examples, modify, policies, retrieve, samples, studio, translate
 
 app = FastAPI(title="YOG Studio")
 log.setup()
@@ -186,3 +186,4 @@ app.include_router(evaluate.router)
 app.include_router(modify.router)
 app.include_router(device.router)
 app.include_router(studio.router)
+app.include_router(downloads.router)

@@ -17,6 +17,8 @@ Studio runs the engine team's [yog_engine](https://github.com/yog-AGuardrailSyst
 | **C compiler** (`yogc`) | Lexer, parser, semantic analysis, clause table, VM. **Makes the decisions** in the Docker image and CI. | `engine/c_front/` (pinned commit in its `VERSION`), `backend/app/engine/c_engine.py` |
 | **Python reference** (`yog.py`) | The behavioural reference. Default for local development; supplies the parse tree and explanations. | `engine/yog.py`, `backend/app/engine/python_prototype.py` |
 
+Download `yogc` for Windows (installer) or Linux from the site's **/download** page.
+
 Every gold scenario gets the same decision and reason from both (`backend/tests/test_engine_conformance.py`). Choose with
 `YOG_ENGINE=python|c`. Studio builds `yogc` itself with `cc`/`gcc`/`clang`, or uses `YOG_YOGC=/path/to/yogc`. Asking for
 `c` when it is unavailable is an error, never a silent fallback.

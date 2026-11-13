@@ -26,6 +26,7 @@ for (const sel of ['[data-testid=compiler-scenes]', '[data-testid=pipeline-flow]
   await scan('landing ' + sel)
 }
 await page.goto(BASE + '/how-it-works'); await page.waitForSelector('[data-testid=stage]'); await settle(1500); await scan('how it works')
+await page.goto(BASE + '/download'); await page.waitForSelector('[data-testid=dl-unsigned-note]'); await settle(800); await scan('download')
 
 await page.goto(BASE + '/studio'); await page.waitForSelector('[data-testid=tool-count]'); await settle(1500); await scan('studio hub')
 
