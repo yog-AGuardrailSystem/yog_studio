@@ -49,7 +49,10 @@ export interface CLexerResponse {
   matched?: boolean
   [k: string]: unknown
 }
-export interface TeamGroup { id: string; title: string; english: string; source: string; queries: number; uses_context: boolean }
+export interface GraphNode { id: string; pred: string; arity: number; kind: 'fact' | 'rule' | 'decision'; count: number; allow: number; deny: number; compares: number; used: boolean }
+export interface GraphEdge { src: string; dst: string; negated: boolean; via: 'allow' | 'deny' | 'rule' }
+export interface PolicyGraph { facts: GraphNode[]; rules: GraphNode[]; decisions: GraphNode[]; edges: GraphEdge[] }
+export interface TeamGroup { id: string; title: string; english: string; source: string; queries: number; uses_context: boolean; graph?: PolicyGraph | null }
 export interface Info {
   provider: string; model: string | null; offline_demo: boolean; engine: string; engine_roles?: string; engine_commit?: string | null; c_lexer: boolean; c_ir?: boolean; commit: string
   default_mode: 'real' | 'offline'

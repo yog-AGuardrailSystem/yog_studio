@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { teamExamples, type TeamGroup } from '../api/compile'
 import { CompilerExplorer, EXPLORER_LOAD_EVENT } from '../components/CompilerExplorer'
 import { Section } from '../components/Section'
+import { useAiMode } from '../lib/aiMode'
 import { Term } from '../components/Term'
 import { LlmVsYog } from '../components/motion/LlmVsYog'
 import { CardFlow } from '../components/fx/CardFlow'
@@ -18,22 +19,32 @@ import { WhenNear } from '../components/three/WhenNear'
 
 const ENGINE_REPO = 'https://github.com/yog-AGuardrailSystem/yog_engine'
 
+// Each stage is what engine/c_front really does (docs/COMPILER.md, src/*): the IR is a clause table (no bytecode), and
+// deny > allow > default deny is applied by the engine's check() layer on top of the VM's backtracking search.
 const PIPELINE = [
-  { name: 'Source', sample: 'deny can_access(...)' },
-  { name: 'Lexer', sample: 'DENY IDENT LPAREN …' },
-  { name: 'Parser', sample: 'Decision(deny, can_access)' },
-  { name: 'Semantic analysis', sample: 'arity, variables, no cycles' },
-  { name: 'IR', sample: 'clauses as instructions' },
-  { name: 'Clause table', sample: 'constants, predicates, goals' },
-  { name: 'VM', sample: 'DENY + reason + trace' },
-  { name: 'C ABI', sample: 'yog_check(...)' },
-  { name: 'Studio', sample: 'yogc check … → ALLOW / DENY' },
+  { name: 'Source', sample: 'deny can_access(U, D):' },
+  { name: 'Lexer', sample: 'DENY IDENT LPAREN VAR …' },
+  { name: 'Parser', sample: 'statements: a head and its body goals' },
+  { name: 'Semantic analysis', sample: 'one role per name, ground facts, bound variables, no cycles' },
+  { name: 'IR', sample: 'clause table and constant pool (no bytecode)' },
+  { name: 'VM', sample: 'backtracking search, step and depth limits' },
+  { name: 'Authorization', sample: 'deny > allow > default deny' },
+  { name: 'C API', sample: 'yog_compile · yog_check' },
+  { name: 'Studio', sample: 'yogc batch → ALLOW / DENY' },
 ] as const
 
-// Quoted from the engine repository's own lexer test report (see the section's source link). Scoped to the lexer.
+// Measured by running the engine repo's own C test programs (scripts/c_engine_report.py reproduces these numbers).
+// MEASURED_AT must equal the commit in engine/c_front/VERSION: backend/tests/test_engine_conformance.py enforces it,
+// so re-vendoring the engine forces a re-measurement before the page can claim these figures again.
+const MEASURED_AT = '200e481'
+const COMPILER_FACTS: [string, string][] = [
+  ['66', 'tests across the lexer, parser, semantic analyser, IR, VM and C API: all pass'],
+  ['30,886', 'checks inside them, built with every warning an error and run under AddressSanitizer and UBSan'],
+  ['25 / 25', 'queries of the team’s example file answer identically in the C compiler and the Python reference'],
+]
+
+// Quoted from the engine team's own lexer test report (see the section's source link). Scoped to the lexer.
 const LEXER_FACTS: [string, string][] = [
-  ['29', 'lexer tests, run under AddressSanitizer and UBSan'],
-  ['~30,700', 'individual checks inside those tests'],
   ['100%', 'line coverage of the lexer'],
   ['22 / 22', 'deliberately injected bugs (mutants) caught'],
   ['6,023', 'differential comparisons against the Python reference'],
@@ -47,7 +58,7 @@ const CROSS_ENGINE_FACTS: [string, string][] = [
   ['95', 'gold policies compiled by both engines'],
 ]
 
-const FALLBACK_GROUPS: Pick<TeamGroup, 'id' | 'title' | 'english'>[] = [
+const FALLBACK_GROUPS: Pick<TeamGroup, 'id' | 'title' | 'english' | 'graph'>[] = [
   { id: 'A', title: 'delete from a database', english: 'Only admins may delete from a database.' },
   { id: 'D', title: 'production deletes', english: 'Deleting in production needs all three conditions.' },
   { id: 'I', title: 'transfer limits', english: 'Customers may transfer only up to their own limit.' },
@@ -78,7 +89,11 @@ function HeroCard() {
 
 export default function LandingPage() {
   const reduce = useReducedMotion()
-  const [groups, setGroups] = useState<Pick<TeamGroup, 'id' | 'title' | 'english'>[]>(FALLBACK_GROUPS)
+  const { info } = useAiMode()
+  const engineCaption = info?.engine === 'c'
+    ? 'Tokens and the tree come from the reference parser; the checks and decisions come from the C compiler, as you type.'
+    : 'Every token, check and decision above is produced by the Python reference engine as you type.'
+  const [groups, setGroups] = useState<Pick<TeamGroup, 'id' | 'title' | 'english' | 'graph'>[]>(FALLBACK_GROUPS)
   const [sources, setSources] = useState<Record<string, string>>({})
   useEffect(() => {
     teamExamples().then((g) => { setGroups(g); setSources(Object.fromEntries(g.map((x) => [x.id, x.source]))) }).catch(() => undefined)
@@ -136,7 +151,7 @@ export default function LandingPage() {
           <Reveal>
             <CompilerExplorer />
             <p className="mt-3 text-sm text-slate-400">
-              Edit the program. Every token, check and decision above is produced by the YOG engine as you type. Pick a group to load one of the team’s example policies.
+              Edit the program. {engineCaption} Pick a group to load one of the team’s example policies.
             </p>
           </Reveal>
         </div>
@@ -161,7 +176,7 @@ export default function LandingPage() {
           {[
             ['Deterministic', 'The same input gives the same decision on every run.'],
             ['DENY beats ALLOW', 'If two rules clash, the forbidding one wins. Anything not allowed is denied.'],
-            ['Explainable', 'Every decision carries the clause that produced it and the facts it used.'],
+            ['Explainable', 'Every decision carries its reason: the clause that matched (or the default deny) and a trace of the facts it checked.'],
           ].map(([t, d]) => (
             <Spotlight key={t} className="p-5"><p className="font-display text-lg font-bold">{t}</p><p className="mt-1 text-slate-300">{d}</p></Spotlight>
           ))}
@@ -171,7 +186,7 @@ export default function LandingPage() {
       {/* 4. The language in a minute */}
       <Section eyebrow="The language in a minute" title="Facts, rules, and decisions.">
         <p className="mb-6 max-w-3xl text-slate-300">
-          Four keywords carry the language: <Term tip="Ground data: fact role(alice, admin)">fact</Term>, <Term tip="A derived predicate built from others. Recursion is not allowed.">rule</Term>, <Term tip="Permits an action when the body holds.">allow</Term> and <Term tip="Forbids an action. DENY beats ALLOW.">deny</Term>, plus <code>query</code> to ask a question. Each example below runs in the explorer.
+          Six keywords carry the language: <Term tip="Ground data: fact role(alice, admin)">fact</Term>, <Term tip="A derived predicate built from others. Recursion is not allowed.">rule</Term>, <Term tip="Permits an action when the body holds.">allow</Term> and <Term tip="Forbids an action. DENY beats ALLOW.">deny</Term> define a policy, <code>query</code> asks a question, and <Term tip="Negates one condition inside a body: not role(User, banned)">not</Term> negates a condition. Each example below runs in the explorer.
         </p>
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-testid="example-cards">
           {groups.map((g) => (
@@ -179,7 +194,7 @@ export default function LandingPage() {
               <p className="font-mono text-xs text-glow">Group {g.id}</p>
               <p className="font-display text-base font-bold">{g.title}</p>
               <p className="mt-1 text-sm text-slate-300">{g.english}</p>
-              <CardFlow id={g.id} source={sources[g.id] ?? ''} />
+              <CardFlow id={g.id} graph={g.graph} />
               <button type="button" className="link mt-3 text-sm" disabled={!sources[g.id]} onClick={() => tryInExplorer(g.id)} data-testid={`card-${g.id.replace('/', '')}`}>
                 Run it in the explorer
               </button>
@@ -194,15 +209,29 @@ export default function LandingPage() {
         <div className="mt-6"><KeywordMarquee /></div>
         <Reveal>
           <p className="mt-8 max-w-3xl text-slate-300">
-            A Python reference interpreter defines the behaviour. The C implementation follows the same stages and is checked against the reference.{' '}
+            A Python reference interpreter defines the behaviour. The C compiler is the production implementation: a written contract freezes what both must agree on, and the engine team tests the C compiler with its own semantic tests and with differential tests against the reference.{' '}
             <a className="link" href={ENGINE_REPO} target="_blank" rel="noreferrer">yog_engine on GitHub</a>
           </p>
         </Reveal>
       </Section>
 
       {/* 6. Trust */}
-      <Section eyebrow="A compiler you can trust" title="Tested like critical software.">
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="lexer-facts">
+      <Section eyebrow="A compiler you can trust" title="Checked against a reference, with the numbers.">
+        <h3 className="mb-3 font-display text-lg font-bold">The C compiler, on the engine team’s own tests</h3>
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="compiler-facts">
+          {COMPILER_FACTS.map(([n, label]) => (
+            <Spotlight key={label} as="li" className="p-5">
+              <p className="font-display text-4xl font-extrabold text-glow">{n}</p>
+              <p className="mt-1 text-sm text-slate-300">{label}</p>
+            </Spotlight>
+          ))}
+        </ul>
+        <p className="mt-3 max-w-3xl text-sm text-slate-400">
+          Measured by running the test programs in{' '}
+          <a className="link" href={ENGINE_REPO} target="_blank" rel="noreferrer">the engine repository</a> at commit {MEASURED_AT}.
+        </p>
+        <h3 className="mb-3 mt-8 font-display text-lg font-bold">The lexer, from the engine team’s test report</h3>
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="lexer-facts">
           {LEXER_FACTS.map(([n, label]) => (
             <Spotlight key={label} as="li" className="p-5">
               <p className="font-display text-4xl font-extrabold text-glow">{n}</p>
@@ -210,11 +239,11 @@ export default function LandingPage() {
             </Spotlight>
           ))}
         </ul>
-        <p className="mt-6 max-w-3xl text-sm text-slate-400">
-          These figures describe the lexer only, from the engine team’s test report in{' '}
-          <a className="link" href={ENGINE_REPO} target="_blank" rel="noreferrer">the engine repository</a>. In the explorer you can compare any program against the real C lexer, and see the clause table the C compiler builds, yourself.
+        <p className="mt-3 max-w-3xl text-sm text-slate-400">
+          Quoted from the lexer report in the engine repository; they describe the lexer only. In the explorer you can compare any program against the real C lexer, and see the clause table the C compiler builds, yourself.
         </p>
-        <ul className="mt-6 grid gap-4 sm:grid-cols-2" data-testid="cross-engine-facts">
+        <h3 className="mb-3 mt-8 font-display text-lg font-bold">Both engines, on Studio’s gold policies</h3>
+        <ul className="grid gap-4 sm:grid-cols-2" data-testid="cross-engine-facts">
           {CROSS_ENGINE_FACTS.map(([n, label]) => (
             <Spotlight key={label} as="li" className="p-5">
               <p className="font-display text-4xl font-extrabold text-glow">{n}</p>
@@ -223,7 +252,7 @@ export default function LandingPage() {
           ))}
         </ul>
         <p className="mt-3 max-w-3xl text-sm text-slate-400">
-          Measured by Studio itself: every gold scenario runs through both engines on each change, and the C engine makes the decisions in the deployed Studio.
+          Measured by Studio itself: every gold scenario is run through both engines on each change, and Studio’s production build uses the C engine.
         </p>
       </Section>
 

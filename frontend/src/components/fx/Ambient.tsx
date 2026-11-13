@@ -154,7 +154,7 @@ export function KeywordMarquee() {
   const words = ['fact', 'rule', 'allow', 'deny', 'query', 'not', '==', '!=', '<', '>', '<=', '>=', '_', '#']
   const row = (
     <div className="marquee-track marquee-reverse" aria-hidden>
-      {words.map((w, i) => <span key={i} className="whitespace-nowrap rounded border border-slate-700 bg-slate-900/60 px-3 py-1 font-mono text-sm text-emerald-200" {...m(`fx:kw:${i}`)}>{w}</span>)}
+      {words.map((w, i) => <span key={i} className="whitespace-nowrap rounded border border-slate-700 bg-slate-900/60 px-3 py-1 font-mono text-sm text-emerald-200" style={{ fontVariantLigatures: 'none' }} {...m(`fx:kw:${i}`)}>{w}</span>)}
     </div>
   )
   return <div className="marquee" data-testid="keyword-marquee"><span className="sr-only">YOG keywords and operators: {words.join(' ')}</span>{row}{row}</div>

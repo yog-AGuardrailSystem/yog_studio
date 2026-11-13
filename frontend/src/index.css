@@ -287,11 +287,12 @@ html[data-motion="paused"] *:not(.spinner), html[data-motion="paused"] *:not(.sp
 
 /* ---- example card flows ---- */
 .cf-fact { fill: #0ea5e9; } .cf-rule { fill: #1e3a5f; stroke: #38bdf8; } .cf-allow { fill: #065f46; stroke: #34d399; } .cf-deny { fill: #7f1d1d; stroke: #f87171; }
-.cf-dim { opacity: .3; } .cf-line { stroke: rgba(148,163,184,.4); stroke-width: 1; }
+.cf-dim { opacity: .3; } .cf-line { stroke: rgba(148,163,184,.45); stroke-width: 1; } .cf-line-deny { stroke: rgba(248,113,113,.6); }
+.cf-factpill { fill: #0c2d48; stroke: #38bdf8; stroke-width: 1; } .cf-decision { fill: #17140f; stroke: rgba(245,185,66,.55); stroke-width: 1; }
+.cf-chip { fill: #f1f5f9; font: 700 8px/1 "JetBrains Mono", monospace; }
 .cf-label { fill: #f1f5f9; font: 600 9px/1 "JetBrains Mono", monospace; }
-.cf-dot { fill: #e0f2fe; animation: cf-flow 2.6s ease-in-out infinite; }
+.cf-dot { fill: #e0f2fe; } .cf-dot-deny { fill: #fecaca; }
 .cf-beam { fill: #fde68a; filter: drop-shadow(0 0 4px #fbbf24); }
-@keyframes cf-flow { 0% { transform: translateX(0); opacity: 0; } 15% { opacity: 1; } 70% { transform: translateX(78px); opacity: 1; } 100% { transform: translateX(82px); opacity: 0; } }
 
 /* ---- ambient fx ---- */
 .click-ripple { position: fixed; z-index: 60; width: 8px; height: 8px; margin: -4px 0 0 -4px; border: 2px solid rgba(125,211,252,.9); border-radius: 9999px; pointer-events: none; animation: ripple .65s ease-out forwards; }

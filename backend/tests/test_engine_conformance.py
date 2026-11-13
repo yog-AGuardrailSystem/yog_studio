@@ -79,3 +79,17 @@ def test_the_landing_page_cross_engine_figures_match_the_corpus():
     scenarios = sum(len(ex.scenarios) for ex in CASES)
     assert f"'{scenarios} / {scenarios}'" in page, f"landing page should say {scenarios} / {scenarios}"
     assert f"['{len(CASES)}', 'gold policies compiled by both engines']" in page, len(CASES)
+
+
+def test_landing_compiler_figures_were_measured_at_the_vendored_engine_commit():
+    """The landing page quotes the engine's own test counts (66 tests, 30,886 checks, 25/25). They were measured at one
+    commit with scripts/c_engine_report.py; if engine/c_front is re-vendored, re-run it and update LandingPage.tsx."""
+    import re
+    from app.core.config import REPO_ROOT
+    page = (REPO_ROOT / "frontend" / "src" / "pages" / "LandingPage.tsx").read_text(encoding="utf-8")
+    version = (REPO_ROOT / "engine" / "c_front" / "VERSION").read_text(encoding="utf-8")
+    pinned = re.search(r"^commit:\s*([0-9a-f]{40})", version, re.M).group(1)
+    measured = re.search(r"const MEASURED_AT = '([0-9a-f]{7,40})'", page).group(1)
+    assert pinned.startswith(measured), f"page figures measured at {measured}, vendored engine is {pinned[:7]}: re-measure"
+    for figure in ("['66', 'tests across", "['30,886', 'checks inside", "['25 / 25', 'queries of the team"):
+        assert figure in page, figure

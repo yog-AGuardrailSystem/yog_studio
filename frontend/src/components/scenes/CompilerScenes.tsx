@@ -103,7 +103,7 @@ export function CompilerScenes() {
         </ul>
       </Stage>
 
-      <Stage id="semantic" title="3. Semantic analysis" blurb="Every name is defined, arities agree, no rule calls itself." onReplay={() => bump('semantic')}>
+      <Stage id="semantic" title="3. Semantic analysis" blurb="Every name used is defined, variables are bound, no rule depends on itself." onReplay={() => bump('semantic')}>
         <table key={round.semantic} className="w-full text-left text-sm">
           <thead className="text-xs text-slate-500"><tr><th>Predicate</th><th>Kind</th><th>Clauses</th><th>Check</th></tr></thead>
           <tbody>

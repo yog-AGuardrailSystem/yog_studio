@@ -10,6 +10,7 @@ from functools import lru_cache
 from pydantic import BaseModel
 
 from app.core.config import EXAMPLES_DIR
+from app.core.policy_graph import PolicyGraph, build_graph
 
 TEAM_FILE = EXAMPLES_DIR / "team" / "all_examples.yog"
 
@@ -44,6 +45,7 @@ class TeamGroup(BaseModel):
     source: str                 # a standalone, runnable YOG program (header comments included)
     queries: int
     uses_context: bool          # needs per-request context facts (group I): not runnable with `query` alone
+    graph: PolicyGraph | None = None    # what the policy contains (facts, rules, decisions, who feeds whom), for the card diagram
 
 
 def _display_title(raw: str | None, gid: str) -> str:
@@ -54,6 +56,15 @@ def _display_title(raw: str | None, gid: str) -> str:
 
 
 @lru_cache(maxsize=1)
+def _graph(source: str) -> PolicyGraph | None:
+    from app.engine.adapter import EngineError
+    from app.engine.python_prototype import PythonPrototypeAdapter     # structure always comes from the reference parser
+    try:
+        return build_graph(PythonPrototypeAdapter().program_info(source))
+    except EngineError:
+        return None
+
+
 def load_groups() -> tuple[TeamGroup, ...]:
     lines = TEAM_FILE.read_text(encoding="utf-8").splitlines()
     heads: list[tuple[int, str, str | None]] = []          # (index of the opening ==== line, id, raw title)
@@ -73,5 +84,6 @@ def load_groups() -> tuple[TeamGroup, ...]:
             source=body,
             queries=sum(1 for ln in code_lines if ln.lstrip().startswith("query ")),
             uses_context=gid == "I",
+            graph=_graph(body),
         ))
     return tuple(groups)
