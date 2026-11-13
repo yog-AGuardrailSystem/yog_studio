@@ -49,6 +49,10 @@ def _ident(value) -> str:
     return f"v_{s}" if s[0].isdigit() else s
 
 
+class _Unrepresentable(ValueError):
+    """An argument the engine cannot represent faithfully: the call is denied, never rounded or merged."""
+
+
 def _value(v):
     if v is None:
         return None
@@ -57,9 +61,13 @@ def _value(v):
     if isinstance(v, int):
         return v
     if isinstance(v, float):
-        return int(round(v))
+        if v != v or v in (float("inf"), float("-inf")) or v != int(v):
+            raise _Unrepresentable(f"{v!r} is not a whole number and cannot be compared exactly; pass a whole number")
+        return int(v)
     if isinstance(v, (list, tuple, dict, set)):
         return len(v)
+    if isinstance(v, str) and ("/" in v or "\\" in v or ".." in v):
+        raise _Unrepresentable("a path-like value cannot be matched exactly (different paths would normalise to the same name)")
     return _ident(v)
 
 
@@ -67,7 +75,10 @@ def facts_from_call(tool, args, hour, day):
     out = [f"hour(now, {int(hour) % 24})", f"day(now, {_ident(day)})"]
     t = _ident(tool)
     for name, raw in args.items():
-        v = _value(raw)
+        try:
+            v = _value(raw)
+        except _Unrepresentable as e:
+            raise _Unrepresentable(f"argument {name!r}: {e}") from e
         if v is not None:
             out.append(f"arg({t}, {_ident(name)}, {v})")
     return out

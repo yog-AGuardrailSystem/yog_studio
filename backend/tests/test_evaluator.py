@@ -36,19 +36,19 @@ GOOD_ROWS = [
 # ------------------------------------------------------------- facts normalisation
 
 @pytest.mark.parametrize("raw,expected", [
-    (True, 1), (False, 0), (21.5, 22), (7, 7), ("USD", "usd"), ("Front Door", "front_door"),
+    (True, 1), (False, 0), (22.0, 22), (7, 7), ("USD", "usd"), ("Front Door", "front_door"),
     ("123abc", "v_123abc"), ("", "empty"), (None, None), ([1, 2, 3], 3)])
 def test_value_normalisation(raw, expected):
     assert facts.value(raw) == expected
 
 
 def test_facts_from_call_always_adds_time_and_skips_none():
-    f = facts.facts_from_call("Set_Thermostat", {"temperature": 21.5, "zone": "Living Room", "x": None}, 27, "Sat")
+    f = facts.facts_from_call("Set_Thermostat", {"temperature": 22.0, "zone": "Living Room", "x": None}, 27, "Sat")
     assert f == ["hour(now, 3)", "day(now, sat)", "arg(set_thermostat, temperature, 22)",
                  "arg(set_thermostat, zone, living_room)"]
 
 
-@pytest.mark.parametrize("raw", [21.5, "USD", True, "Front Door", None, ["a"], "9lives"])
+@pytest.mark.parametrize("raw", [22.0, "USD", True, "Front Door", None, ["a"], "9lives"])
 def test_normalised_facts_are_always_accepted_by_the_engine(raw):
     pol = "fact arg(placeholder, placeholder, 0)\nfact role(agent, a)\nallow can_x(A, R):\n    role(A, a)\n"
     adapter.check(pol, "agent", "can_x", "r", facts.facts_from_call("t", {"p": raw}, 3, "mon"))

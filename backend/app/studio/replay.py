@@ -8,6 +8,8 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.core import facts
+from app.core.facts import FactError
+from app.engine.adapter import CheckResult
 from app.engine.adapter import EngineAdapter
 from app.studio.common import Budget, PolicyRef, call_request, safe_check
 
@@ -127,8 +129,14 @@ def _num(v: str):
 def replay(adapter: EngineAdapter, source: str, other: str | None, rows: list[CallRow], budget: Budget) -> tuple[list[ReplayRow], ReplaySummary]:
     out: list[ReplayRow] = []
     for n, r in enumerate(rows, 1):
-        actor, action, resource, ctx = call_request(r.tool, r.args, r.hour, r.day, r.actor)
         budget.spend(2 if other else 1)
+        try:
+            actor, action, resource, ctx = call_request(r.tool, r.args, r.hour, r.day, r.actor)
+        except FactError as e:                    # a decimal or a path-like value: the real guard would deny it
+            refused = CheckResult(decision="DENY", trace=[], reason=f"refused, failing closed: {e}")
+            out.append(ReplayRow(n=n, tool=r.tool, args=r.args, hour=r.hour, day=r.day, decision="DENY", reason=refused.reason,
+                                 other="DENY" if other else None, other_reason=refused.reason if other else ""))
+            continue
         a = safe_check(adapter, source, actor, action, resource, ctx)
         b = safe_check(adapter, other, actor, action, resource, ctx) if other else None
         out.append(ReplayRow(n=n, tool=r.tool, args=r.args, hour=r.hour, day=r.day, decision=a.decision, reason=a.reason,

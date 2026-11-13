@@ -130,13 +130,20 @@ class DeviceSim:
     def command(self, tool: str, args: dict, adapter: EngineAdapter, policy: str | None, guard: bool = True,
                 actor: str = "agent") -> LogEntry:
         a = self._validate(tool, args)
-        ctx = facts.facts_from_call(tool, a, self.clock.hour, self.clock.day)
+        refused = None
+        try:
+            ctx = facts.facts_from_call(tool, a, self.clock.hour, self.clock.day)
+        except facts.FactError as e:             # a decimal or a path-like value: the guard denies it, never rounds or merges it
+            ctx, refused = [], str(e)
         resource = next((facts.ident(v) for v in a.values() if isinstance(v, str)), "item")
         if guard:
             if policy is None:
                 raise NoPolicyError("no approved policy: approve a policy on the Review page first")
-            r = adapter.check(policy, actor, "can_" + facts.ident(tool), resource, ctx)
-            decision, reason, trace = r.decision, r.reason, r.trace
+            if refused:
+                decision, reason, trace = "DENY", f"refused, failing closed: {refused}", []
+            else:
+                r = adapter.check(policy, actor, "can_" + facts.ident(tool), resource, ctx)
+                decision, reason, trace = r.decision, r.reason, r.trace
         else:
             decision, reason, trace = "UNGUARDED", "guard is switched off: the command runs without any policy check", []
         executed = decision in ("ALLOW", "UNGUARDED")

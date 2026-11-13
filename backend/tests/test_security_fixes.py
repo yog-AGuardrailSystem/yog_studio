@@ -324,3 +324,38 @@ def test_regression_characterization_stops_probing_past_the_row_cap():
         per[s.action] = per.get(s.action, 0) + 1
     assert max(per.values()) <= MAX_PER_ACTION
     assert len(calls) <= len(per) * (MAX_PER_ACTION + 10) + 5               # the probes stop once the cap is reachable
+
+
+# ----------------------------------------------------------------------------- lossy fact normalisation (owner's decisions)
+def test_regression_decimals_are_refused_in_every_copy_of_the_fact_builder():
+    """facts-float-rounding-bypasses-numeric-bounds: 28.4 used to become 28 and pass 'temperature <= 28'."""
+    from app.core import facts
+    assert facts.value(28.0) == 28 and facts.value(-3.0) == -3 and facts.value(7) == 7
+    for bad in (28.4, 28.5, 15.6, 50.4, float("nan"), float("inf"), float("-inf")):
+        with pytest.raises(facts.FactError):
+            facts.value(bad)
+    with pytest.raises(facts.FactError) as e:
+        facts.facts_from_call("set_thermostat", {"zone": "x", "temperature": 28.4}, 3, "mon")
+    assert "temperature" in str(e.value) and "whole number" in str(e.value)
+
+
+def test_regression_path_like_values_are_refused_not_merged():
+    """facts-ident-collapses-distinct-paths-allowlist-bypass: ../notes.txt, /notes.txt and NOTES.TXT all became notes_txt."""
+    from app.core import facts
+    for bad in ("../notes.txt", "/notes.txt", "a/b", "a\\b", "a..b", "~/../x"):
+        with pytest.raises(facts.FactError):
+            facts.value(bad)
+    assert facts.value("notes.txt") == "notes_txt" and facts.value("Front Door") == "front_door"   # plain names still work
+
+
+def test_regression_sdk_try_and_replay_deny_what_the_guard_denies():
+    c = client()
+    d = c.post("/studio/sdk/try", json={"policy_id": "demo", "tool": "set_thermostat", "args": {"zone": "z", "temperature": 28.4}, "hour": 12}).json()
+    assert d["decision"] == "DENY" and "not a whole number" in d["reason"]
+    ok = c.post("/studio/sdk/try", json={"policy_id": "demo", "tool": "set_thermostat", "args": {"zone": "z", "temperature": 28}, "hour": 12}).json()
+    assert ok["decision"] == "ALLOW"
+    text = '{"tool": "set_thermostat", "args": {"zone": "z", "temperature": 28.4}, "hour": 12}\n{"tool": "set_thermostat", "args": {"zone": "z", "temperature": 28}, "hour": 12}\n'
+    r = c.post("/studio/replay", json={"policy": {"policy_id": "demo"}, "text": text, "format": "jsonl"}).json()
+    assert [x["decision"] for x in r["rows"]] == ["DENY", "ALLOW"] and "refused" in r["rows"][0]["reason"]
+    cmp = c.post("/studio/replay", json={"policy": {"policy_id": "demo"}, "compare": {"policy_id": "demo"}, "text": text, "format": "jsonl"}).json()
+    assert cmp["summary"]["changed"] == 0

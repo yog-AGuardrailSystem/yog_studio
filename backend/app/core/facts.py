@@ -18,8 +18,19 @@ def ident(value: Any) -> str:
     return f"v_{s}" if s[0].isdigit() else s
 
 
+class FactError(ValueError):
+    """An argument the engine cannot represent faithfully. The call must be DENIED (never rounded or merged)."""
+
+
+def pathlike(s: str) -> bool:
+    """Text that names a place: ident() would merge ../notes.txt, /notes.txt and NOTES.TXT into one constant."""
+    return "/" in s or "\\" in s or ".." in s
+
+
 def value(v: Any) -> int | str | None:
-    """bool -> 1/0, int -> int, float -> rounded int, str -> ident, None -> skipped."""
+    """bool -> 1/0, int -> int, whole float -> int, str -> ident, None -> skipped.
+    Raises FactError for a decimal (the lexer has no decimals, and rounding let 28.4 pass a limit of 28) and for a
+    path-like string (ident() is not one-to-one on those, so a path allowlist would match other paths)."""
     if v is None:
         return None
     if isinstance(v, bool):
@@ -27,9 +38,13 @@ def value(v: Any) -> int | str | None:
     if isinstance(v, int):
         return v
     if isinstance(v, float):
-        return int(round(v))
+        if v != v or v in (float("inf"), float("-inf")) or v != int(v):
+            raise FactError(f"{v!r} is not a whole number and cannot be compared exactly; pass a whole number")
+        return int(v)
     if isinstance(v, (list, tuple, dict, set)):
         return len(v)                   # collections are reduced to their size (e.g. recipient_count)
+    if isinstance(v, str) and pathlike(v):
+        raise FactError("a path-like value cannot be matched exactly (different paths would normalise to the same name)")
     return ident(v)
 
 
@@ -42,7 +57,10 @@ def facts_from_call(tool: str, args: dict[str, Any], hour: int, day: str) -> lis
     out = [fact("hour", "now", int(hour) % 24), fact("day", "now", ident(day))]
     t = ident(tool)
     for name, raw in args.items():
-        v = value(raw)
+        try:
+            v = value(raw)
+        except FactError as e:
+            raise FactError(f"argument {name!r}: {e}") from e
         if v is not None:
             out.append(fact("arg", t, ident(name), v))
     return out

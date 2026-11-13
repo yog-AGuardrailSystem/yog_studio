@@ -14,7 +14,7 @@ The engine's decision predicates always take exactly `(Actor, Resource)`. Everyt
 | Other situational facts | context facts named by meaning | `approved(txn, yes)`, `occupied(home, yes)` |
 
 ## Rules of thumb
-- **Numbers are integers** (the lexer has no decimals). Pass `22`, not `22.5`.
+- **Numbers are whole numbers** (the lexer has no decimals). Pass `22`, not `22.5`; a decimal is refused (DENY), never rounded.
 - **Constants are lowercase / `snake_case`** (`front_door`); variables start uppercase (`Door`).
 - **Declare context predicates.** Engine check C4 rejects a clause that uses a predicate no `fact`/`rule`
   defines. Policies that read context facts declare a harmless placeholder base fact:
@@ -29,7 +29,8 @@ The engine's decision predicates always take exactly `(Actor, Resource)`. Everyt
 ## Normalising real tool calls (`app/core/facts.py`, copied into `yog_runtime.py`)
 `facts_from_call(tool, args, hour, day)` is the single path from a real call to context facts; the runtime, the device
 simulator and the evaluator all use it (a test asserts the runtime copy equals Studio's):
-- `bool` -> `1`/`0`; `int` kept; `float` -> rounded int (lexer has no decimals); `None` skipped; list/dict -> its length.
+- `bool` -> `1`/`0`; `int` kept; `float` -> its int only when it is a whole number (22.0 -> 22); a decimal, NaN or infinity is refused and the call is DENIED (rounding let 28.4 pass a limit of 28); `None` skipped; list/dict -> its length.
 - strings -> lowercase `snake_case` (an Uppercase word would lex as a variable; digits-first get a `v_` prefix).
 - `hour(now,H)` and `day(now,D)` are always added. Resource = first string argument (normalised) or `item`.
+- Text containing `/`, `\` or `..` is refused (DENY): different paths would normalise to the same name. Limitation: exact-path constants cannot be expressed; use plain names.
 - Door ids etc. must therefore match the policy's constants after normalisation (`front_door`, not `Front Door`).
