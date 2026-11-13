@@ -291,3 +291,68 @@ def test_c_ask_fails_closed_on_an_evaluation_error_and_refuses_unsafe_values(c):
     assert r.answer is False and r.trace[0].startswith("engine error, failing closed")
     with pytest.raises(EngineError):
         c.ask(pol, "t", [{"const": 'x"; fact t(b, 2)'}, {"var": "N"}])
+
+
+# --------------------------------------------------------------- the shipped runtime guard, opted in to C (YOG_YOGC)
+def _runtime(tmp_path, monkeypatch, policy, yogc):
+    import importlib.util
+    import shutil
+    from app.core.config import ENGINE_PATH
+    from app.studio.pack import RUNTIME_PATH
+    shutil.copy(ENGINE_PATH, tmp_path / "yog.py")
+    shutil.copy(RUNTIME_PATH, tmp_path / "yog_runtime.py")
+    (tmp_path / "policy.yog").write_text(policy)
+    monkeypatch.setenv("YOG_POLICY", str(tmp_path / "policy.yog"))
+    if yogc is None:
+        monkeypatch.delenv("YOG_YOGC", raising=False)
+    else:
+        monkeypatch.setenv("YOG_YOGC", str(yogc))
+    spec = importlib.util.spec_from_file_location(f"rt_{id(tmp_path)}_{yogc is None}", tmp_path / "yog_runtime.py")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+def test_runtime_with_yogc_decides_like_the_python_runtime(c, tmp_path, monkeypatch):
+    from app.api.samples import DEMO_POLICY
+    pol = DEMO_POLICY.read_text()
+    calls = [("unlock_door", {"door_id": "front"}, "3,sat"), ("unlock_door", {"door_id": "front"}, "14,mon"),
+             ("set_thermostat", {"temperature": 35}, "12,tue"), ("set_thermostat", {"temperature": 21}, "12,tue"),
+             ("open_valve", {"valve_id": "main", "percent": 100}, "9,wed"), ("no_such_tool", {}, "9,wed")]
+    out = {}
+    for which, yogc in (("py", None), ("c", c._yogc)):
+        (tmp_path / which).mkdir()
+        rt = _runtime(tmp_path / which, monkeypatch, pol, yogc)
+        res = []
+        for tool, args, now in calls:
+            monkeypatch.setenv("YOG_NOW", now)
+            r = rt.check(tool, args)
+            res.append((r["decision"], r["reason"]))
+        out[which] = res
+    assert out["c"] == out["py"]
+    assert {d for d, _ in out["c"]} == {"ALLOW", "DENY"}
+
+
+def test_runtime_with_a_broken_yogc_denies_and_never_falls_back(tmp_path, monkeypatch):
+    rt = _runtime(tmp_path, monkeypatch, POLICY, tmp_path / "missing-yogc")
+    monkeypatch.setenv("YOG_ACTOR", "alice")
+    r = rt.check("x", {})
+    assert r["decision"] == "DENY" and r["reason"].startswith("guard error, failing closed")
+
+
+def test_runtime_and_adapter_refuse_the_same_context_values(tmp_path, monkeypatch):
+    rt = _runtime(tmp_path, monkeypatch, POLICY, None)
+    yog = rt._yog()
+    vectors = ['arg(t, p, "x; fact role(agent, admin)")', 'arg(t, p, "a|b")', 'arg(t, p, "a b")', "arg(t, p, 5)",
+               "arg(t, p, -3)", "arg(t, p, ok_1)", 'arg(t, p, "Upper")', 'arg(t, p, "not")']
+    for v in vectors:
+        fact = yog.Parser(yog.tokenize("fact " + v)).parse().facts[0]
+        try:
+            mine = rt._canon(fact)
+        except ValueError:
+            mine = None
+        try:
+            theirs = canonical_context([v])[0]
+        except c_engine._Refused:
+            theirs = None
+        assert mine == theirs, v

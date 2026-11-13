@@ -9,6 +9,9 @@
 Every call is checked against the approved policy BEFORE the tool body runs. DENY raises YogDenied.
 Settings (environment): YOG_POLICY (path, default ./policy.yog), YOG_ACTOR (default "agent"),
 YOG_NOW="<hour>,<day>" to pin the clock for demos/tests (e.g. "3,sat").
+Engine: the Python reference (yog.py, shipped next to this file) by default. Set YOG_YOGC=<path to yogc> to have the
+engine team's C compiler decide instead (built from engine/c_front in the Studio repo). Once YOG_YOGC is set, any problem
+with it (missing binary, timeout, crash, unexpected output) is a DENY: there is no silent fallback to Python.
 Contract with Studio (docs/conventions.md): decision predicate is can_<tool>(Actor, Resource); resource is the
 first string argument (normalised) or "item"; context facts are hour(now,H), day(now,D), arg(tool,param,V).
 This module must NOT import anything from Studio's `app` package.
@@ -20,7 +23,10 @@ import inspect
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -28,6 +34,11 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 _DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 _engine = None
+_c_policy = None          # private copy of the approved policy for yogc (later edits to policy.yog cannot reach it)
+_C_TIMEOUT_S = 5
+_KEYWORDS = {"fact", "rule", "allow", "deny", "query", "not"}
+_BARE = re.compile(r"[a-z][a-z0-9_]*\Z")
+_UNSAFE = re.compile(r"[\x00-\x1f\x7f\"\\;|]")
 # The engine adds and removes the request's facts on shared state while it decides, so two threads deciding at once
 # could see each other's facts. Decisions are therefore serialised.
 _lock = threading.RLock()
@@ -125,7 +136,54 @@ def _load():
             if pin and _digest(data) != pin:
                 raise RuntimeError("policy file does not match YOG_POLICY_SHA256 (it was changed after approval)")
             _engine = (yog, yog.Engine(yog.Parser(yog.tokenize(data.decode("utf-8"))).parse()))
+            if os.environ.get("YOG_YOGC"):
+                global _c_policy
+                fd, name = tempfile.mkstemp(prefix="yog-policy-", suffix=".yog")
+                with os.fdopen(fd, "wb") as fh:
+                    fh.write(data)
+                _c_policy = name
         return _engine
+
+
+def _canon(fact) -> str:
+    """One parsed context fact -> text that is safe to hand to yogc. yogc splits its context on every `;`, even inside
+    quotes, so values that could smuggle a second fact are refused (the guard then denies). Same rules as Studio's
+    CEngineAdapter (a test keeps them equal)."""
+    out = []
+    for a in fact.args:
+        v = getattr(a, "val", None)
+        if type(a).__name__ != "Const" or isinstance(v, bool):
+            raise ValueError("context facts must be ground")
+        if isinstance(v, int):
+            out.append(str(v))
+        elif _BARE.match(v) and v not in _KEYWORDS:
+            out.append(v)
+        elif _UNSAFE.search(v):
+            raise ValueError("a context value contains a character the C engine cannot carry safely")
+        else:
+            out.append(f'"{v}"')
+    return f"{fact.pred}({', '.join(out)})"
+
+
+def _check_c(yogc: str, actor: str, action: str, resource: str, atoms) -> dict:
+    """Decide with the C engine (`yogc check`, arguments passed as argv, never through a shell)."""
+    for v in (actor, action, resource):
+        if not v or "\x00" in v or v.startswith("--"):
+            raise ValueError("an empty or option-like actor/action/resource cannot be passed to yogc")
+    if not shutil.which(yogc) and not Path(yogc).is_file():
+        raise FileNotFoundError(f"YOG_YOGC={yogc} does not exist")
+    cmd = [yogc, "check", _c_policy, actor, action, resource, "--trace"]
+    ctx = ";".join("fact " + _canon(f) for f in atoms)
+    if ctx:
+        cmd += ["--context", ctx]
+    p = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, timeout=_C_TIMEOUT_S)
+    lines = p.stdout.decode("utf-8", "replace").splitlines()
+    head = lines[0] if lines else ""
+    kind, _, reason = head.partition("|")
+    if p.returncode not in (0, 3) or kind not in ("ALLOW", "DENY"):
+        err = p.stderr.decode("utf-8", "replace").strip().splitlines()
+        raise RuntimeError(f"C engine: {err[-1] if err else 'exit status ' + str(p.returncode)}")
+    return {"decision": kind, "reason": reason, "trace": [ln[2:] for ln in lines[1:] if ln.startswith("> ")]}
 
 
 def _log(tool: str, args: dict, hour: int, day: str, result: dict) -> None:
@@ -154,8 +212,13 @@ def check(tool: str, args: dict, actor: str | None = None) -> dict:
         atoms = []
         for text in facts_from_call(tool, args, hour, day):
             atoms += yog.Parser(yog.tokenize("fact " + text)).parse().facts
-        with _lock:
-            result = engine.check(actor or os.environ.get("YOG_ACTOR", "agent"), "can_" + _ident(tool), resource, atoms)
+        who, action = actor or os.environ.get("YOG_ACTOR", "agent"), "can_" + _ident(tool)
+        yogc = os.environ.get("YOG_YOGC")
+        if yogc:
+            result = _check_c(yogc, who, action, resource, atoms)
+        else:
+            with _lock:
+                result = engine.check(who, action, resource, atoms)
     except Exception as e:                       # noqa: BLE001 -- a guard must never fail open
         result = {"decision": "DENY", "reason": f"guard error, failing closed: {type(e).__name__}: {e}", "trace": []}
     _log(tool, args, hour, day, result)
@@ -201,6 +264,7 @@ def selftest() -> int:
         yog, engine = _load()
         print(f"policy: {os.environ.get('YOG_POLICY', _HERE / 'policy.yog')}  sha256 {policy_sha256()[:16]}...")
         print(f"decision rules: {sum(len(v) for v in engine.decisions.values())}")
+        print("engine: " + (f"C (yogc at {os.environ['YOG_YOGC']})" if os.environ.get("YOG_YOGC") else "Python reference (yog.py)"))
     except Exception as e:                       # noqa: BLE001
         problems.append(f"the policy did not load: {e}")
     r = check("zz_tool_that_has_no_rule", {})
