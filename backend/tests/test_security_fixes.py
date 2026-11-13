@@ -359,3 +359,12 @@ def test_regression_sdk_try_and_replay_deny_what_the_guard_denies():
     assert [x["decision"] for x in r["rows"]] == ["DENY", "ALLOW"] and "refused" in r["rows"][0]["reason"]
     cmp = c.post("/studio/replay", json={"policy": {"policy_id": "demo"}, "compare": {"policy_id": "demo"}, "text": text, "format": "jsonl"}).json()
     assert cmp["summary"]["changed"] == 0
+
+
+def test_regression_gemini_errors_use_fixed_text_not_the_upstream_body():
+    from app.llm.gemini import _friendly
+    body = '{"error": {"message": "API key AIzaSyFAKE123 invalid for project my-secret-project", "status": "PERMISSION_DENIED"}}'
+    for status in (400, 401, 403, 404, 429, 500):
+        text = _friendly(status, body, "gemini-x")
+        assert "AIzaSy" not in text and "my-secret-project" not in text and "PERMISSION_DENIED" not in text
+    assert "HTTP 403" in _friendly(403, body, "m") and "rate limit" in _friendly(429, body, "m")

@@ -33,15 +33,15 @@ class GeminiHTTPError(LLMError):
 
 
 def _friendly(status: int, body: str, model: str) -> str:
-    snippet = " ".join(body.split())[:300]
+    """Fixed wording only. The upstream body is never relayed: it can echo request text, key fragments or project ids."""
     if status == 429:
         return ("Gemini rate limit or quota exceeded even after retrying (free-tier requests-per-minute or daily "
-                f"quota). Lower GEMINI_RPM or wait. Server said: {snippet}")
+                "quota). Lower GEMINI_RPM or wait.")
     if status in (401, 403):
-        return f"Gemini rejected the API key or the request is not permitted (HTTP {status}): {snippet}"
+        return f"Gemini rejected the API key or the request is not permitted (HTTP {status})."
     if status == 404:
-        return f"Gemini model not found: {model!r}. Model ids are retired over time; set GEMINI_MODEL / GEMINI_EMBED_MODEL. {snippet}"
-    return f"Gemini returned HTTP {status}: {snippet}"
+        return f"Gemini model not found: {model!r}. Model ids are retired over time; set GEMINI_MODEL / GEMINI_EMBED_MODEL."
+    return f"Gemini returned HTTP {status}."
 
 
 class GeminiProvider(LLMProvider):

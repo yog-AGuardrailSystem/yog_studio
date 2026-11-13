@@ -1,3 +1,4 @@
+import hmac
 import os
 import time
 import uuid
@@ -128,8 +129,9 @@ def info() -> dict:
 
 
 @app.get("/status")
-def status() -> dict:
-    """Operational snapshot for whoever runs the site: is every part usable, and how busy is it. No secrets, no user data."""
+def status(request: Request) -> dict:
+    """Is every part usable? Public callers get only that. The usage numbers (budget, counters) need the operator token:
+    set STATUS_TOKEN on the server and send it as the X-Status-Token header. No secrets, no user data either way."""
     from app.api.deps import get_adapter
     from app.engine.c_lexer import find_binary
     from app.llm.factory import get_provider, live_status
@@ -143,9 +145,13 @@ def status() -> dict:
         provider = get_provider().name
     except LLMError:
         provider = "error"
-    cap = int(guard._num("LIVE_LLM_DAILY_CAP", 300))
-    return {"status": "ok" if engine_ok else "degraded", "engine_ok": engine_ok, "c_lexer": find_binary(build=False) is not None,
-            "provider": provider, **live_status(), "live_budget": guard.budget.snapshot(cap), "counters": metrics.snapshot()}
+    out = {"status": "ok" if engine_ok else "degraded", "engine_ok": engine_ok, "live_ready": live_status()["live_ready"]}
+    token = os.environ.get("STATUS_TOKEN", "")
+    if token and hmac.compare_digest(request.headers.get("x-status-token", "").encode(), token.encode()):
+        cap = int(guard._num("LIVE_LLM_DAILY_CAP", 300))
+        out.update(c_lexer=find_binary(build=False) is not None, provider=provider, **live_status(),
+                   live_budget=guard.budget.snapshot(cap), counters=metrics.snapshot())
+    return out
 
 
 @app.get("/version")
