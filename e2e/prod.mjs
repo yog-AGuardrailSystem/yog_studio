@@ -30,7 +30,7 @@ const info = await api.json()
 check('/info reports the live-AI state', typeof info.live_ready === 'boolean' && 'default_mode' in info)
 
 // every main screen renders with no CSP violation and no console error
-for (const path of ['/', '/how-it-works', '/studio', '/studio/workbench', '/agent']) {
+for (const path of ['/', '/how-it-works', '/studio', '/studio#box=test', '/studio/workbench', '/agent']) {
   await page.goto(BASE + path)
   await page.waitForTimeout(path === '/studio/workbench' ? 3500 : 2000)
   const v = await page.evaluate(() => window.__csp || [])

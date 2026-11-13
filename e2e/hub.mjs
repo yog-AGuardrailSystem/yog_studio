@@ -19,7 +19,100 @@ check('count line matches the page', /17 tools, all ready/.test(counts ?? ''), c
 check('every card explains how it works', (await page.locator('li').getByText('How it works', { exact: true }).count()) === 17)
 check('no tool is marked planned', (await page.locator('[data-testid^=tool-soon-]').count()) === 0)
 
-// every ready tool opens a real page
+// ---- the 3D boxes ----
+const GROUP_TOOLS = { build: ['workbench', 'agent', 'templates'], understand: ['why', 'map', 'gaps'], test: ['evaluate', 'redteam', 'strength', 'replay'], ship: ['patch', 'sdk', 'export'], operate: ['device', 'audit', 'history', 'scorecard'] }
+await page.waitForSelector('[data-testid=hub-stage][data-ready=scene]', { timeout: 60000 })
+check('the 3D scene is running', true)
+check('five boxes, named as the stages', (await page.locator('[data-testid^=box-]').count()) === 5 &&
+  JSON.stringify(await page.locator('[data-testid^=box-]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label').split(':')[0]))) === JSON.stringify(['Build a policy', 'Understand it', 'Test it', 'Ship it', 'Operate it']))
+const sized = await page.locator('[data-testid^=box-]').evaluateAll((els) => els.every((e) => { const r = e.getBoundingClientRect(); return r.width > 80 && r.height > 40 }))
+check('each box button sits over its 3D box', sized)
+await page.getByTestId('box-test').hover()
+await page.waitForTimeout(300)
+check('hovering a box names it', /Test it/.test(await page.getByTestId('hub-caption').textContent()))
+
+for (const [g, tools] of Object.entries(GROUP_TOOLS)) {
+  await page.goto(BASE + '/studio'); await page.waitForSelector('[data-testid=hub-stage][data-ready=scene]', { timeout: 60000 })
+  await page.getByTestId(`box-${g}`).click()
+  await page.waitForSelector(`[data-testid=card-open-${tools[0]}]`)
+  const got = await page.locator('[data-testid^=card-open-]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid').slice(10)))
+  check(`box ${g} opens with its ${tools.length} cards`, JSON.stringify(got) === JSON.stringify(tools), got.join(','))
+  check(`box ${g} puts #box=${g} in the address`, page.url().endsWith(`#box=${g}`))
+}
+
+await page.goto(BASE + '/studio'); await page.waitForSelector('[data-testid=hub-stage][data-ready=scene]', { timeout: 60000 })
+await page.getByTestId('box-test').click()
+await page.waitForSelector('[data-testid=card-open-redteam]')
+await page.getByTestId('card-open-redteam').hover()
+await page.waitForTimeout(300)
+check('hovering a card shows its name and purpose', /Red-Team/.test(await page.getByTestId('hub-caption').textContent()))
+await page.getByTestId('card-open-redteam').click()
+await page.waitForURL('**/studio/red-team')
+check('a card opens its tool', page.url().endsWith('/studio/red-team'))
+await page.goBack()
+await page.waitForSelector('[data-testid=card-open-redteam]')
+check('browser Back from a tool returns to the open box', page.url().endsWith('#box=test'))
+await page.keyboard.press('Escape')
+await page.waitForSelector('[data-testid=box-test]')
+check('Escape closes the box', (await page.locator('[data-testid^=card-open-]').count()) === 0 && !page.url().includes('#box='))
+
+await page.goto(BASE + '/studio#box=ship')
+await page.waitForSelector('[data-testid=card-open-patch]')
+check('a #box= link opens that box', (await page.locator('[data-testid^=card-open-]').count()) === 3)
+await page.getByTestId('hub-back').click()
+await page.waitForSelector('[data-testid=box-ship]')
+check('All boxes goes back', (await page.locator('[data-testid^=card-open-]').count()) === 0)
+
+// keyboard only: focus a box, Enter opens it and focus moves to its first card
+await page.keyboard.press('Shift')                           // a key press makes focus "visible", as for a real keyboard user
+await page.getByTestId('box-ship').focus()
+await page.keyboard.press('Enter')
+await page.waitForSelector('[data-testid=card-open-patch]')
+check('Enter opens a box and focuses its first card', await page.evaluate(() => document.activeElement?.getAttribute('data-testid') === 'card-open-patch'))
+await page.keyboard.press('Escape')
+
+// the YOG monogram
+const about = page.getByTestId('yog-about')
+check('About is closed at first', !(await about.isVisible()))
+await page.getByTestId('yog-monogram').hover()
+await page.waitForSelector('[data-testid=yog-about]', { state: 'visible' })
+await page.waitForTimeout(2600)                                  // the text builds in
+const aboutText = await about.textContent()
+check('hovering YOG opens the About panel', /ALLOW/.test(aboutText) && /DENY/.test(aboutText) && /Build a policy/.test(aboutText))
+check('the scene slides aside', (await page.locator('.hub-world').getAttribute('data-aside')) === 'true')
+await page.mouse.move(900, 600)
+await page.waitForTimeout(700)
+check('moving away closes it', !(await about.isVisible()))
+await page.getByTestId('yog-monogram').focus()
+await page.waitForSelector('[data-testid=yog-about]', { state: 'visible' })
+check('keyboard focus opens it too', await about.isVisible())
+await page.keyboard.press('Escape')
+await page.waitForTimeout(300)
+check('Escape closes it', !(await about.isVisible()))
+
+// no WebGL (?fx=off): the same flow on plain tiles
+await page.goto(BASE + '/studio?fx=off')
+await page.waitForSelector('[data-testid=hub-stage][data-ready=fallback]')
+check('without WebGL the five boxes are plain tiles', (await page.locator('.hub-tile').count()) === 5)
+await page.getByTestId('box-operate').click()
+await page.waitForSelector('[data-testid=card-open-device]')
+check('fallback: a box opens its cards', (await page.locator('[data-testid^=card-open-]').count()) === 4)
+await page.getByTestId('card-open-device').click()
+await page.waitForURL('**/device')
+check('fallback: a card opens its tool', page.url().endsWith('/device'))
+
+// reduced motion: no camera flight, but the same result
+const calmCtx = await b.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' })
+const calmPage = await calmCtx.newPage()
+await calmPage.goto(BASE + '/studio')
+await calmPage.waitForSelector('[data-testid=hub-stage][data-ready=scene]', { timeout: 60000 })
+await calmPage.getByTestId('box-build').click()
+await calmPage.waitForSelector('[data-testid=card-open-workbench]')
+await calmPage.getByTestId('card-open-workbench').click()
+await calmPage.waitForURL('**/studio/workbench')
+check('reduced motion: box and card still work', calmPage.url().endsWith('/studio/workbench'))
+
+// every ready tool opens a real page (from the list under the stage)
 for (const [id, url] of [['workbench', '/studio/workbench'], ['agent', '/agent'], ['evaluate', '/review'], ['patch', '/modify'], ['device', '/device']]) {
   await page.goto(BASE + '/studio')
   await page.getByTestId(`tool-open-${id}`).click()
