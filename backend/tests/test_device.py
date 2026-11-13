@@ -83,10 +83,14 @@ def test_unlock_boundaries(api, hour, expected):
     assert cmd(c, "unlock_door", door_id="front_door").json()["decision"] == expected
 
 
-def test_thermostat_range_with_float_normalisation(api):
+def test_thermostat_range_and_decimals_are_refused_not_rounded(api):
+    """Decimals used to be rounded before the policy saw them (28.4 -> 28 passed a limit of 28). They are now refused."""
     c, store = api
     store.save(DEMO_POLICY)
-    assert cmd(c, "set_thermostat", zone="living_room", temperature=21.5).json()["decision"] == "ALLOW"
+    r = cmd(c, "set_thermostat", zone="living_room", temperature=21.5).json()
+    assert r["decision"] == "DENY" and "not a whole number" in r["reason"] and r["executed"] is False
+    assert cmd(c, "set_thermostat", zone="living_room", temperature=28.4).json()["decision"] == "DENY"
+    assert cmd(c, "set_thermostat", zone="living_room", temperature=22.0).json()["decision"] == "ALLOW"     # a whole float is fine
     assert c.get("/device/state").json()["state"]["thermostats"]["living_room"] == 22
     r = cmd(c, "set_thermostat", zone="living_room", temperature=35).json()
     assert r["decision"] == "DENY"

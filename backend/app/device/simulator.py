@@ -51,6 +51,8 @@ TOOLS = {
 }
 DAYS = facts.DAYS
 MAX_LOG = 500
+MAX_ARGS = 12              # keys in one command
+MAX_ARG_CHARS = 200        # characters in one text value (ids, a pin): log and audit entries stay small
 
 
 class DeviceSim:
@@ -75,7 +77,15 @@ class DeviceSim:
     def _validate(self, tool: str, args: dict) -> dict:
         if tool not in TOOLS:
             raise DeviceError(f"unknown tool '{tool}'. Known: {', '.join(TOOLS)}")
+        if len(args) > MAX_ARGS:
+            raise DeviceError(f"too many arguments (at most {MAX_ARGS})")
         a = {k: v for k, v in args.items() if k in TOOLS[tool]}
+        for k, v in a.items():                       # values land in the log and the audit file: bound them in bytes
+            if isinstance(v, str):
+                if len(v) > MAX_ARG_CHARS:
+                    raise DeviceError(f"argument '{k}' is too long (at most {MAX_ARG_CHARS} characters)")
+            elif v is not None and not isinstance(v, (int, float, bool)):
+                raise DeviceError(f"argument '{k}' must be text or a number")
         optional = {"unlock_door": {"pin"}, "open_valve": {"percent"}}.get(tool, set())
         need = [k for k in TOOLS[tool] if k not in optional]
         for k in need:
@@ -120,13 +130,20 @@ class DeviceSim:
     def command(self, tool: str, args: dict, adapter: EngineAdapter, policy: str | None, guard: bool = True,
                 actor: str = "agent") -> LogEntry:
         a = self._validate(tool, args)
-        ctx = facts.facts_from_call(tool, a, self.clock.hour, self.clock.day)
+        refused = None
+        try:
+            ctx = facts.facts_from_call(tool, a, self.clock.hour, self.clock.day)
+        except facts.FactError as e:             # a decimal or a path-like value: the guard denies it, never rounds or merges it
+            ctx, refused = [], str(e)
         resource = next((facts.ident(v) for v in a.values() if isinstance(v, str)), "item")
         if guard:
             if policy is None:
                 raise NoPolicyError("no approved policy: approve a policy on the Review page first")
-            r = adapter.check(policy, actor, "can_" + facts.ident(tool), resource, ctx)
-            decision, reason, trace = r.decision, r.reason, r.trace
+            if refused:
+                decision, reason, trace = "DENY", f"refused, failing closed: {refused}", []
+            else:
+                r = adapter.check(policy, actor, "can_" + facts.ident(tool), resource, ctx)
+                decision, reason, trace = r.decision, r.reason, r.trace
         else:
             decision, reason, trace = "UNGUARDED", "guard is switched off: the command runs without any policy check", []
         executed = decision in ("ALLOW", "UNGUARDED")

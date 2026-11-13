@@ -25,12 +25,12 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="YOG Studio (production)", lifespan=lifespan)
 
-# What the built app really loads: its own files, Monaco (jsdelivr CDN, runs workers from blob: URLs) and Google Fonts.
+# What the built app really loads: its own files (Monaco is bundled, its worker is a same-origin file) and Google Fonts.
 CSP = "; ".join([
     "default-src 'self'",
-    "script-src 'self' https://cdn.jsdelivr.net",
-    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com",
-    "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
     "img-src 'self' data: blob:",
     "worker-src 'self' blob:",
     "connect-src 'self'",
@@ -63,6 +63,11 @@ async def security_headers(request: Request, call_next):
         response.headers["Cache-Control"] = "no-store"        # responses can hold a visitor's own policies
     return response
 
+
+# The auto-generated API pages list every route and parameter; the public site has no use for them.
+_HIDDEN = {"/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect"}
+api_app.router.routes[:] = [r for r in api_app.router.routes if getattr(r, "path", None) not in _HIDDEN]
+api_app.openapi_url = None
 
 app.mount("/api", api_app)           # same routes the Vite proxy exposes as /api/*
 

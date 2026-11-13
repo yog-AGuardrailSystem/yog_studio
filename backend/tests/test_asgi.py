@@ -30,3 +30,10 @@ def test_path_traversal_cannot_leave_static_dir(monkeypatch, tmp_path):
     r = c.get("/..%2F..%2FCLAUDE.md")
     assert "SPA" in r.text or r.status_code == 404
     assert "YOG Studio" not in r.text.split("<html>")[0]
+
+
+def test_api_docs_pages_are_not_public(monkeypatch, tmp_path):
+    c = make_client(monkeypatch, tmp_path)
+    for p in ("/api/docs", "/api/redoc", "/api/openapi.json"):
+        assert c.get(p).status_code == 404, p
+    assert c.get("/api/health").status_code == 200

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.core.guard import live_guard
-from app.api.deps import get_llm
+from app.api.deps import enforce_live_default, get_llm
 from app.llm.factory import get_provider, get_provider_for
 from app.llm.provider import LLMError, LLMProvider
 from app.rag.examples import PolicyExample, load_examples, load_retrieval_examples
@@ -33,6 +33,7 @@ def resolve_mode(mode: Mode | None, provider: LLMProvider, retriever: Retriever,
     """mode=None keeps the injected (server default) provider. An explicit mode picks it per request.
     Real mode needs a key and passes the live-AI guard (rate limit + daily budget); Offline is always available."""
     if mode is None:
+        enforce_live_default(provider, request)         # a live server default is guarded exactly like mode=real
         return provider, retriever
     try:
         chosen = get_provider_for(mode)

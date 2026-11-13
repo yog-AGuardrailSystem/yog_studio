@@ -19,7 +19,7 @@ from app.core import config
 
 COOKIE = "yog_sid"
 MAX_AGE = 30 * 24 * 3600
-SID_RE = re.compile(r"^[0-9a-f]{32}$")
+SID_RE = re.compile(r"[0-9a-f]{32}\Z")        # \Z, not $: `$` also matches before a trailing newline
 ANONYMOUS = "0" * 32             # requests that never went through the middleware (direct calls, tests)
 _CLEANUP_EVERY = 3600.0
 _last_cleanup = 0.0
@@ -32,6 +32,12 @@ def new_sid() -> str:
 
 def valid(sid: str | None) -> bool:
     return bool(sid and SID_RE.match(sid))
+
+
+def acceptable_cookie(sid: str | None) -> bool:
+    """A cookie value the middleware will honour: well formed, and not the shared fallback id (a client could otherwise
+    send yog_sid=000...0 and land in the directory used by requests that bypass the middleware)."""
+    return valid(sid) and sid != ANONYMOUS
 
 
 def session_id(request: Request) -> str:

@@ -10,6 +10,7 @@ from app.studio.common import Budget, Shape, boundary_values, safe_check, shape
 from app.translate.translator import decision_name
 
 CONTEXT_PREDS = ("hour", "day", "arg")
+MAX_SHADOW_STEPS = 20_000
 MAX_PROBES = 400
 PROBES_PER_ACTION = 60
 
@@ -166,7 +167,25 @@ def shadows(deny: dict, allow: dict) -> bool:
         if m is None:
             return False
 
+    def shape_of(g: dict) -> tuple:
+        if g["type"] == "cmp":
+            return ("cmp", g["op"])
+        atom = g if g["type"] == "atom" else g["atom"]
+        return (g["type"], atom["pred"], len(atom["args"]))
+
+    # Cheap necessary condition: every deny condition needs a same-shaped condition in the allow body. Without this a
+    # deny goal that matches nothing is only discovered after every combination of the earlier goals was tried.
+    allow_shapes = {shape_of(g) for g in allow["body"]}
+    if any(shape_of(g) not in allow_shapes for g in deny["body"]):
+        return False
+
+    steps = 0
+
     def rec(i: int, mm: dict) -> bool:
+        nonlocal steps
+        steps += 1
+        if steps > MAX_SHADOW_STEPS:                 # a pasted policy must not pin a worker: "not proven" is the safe answer
+            return False
         if i == len(deny["body"]):
             return True
         for ga in allow["body"]:

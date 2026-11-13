@@ -1,7 +1,7 @@
 """The compiler explorer API: tokens, AST, diagnostics (/compile), running a program's queries (/run), and the
 real C lexer side by side with the reference (/compile/c-lexer)."""
 import re
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -81,10 +81,10 @@ def parse_expectation(line: str) -> Literal["ALLOW", "DENY"] | None:
 
 
 class AdHoc(BaseModel):
-    actor: str
-    action: str
-    resource: str
-    context: list[str] = Field(default_factory=list)
+    actor: str = Field(max_length=200)
+    action: str = Field(max_length=200)
+    resource: str = Field(max_length=200)
+    context: list[Annotated[str, Field(max_length=200)]] = Field(default_factory=list, max_length=60)
 
 
 class RunRequest(SourceRequest):

@@ -83,7 +83,7 @@ def mut(src, tests=(), n=40):
 def test_mutants_are_deterministic_and_each_differs_from_the_original():
     a, b = mutation.generate(SMALL), mutation.generate(SMALL)
     assert [m[:5] for m in a] == [m[:5] for m in b] and a
-    assert all(m[5] != SMALL for m in a)
+    assert all(m[5]() != SMALL for m in a)
     kinds = {m[1] for m in a}
     assert {"flip comparison", "shift number", "drop deny rule", "drop allow rule"} <= kinds
 

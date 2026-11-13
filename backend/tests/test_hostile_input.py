@@ -103,8 +103,15 @@ def test_request_ids_and_a_status_endpoint():
     r = client.get("/health")
     assert len(r.headers["x-request-id"]) == 12
     s = client.get("/status").json()
-    assert s["status"] == "ok" and s["engine_ok"] is True and "counters" in s and s["counters"]["requests"] >= 1
-    assert "live_budget" in s and "key" not in str(s).lower().replace("api key", "")
+    assert s["status"] == "ok" and s["engine_ok"] is True and "counters" not in s and "live_budget" not in s   # public view is minimal
+    import os
+    os.environ["STATUS_TOKEN"] = "s3cret"
+    try:
+        assert "counters" not in client.get("/status", headers={"x-status-token": "wrong"}).json()
+        full = client.get("/status", headers={"x-status-token": "s3cret"}).json()
+        assert full["counters"]["requests"] >= 1 and "live_budget" in full and "key" not in str(full).lower().replace("api key", "")
+    finally:
+        del os.environ["STATUS_TOKEN"]
 
 
 def test_validation_errors_do_not_echo_the_request_body():

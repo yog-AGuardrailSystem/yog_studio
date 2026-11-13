@@ -127,8 +127,15 @@ def test_runtime_normalisation_equals_studio_normalisation():
     rt = importlib.util.spec_from_file_location("rt_copy", RUNTIME)
     m = importlib.util.module_from_spec(rt)
     rt.loader.exec_module(m)
-    for args in ({"temperature": 21.5, "zone": "Living Room", "on": True, "x": None, "n": [1, 2]}, {"a": "USD"}, {}):
+    for args in ({"temperature": 21.0, "zone": "Living Room", "on": True, "x": None, "n": [1, 2]}, {"a": "USD"}, {}):
         assert m.facts_from_call("Set_T", args, 27, "Sat") == facts.facts_from_call("Set_T", args, 27, "Sat")
+    # values neither side can represent exactly are refused by BOTH copies, with the same words
+    for bad in ({"t": 21.5}, {"t": float("nan")}, {"p": "../notes.txt"}, {"p": "/etc/x"}, {"p": "a\\b"}, {"p": "a..b"}):
+        with pytest.raises(ValueError) as e1:
+            m.facts_from_call("t", bad, 1, "mon")
+        with pytest.raises(facts.FactError) as e2:
+            facts.facts_from_call("t", bad, 1, "mon")
+        assert str(e1.value) == str(e2.value)
 
 
 @pytest.fixture()

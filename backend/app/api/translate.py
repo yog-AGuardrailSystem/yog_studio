@@ -1,7 +1,8 @@
 from functools import lru_cache
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.api.deps import get_adapter, get_llm
 from app.api.retrieve import Mode, get_retriever, resolve_mode
@@ -15,9 +16,31 @@ from app.translate.translator import translate
 router = APIRouter()
 
 
+MAX_RULE_CHARS = 2000          # the same bound /retrieve puts on one English rule
+MAX_TOOL_TEXT = 2000           # a tool's docstring / parameter text; names and parameters are far shorter
+
+
+def _bound_tool(t: Tool) -> Tool:
+    """Prompts and embeddings are built from these strings and a live request is charged one budget unit however much
+    text it carries, so the text is bounded before it can reach a provider."""
+    return t.model_copy(update={
+        "name": t.name[:200],
+        "docstring": t.docstring[:MAX_TOOL_TEXT] if t.docstring else t.docstring,
+        "params": [p.model_copy(update={"name": p.name[:200], "type_hint": (p.type_hint or "")[:200] or None,
+                                        "default": (p.default or "")[:200] or None}) for p in t.params[:50]],
+        "side_effect_hints": [h[:100] for h in t.side_effect_hints[:20]],
+    })
+
+
 class TranslateRequest(BaseModel):
-    english_rules: list[str] = Field(max_length=20)
+    english_rules: list[Annotated[str, Field(max_length=MAX_RULE_CHARS)]] = Field(max_length=20)
     tools: list[Tool] = Field(default_factory=list, max_length=100)
+
+    @field_validator("tools")
+    @classmethod
+    def _bounded_tools(cls, tools: list[Tool]) -> list[Tool]:
+        return [_bound_tool(t) for t in tools]
+
     mode: Mode | None = None            # None = the server default; 'real' | 'offline' = per-request Real LLM / Offline switch
     rerank: bool = False                # optional LLM reranker (real mode only)
     # None = automatic: check the draft against independent scenarios whenever a real LLM is configured.

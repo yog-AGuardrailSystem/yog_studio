@@ -1,4 +1,5 @@
 import os
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -26,7 +27,7 @@ def _max_policies() -> int:
 
 
 class ExplainRequest(BaseModel):
-    yog_source: str
+    yog_source: str = Field(max_length=200_000)
 
 
 class ExplainResponse(BaseModel):
@@ -45,9 +46,11 @@ def explain_policy(req: ExplainRequest, adapter: EngineAdapter = Depends(get_ada
 
 
 class ApproveRequest(BaseModel):
-    yog_source: str
-    english_rules: list[str] = Field(default_factory=list)
-    retrieved_examples: list[str] = Field(default_factory=list)
+    # Every approval is written to disk twice (.yog and .json), so the sizes are capped like every other policy input
+    # (200,000 characters, as /compile and the Studio tools): the count cap alone did not bound bytes.
+    yog_source: str = Field(max_length=200_000)
+    english_rules: list[Annotated[str, Field(max_length=2000)]] = Field(default_factory=list, max_length=50)
+    retrieved_examples: list[Annotated[str, Field(max_length=200)]] = Field(default_factory=list, max_length=50)
     attempts: int = 0
     # A draft no stored example supported must be confirmed explicitly. This is a human-confirmation gate for the UI
     # (the review screen sends both), not an authentication boundary.

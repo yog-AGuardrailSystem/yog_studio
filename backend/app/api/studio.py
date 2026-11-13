@@ -10,6 +10,7 @@ from app.api.deps import get_adapter
 from app.api.device import get_audit
 from app.api.policies import _max_policies, get_store
 from app.core.config import EXAMPLES_DIR
+from app.core.facts import FactError
 from app.core.pyast import SourceError
 from app.engine.adapter import EngineAdapter, EngineError
 from app.modify.modifier import ModifyError
@@ -237,7 +238,11 @@ def sdk_try(req: TryCall, adapter: EngineAdapter = Depends(get_adapter), store: 
     p = _use(req, store, adapter)
     if req.day.lower() not in ("mon", "tue", "wed", "thu", "fri", "sat", "sun"):
         raise HTTPException(status_code=422, detail="day must be mon..sun")
-    actor, action, resource, ctx = call_request(req.tool, req.args, req.hour, req.day.lower())
+    try:
+        actor, action, resource, ctx = call_request(req.tool, req.args, req.hour, req.day.lower())
+    except FactError as e:                        # what the real guard does for a decimal or a path-like value
+        return TryResult(policy_label=p.label, decision="DENY", reason=f"refused, failing closed: {e}", action="can_" + req.tool,
+                         resource="", context=[], policy_sha256=policy_sha256(p.source))
     r = safe_check(adapter, p.source, actor, action, resource, ctx)
     return TryResult(policy_label=p.label, decision=r.decision, reason=r.reason, action=action, resource=resource, context=ctx,
                      policy_sha256=policy_sha256(p.source))

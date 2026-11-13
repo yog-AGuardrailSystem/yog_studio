@@ -1,3 +1,4 @@
+import hmac
 import os
 import time
 import uuid
@@ -7,7 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.core import guard, log, metrics, session
+from app.core import guard, log, metrics, quota, session
 
 from app.api import analyze, benchmark, check, compile, device, evaluate, examples, modify, policies, retrieve, samples, studio, translate
 
@@ -20,6 +21,11 @@ async def invalid_request(request: Request, exc: RequestValidationError) -> JSON
     """422 without echoing the request body back (FastAPI's default does, and fails on non-UTF-8 bytes)."""
     errors = [{"loc": list(e.get("loc", [])), "msg": e.get("msg", ""), "type": e.get("type", "")} for e in exc.errors()]
     return JSONResponse(status_code=422, content={"detail": errors})
+
+
+@app.exception_handler(quota.QuotaExceeded)
+async def storage_full(request: Request, exc: quota.QuotaExceeded) -> JSONResponse:
+    return JSONResponse(status_code=507, content={"detail": str(exc)})
 
 
 @app.exception_handler(Exception)
@@ -43,11 +49,12 @@ app.add_middleware(
 async def visitor_session(request: Request, call_next):
     """Give every browser its own anonymous id (HttpOnly cookie) so visitors never share policies or devices."""
     sid = request.cookies.get(session.COOKIE)
-    fresh = not session.valid(sid)
+    fresh = not session.acceptable_cookie(sid)
     if fresh:
         sid = session.new_sid()
         session.maybe_cleanup()
     request.state.sid = sid
+    request.state.fresh = fresh            # a session minted by this very request (no cookie, or a malformed one)
     response = await call_next(request)
     if fresh:
         https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
@@ -59,7 +66,13 @@ async def visitor_session(request: Request, call_next):
 async def protect(request: Request, call_next):
     """Refuse oversized bodies and rate-limit every write request per client (see app/core/guard.py)."""
     if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+        if request.headers.get("transfer-encoding"):
+            # A chunked body has no Content-Length, so the cap below could not see it and the whole stream would be
+            # buffered in memory. Browsers and the supplied clients always send a length; refuse the rest.
+            return JSONResponse(status_code=411, content={"detail": "Send a Content-Length header; chunked uploads are not accepted."})
         length = request.headers.get("content-length", "")
+        if length and not length.isdigit():
+            return JSONResponse(status_code=400, content={"detail": "Bad Content-Length header."})
         if length.isdigit() and int(length) > guard._num("MAX_BODY_BYTES", 1_500_000):
             return JSONResponse(status_code=413, content={"detail": "That request is too large."})
         ok, wait = guard.limiter.allow("write", guard.client_ip(request), guard._num("RATE_LIMIT_PER_MIN", 120))
@@ -121,8 +134,9 @@ def info() -> dict:
 
 
 @app.get("/status")
-def status() -> dict:
-    """Operational snapshot for whoever runs the site: is every part usable, and how busy is it. No secrets, no user data."""
+def status(request: Request) -> dict:
+    """Is every part usable? Public callers get only that. The usage numbers (budget, counters) need the operator token:
+    set STATUS_TOKEN on the server and send it as the X-Status-Token header. No secrets, no user data either way."""
     from app.api.deps import get_adapter
     from app.engine.c_lexer import find_binary
     from app.llm.factory import get_provider, live_status
@@ -136,9 +150,13 @@ def status() -> dict:
         provider = get_provider().name
     except LLMError:
         provider = "error"
-    cap = int(guard._num("LIVE_LLM_DAILY_CAP", 300))
-    return {"status": "ok" if engine_ok else "degraded", "engine_ok": engine_ok, "c_lexer": find_binary(build=False) is not None,
-            "provider": provider, **live_status(), "live_budget": guard.budget.snapshot(cap), "counters": metrics.snapshot()}
+    out = {"status": "ok" if engine_ok else "degraded", "engine_ok": engine_ok, "live_ready": live_status()["live_ready"]}
+    token = os.environ.get("STATUS_TOKEN", "")
+    if token and hmac.compare_digest(request.headers.get("x-status-token", "").encode(), token.encode()):
+        cap = int(guard._num("LIVE_LLM_DAILY_CAP", 300))
+        out.update(c_lexer=find_binary(build=False) is not None, provider=provider, **live_status(),
+                   live_budget=guard.budget.snapshot(cap), counters=metrics.snapshot())
+    return out
 
 
 @app.get("/version")

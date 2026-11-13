@@ -20,6 +20,9 @@ const res = await page.goto(BASE + '/')
 const h = res.headers()
 check('CSP is enforced', /default-src 'self'/.test(h['content-security-policy'] || ''))
 check('clickjacking and sniffing headers set', h['x-frame-options'] === 'DENY' && h['x-content-type-options'] === 'nosniff')
+check('no third-party script source (Monaco is self-hosted)', !/jsdelivr|unpkg|cdnjs/.test(h['content-security-policy'] || ''))
+const docs = await ctx.request.get(BASE + '/api/docs')
+check('API docs page is not public', docs.status() === 404)
 check('framing is forbidden by CSP', /frame-ancestors 'none'/.test(h['content-security-policy'] || ''))
 const api = await ctx.request.get(BASE + '/api/info')
 check('API responses are not cacheable (they can hold a visitor’s data)', (api.headers()['cache-control'] || '') === 'no-store')
@@ -34,7 +37,7 @@ for (const path of ['/', '/how-it-works', '/studio', '/studio/workbench', '/agen
   check(`no CSP violation on ${path}`, v.length === 0, [...new Set(v)].join(' | '))
 }
 
-// the editor (Monaco from the CDN, workers from blob:) and the compiler work in production
+// the editor (Monaco bundled with the app, its worker a same-origin file) and the compiler work in production
 await page.goto(BASE + '/studio/workbench')
 check('Monaco renders under the policy', await page.waitForSelector('[data-testid=yog-editor] .monaco-editor', { timeout: 20000 }).then(() => true).catch(() => false))
 await page.getByTestId('tour-skip').click().catch(() => {})

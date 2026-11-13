@@ -131,3 +131,34 @@ def test_unreadable_cleanup_target_does_not_crash(tmp_path, monkeypatch):
     (tmp_path / "sessions" / "afile").write_text("x")
     assert session.cleanup_sessions(max_age_days=0) == 0
     assert (tmp_path / "sessions" / "not-a-session").exists()
+
+
+# ------------------------------------------------------------------ disk quota
+def test_one_visitor_cannot_store_more_than_the_session_cap(monkeypatch):
+    from app.core import quota
+    monkeypatch.setenv("SESSION_MAX_BYTES", "6000")
+    c = TestClient(app)
+    codes = [approve_distinct(c, i).status_code for i in range(20)]
+    assert codes[0] == 200 and 507 in codes and codes.index(507) < 20
+    r = approve_distinct(c, 99)
+    assert r.status_code == 507 and "full" in r.json()["detail"]
+    assert c.get("/policies").status_code == 200                     # reading still works
+    other = TestClient(app)
+    assert approve_distinct(other, 1).status_code == 200            # another visitor is unaffected
+    assert quota.dir_bytes(config.DATA_DIR / "nonexistent") == 0
+
+
+def test_global_ceiling_refuses_new_writes_but_not_reads(monkeypatch):
+    from app.core import quota
+    monkeypatch.setenv("SESSIONS_MAX_BYTES", "1")
+    monkeypatch.setattr(quota, "_global_bytes", lambda force=False: 10)
+    c = TestClient(app)
+    r = approve_distinct(c, 1)
+    assert r.status_code == 507 and "server" in r.json()["detail"]
+    assert c.get("/health").status_code == 200
+
+
+def test_quota_ignores_paths_outside_visitor_folders(tmp_path, monkeypatch):
+    from app.core import quota
+    monkeypatch.setenv("SESSION_MAX_BYTES", "1")
+    quota.check_room(tmp_path / "policies", 10_000)                  # a test/dev store: no quota, no error

@@ -1,4 +1,5 @@
 import Editor, { type OnMount } from '@monaco-editor/react'
+import '../lib/monacoSetup'
 import { useEffect, useRef } from 'react'
 import type { Diagnostic } from '../api/compile'
 import { registerYog, YOG_LANG } from '../lib/yogLanguage'
