@@ -105,3 +105,33 @@ test('scramble: nothing at 0, the exact text at 1, same length and spaces in bet
   assert.equal(revealProgress(9999, 100, 500), 1)
   assert.equal(revealProgress(5, 0, 0), 1)
 })
+
+test('hover scramble: flickers, then lands exactly on the original text, and never fights React', async () => {
+  const { ScrambleRun, scrambleable, scrambleWithLead } = await import('../src/lib/hoverScramble.ts')
+  const slot = (v: string) => { let s = v; return { get: () => s, set: (x: string) => { s = x } } }
+  const a = slot('All 17 tools explained '), b = slot('↓')
+  const run = new ScrambleRun([a, b], 0, 380, () => 0.5)
+  assert.equal(run.step(100), false)
+  assert.notEqual(a.get(), 'All 17 tools explained ')              // scrambled mid-way
+  assert.equal(a.get().length, 'All 17 tools explained '.length)  // same length: nothing collapses
+  assert.equal(run.step(400), true)
+  assert.equal(a.get(), 'All 17 tools explained '); assert.equal(b.get(), '↓')   // exact original at the end
+
+  // React re-renders the label mid-run: the run stops and leaves React's text alone
+  const c = slot('Motion on')
+  const r2 = new ScrambleRun([c], 0, 380, () => 0.1)
+  r2.step(50)
+  c.set('Motion off')
+  assert.equal(r2.step(120), true)
+  assert.equal(c.get(), 'Motion off')
+
+  // finish() restores at once (motion switched off mid-run)
+  const d = slot('Home')
+  const r3 = new ScrambleRun([d], 0, 380, () => 0.9)
+  r3.step(60); r3.finish()
+  assert.equal(d.get(), 'Home')
+
+  assert.ok(scrambleable('Home') && scrambleable('How it works'))
+  assert.ok(!scrambleable('x') && !scrambleable('  ') && !scrambleable('→') && !scrambleable('a'.repeat(61)))
+  assert.ok(!scrambleWithLead('Home', 0, () => 0.3).includes('\u00a0'))           // never blank, always glyphs
+})

@@ -5,9 +5,11 @@ import type { ToolGroup } from '../../lib/tools'
 export interface HubUi {
   hoverBox: ToolGroup | null
   hoverCard: string | null
+  /** The pointer over the stage, in canvas pixels, or null when it is not over the stage (the motes move away from it). */
+  pointer: { x: number; y: number } | null
 }
 
-export const newUi = (): HubUi => ({ hoverBox: null, hoverCard: null })
+export const newUi = (): HubUi => ({ hoverBox: null, hoverCard: null, pointer: null })
 
 /** The real <button>/<a> elements that sit over the scene. The scene moves each one onto its projected 3D shape, by key:
  *  `box:<group>` or `card:<toolId>`. */

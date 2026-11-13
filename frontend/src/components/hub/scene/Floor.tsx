@@ -36,7 +36,7 @@ export function Floor({ mirror, center }: { mirror: boolean; center: THREE.Vecto
         <planeGeometry args={[46, 46]} />
       </mesh>
       {/* the far wall: a dim warm glow fading to black */}
-      <mesh position={[center.x, 10, center.z - 34]} material={back} renderOrder={-2}><planeGeometry args={[140, 60]} /></mesh>
+      <mesh ref={(o) => { o?.layers.set(1) }} position={[center.x, 10, center.z - 34]} material={back} renderOrder={-2}><planeGeometry args={[140, 60]} /></mesh>
     </group>
   )
 }

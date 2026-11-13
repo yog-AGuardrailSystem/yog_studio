@@ -62,24 +62,66 @@ function Environment() {
   return null
 }
 
-/** A few slow, glowing motes, like the reference. */
-function Motes({ calm, center }: { calm: boolean; center: THREE.Vector3 }) {
+const MOTES = 30
+const PUSH_PX = 140                                  // the cursor pushes motes within this many pixels
+
+/** Glowing gold motes drifting around whatever the camera looks at. The cursor pushes the near ones away; they drift back. */
+function Motes({ calm, ui }: { calm: boolean; ui: UiRef }) {
+  const { camera, size } = useThree()
   const pts = useRef<THREE.Points>(null)
+  const data = useMemo(() => {
+    const home = new Float32Array(MOTES * 3), off = new Float32Array(MOTES * 3), phase = new Float32Array(MOTES)
+    for (let i = 0; i < MOTES; i++) {
+      home[i * 3] = (Math.random() - 0.5) * 16; home[i * 3 + 1] = (Math.random() - 0.35) * 6; home[i * 3 + 2] = (Math.random() - 0.5) * 9
+      phase[i] = Math.random() * Math.PI * 2
+    }
+    return { home, off, phase }
+  }, [])
   const geo = useMemo(() => {
     const g = new THREE.BufferGeometry()
-    const n = 14, p = new Float32Array(n * 3)
-    for (let i = 0; i < n; i++) { p[i * 3] = (Math.random() - 0.5) * 22; p[i * 3 + 1] = 1 + Math.random() * 5; p[i * 3 + 2] = -6 + Math.random() * 8 }
-    g.setAttribute('position', new THREE.BufferAttribute(p, 3))
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MOTES * 3), 3))
     return g
   }, [])
-  const mat = useMemo(() => new THREE.PointsMaterial({ map: radialGlow(), color: GOLD, size: 0.13, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }), [])
+  const mat = useMemo(() => new THREE.PointsMaterial({ map: radialGlow(), color: GOLD, size: 0.21, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }), [])
   useEffect(() => () => { geo.dispose(); mat.dispose() }, [geo, mat])
-  useFrame(() => {
-    if (calm || !pts.current) return
+  const tmp = useMemo(() => ({ center: new THREE.Vector3(), fwd: new THREE.Vector3(), right: new THREE.Vector3(), up: new THREE.Vector3(), p: new THREE.Vector3() }), [])
+
+  useFrame((_, dtRaw) => {
+    const dt = Math.min(dtRaw, MAX_DT)
+    const pos = geo.getAttribute('position') as THREE.BufferAttribute
+    const arr = pos.array as Float32Array
+    const { home, off, phase } = data
+    // the cloud sits a little in front of the camera, so it surrounds the view at rest and when a cabinet is open
+    camera.getWorldDirection(tmp.fwd)
+    tmp.center.copy(camera.position).addScaledVector(tmp.fwd, 9)
+    tmp.right.setFromMatrixColumn(camera.matrixWorld, 0)
+    tmp.up.setFromMatrixColumn(camera.matrixWorld, 1)
     const t = performance.now() / 1000
-    pts.current.position.set(center.x + Math.sin(t * 0.13) * 0.4, Math.sin(t * 0.21) * 0.25, center.z)
+    const ptr = ui.current.pointer
+    for (let i = 0; i < MOTES; i++) {
+      const k = i * 3, ph = phase[i]
+      const wx = calm ? 0 : Math.sin(t * 0.33 + ph) * 0.9, wy = calm ? 0 : Math.sin(t * 0.27 + ph * 1.3) * 0.55, wz = calm ? 0 : Math.cos(t * 0.21 + ph) * 0.6
+      tmp.p.set(tmp.center.x + home[k] + wx + off[k], tmp.center.y + home[k + 1] + wy + off[k + 1], tmp.center.z + home[k + 2] + wz + off[k + 2])
+      if (!calm && ptr) {
+        const s = tmp.p.clone().project(camera)
+        const sx = (s.x * 0.5 + 0.5) * size.width, sy = (-s.y * 0.5 + 0.5) * size.height
+        const dx = sx - ptr.x, dy = sy - ptr.y, d = Math.hypot(dx, dy)
+        if (d < PUSH_PX && d > 0.001 && s.z < 1) {
+          const f = (1 - d / PUSH_PX) * 3.2 * dt                    // push away from the cursor, in the screen plane
+          off[k] += (tmp.right.x * dx - tmp.up.x * dy) / d * f
+          off[k + 1] += (tmp.right.y * dx - tmp.up.y * dy) / d * f
+          off[k + 2] += (tmp.right.z * dx - tmp.up.z * dy) / d * f
+        }
+      }
+      // drift back home
+      const back = 1 - Math.exp(-0.9 * dt)
+      off[k] -= off[k] * back; off[k + 1] -= off[k + 1] * back; off[k + 2] -= off[k + 2] * back
+      arr[k] = tmp.p.x; arr[k + 1] = tmp.p.y; arr[k + 2] = tmp.p.z
+    }
+    pos.needsUpdate = true
+    geo.computeBoundingSphere()
   })
-  return <points ref={(o: THREE.Points | null) => { pts.current = o; o?.layers.set(MIRROR_FREE) }} geometry={geo} material={mat} />
+  return <points ref={(o: THREE.Points | null) => { pts.current = o; o?.layers.set(MIRROR_FREE) }} geometry={geo} material={mat} frustumCulled={false} />
 }
 
 /** Camera: wide over all five cabinets; at the reference framing over the open one. Also keeps the fog relative to it. */
@@ -178,7 +220,7 @@ export default function HubScene({ state, ui, hits, calm, active, small, onReady
       <directionalLight position={[-7, 3, 1.5]} intensity={0.35} color="#fff3dc" />
       <directionalLight position={[7, 3.5, -5]} intensity={1.6} color={GOLD} />
       <Floor mirror={tier === 'high'} center={center} />
-      <Motes calm={calm} center={center} />
+      <Motes calm={calm} ui={ui} />
       {GROUPS.map((g, i) => (
         <Cabinet key={g.id} group={g.id} at={places[i]} state={state} ui={ui} hits={hits} calm={calm} fonts={fonts} enter={enter} />
       ))}

@@ -27,13 +27,13 @@ check('five boxes, named as the stages', (await page.locator('[data-testid^=box-
   JSON.stringify(await page.locator('[data-testid^=box-]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label').split(':')[0]))) === JSON.stringify(['Build a policy', 'Understand it', 'Test it', 'Ship it', 'Operate it']))
 const sized = await page.locator('[data-testid^=box-]').evaluateAll((els) => els.every((e) => { const r = e.getBoundingClientRect(); return r.width > 80 && r.height > 40 }))
 check('each box button sits over its 3D box', sized)
-await page.getByTestId('box-test').hover()
+await page.getByTestId('box-test').hover({ force: true })
 await page.waitForTimeout(300)
 check('hovering a box names it', /Test it/.test(await page.getByTestId('hub-caption').textContent()))
 
 for (const [g, tools] of Object.entries(GROUP_TOOLS)) {
   await page.goto(BASE + '/studio'); await page.waitForSelector('[data-testid=hub-stage][data-ready=scene]', { timeout: 60000 })
-  await page.getByTestId(`box-${g}`).click()
+  await page.getByTestId(`box-${g}`).click({ force: true })
   await page.waitForSelector(`[data-testid=card-open-${tools[0]}]`, { timeout: 90000 })
   const got = await page.locator('[data-testid^=card-open-]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid').slice(10)))
   check(`box ${g} opens with its ${tools.length} cards`, JSON.stringify(got) === JSON.stringify(tools), got.join(','))
@@ -41,12 +41,12 @@ for (const [g, tools] of Object.entries(GROUP_TOOLS)) {
 }
 
 await page.goto(BASE + '/studio'); await page.waitForSelector('[data-testid=hub-stage][data-ready=scene]', { timeout: 60000 })
-await page.getByTestId('box-test').click()
+await page.getByTestId('box-test').click({ force: true })
 await page.waitForSelector('[data-testid=card-open-redteam]', { timeout: 90000 })
-await page.getByTestId('card-open-redteam').hover()
+await page.getByTestId('card-open-redteam').hover({ force: true })
 await page.waitForTimeout(300)
 check('hovering a card shows its name and purpose', /Red-Team/.test(await page.getByTestId('hub-caption').textContent()))
-await page.getByTestId('card-open-redteam').click()
+await page.getByTestId('card-open-redteam').click({ force: true })
 await page.waitForURL('**/studio/red-team')
 check('a card opens its tool', page.url().endsWith('/studio/red-team'))
 await page.goBack()
@@ -96,10 +96,10 @@ check('Escape closes it', !(await about.isVisible()))
 await page.goto(BASE + '/studio?fx=off')
 await page.waitForSelector('[data-testid=hub-stage][data-ready=fallback]')
 check('without WebGL the five boxes are plain tiles', (await page.locator('.hub-tile').count()) === 5)
-await page.getByTestId('box-operate').click()
+await page.getByTestId('box-operate').click({ force: true })
 await page.waitForSelector('[data-testid=card-open-device]', { timeout: 90000 })
 check('fallback: a box opens its cards', (await page.locator('[data-testid^=card-open-]').count()) === 4)
-await page.getByTestId('card-open-device').click()
+await page.getByTestId('card-open-device').click({ force: true })
 await page.waitForURL('**/device')
 check('fallback: a card opens its tool', page.url().endsWith('/device'))
 
@@ -108,11 +108,49 @@ const calmCtx = await b.newContext({ viewport: { width: 1440, height: 900 }, red
 const calmPage = await calmCtx.newPage()
 await calmPage.goto(BASE + '/studio')
 await calmPage.waitForSelector('[data-testid=hub-stage][data-ready=scene]', { timeout: 60000 })
-await calmPage.getByTestId('box-build').click()
+await calmPage.getByTestId('box-build').click({ force: true })
 await calmPage.waitForSelector('[data-testid=card-open-workbench]', { timeout: 90000 })
-await calmPage.getByTestId('card-open-workbench').click()
+await calmPage.getByTestId('card-open-workbench').click({ force: true })
 await calmPage.waitForURL('**/studio/workbench')
 check('reduced motion: box and card still work', calmPage.url().endsWith('/studio/workbench'))
+
+// ---- scramble on hover, gold cursor, cabinets that never sit still, black-and-gold tool pages ----
+await page.goto(BASE + '/studio')
+await page.waitForSelector('[data-testid=hub-stage][data-ready=scene]', { timeout: 90000 })
+// samples a link's visible text right after the pointer arrives, and again after the effect has settled
+const scrambleOf = async (p, locator, original) => {
+  await p.mouse.move(5, 5)
+  await locator.hover()
+  const during = await p.waitForFunction(([sel, txt]) => { const el = document.querySelector(sel); return el && el.textContent.trim() !== txt }, [await locator.evaluate((e) => { e.setAttribute('data-probe', '1'); return '[data-probe="1"]' }), original], { timeout: 2000, polling: 10 }).then(() => true).catch(() => false)
+  await p.waitForTimeout(900)
+  const after = (await locator.textContent()).trim()
+  await locator.evaluate((e) => e.removeAttribute('data-probe'))
+  return { during, after }
+}
+for (const [name, loc] of [['How it works', page.locator('.hub-nav').getByRole('link', { name: 'How it works' })], ['All 17 tools explained ↓', page.getByTestId('hub-scroll')]]) {
+  const r = await scrambleOf(page, loc, name)
+  check(`"${name}" scrambles on hover and settles back`, r.during && r.after === name, JSON.stringify(r))
+}
+const cursor = await page.evaluate(() => [getComputedStyle(document.documentElement).cursor, getComputedStyle(document.querySelector('.hub-nav a')).cursor])
+check('gold cursor on the page and on links', cursor.every((c) => c.includes('url(')), cursor.join(' | '))
+const boxRect = () => page.getByTestId('box-test').evaluate((e) => e.style.transform + ' ' + e.style.width)
+const r1 = await boxRect(); await page.waitForTimeout(2500); const r2 = await boxRect()
+check('the cabinets keep turning slightly (never still)', r1 !== r2, `${r1} -> ${r2}`)
+await page.mouse.move(700, 300); await page.mouse.move(900, 500); await page.waitForTimeout(400)
+check('moving the cursor through the motes causes no errors', errors.length === 0, errors.slice(0, 2).join(' | '))
+
+await page.goto(BASE + '/studio/red-team')
+await page.waitForSelector('[data-testid=all-tools]')
+await page.getByRole('button', { name: 'Run Red-Team' }).waitFor({ timeout: 30000 })
+const look = await page.evaluate(() => {
+  const bg = getComputedStyle(document.querySelector('.studio-dark')).backgroundColor
+  const b = [...document.querySelectorAll('button')].find((x) => /Run Red-Team/.test(x.textContent))
+  return { bg, btn: b ? getComputedStyle(b).backgroundColor : '' }
+})
+check('tool pages are black', look.bg === 'rgb(0, 0, 0)', look.bg)
+check('tool buttons are gold, not blue', /^rgb\((1[3-9]\d|2\d\d), (9\d|1[0-9]\d|2\d\d), ([0-6]?\d)\)$/.test(look.btn), look.btn)
+const tr = await scrambleOf(page, page.getByTestId('all-tools'), 'All tools')
+check('tool page links scramble too', tr.during && tr.after === 'All tools', JSON.stringify(tr))
 
 // every ready tool opens a real page (from the list under the stage)
 for (const [id, url] of [['workbench', '/studio/workbench'], ['agent', '/agent'], ['evaluate', '/review'], ['patch', '/modify'], ['device', '/device']]) {

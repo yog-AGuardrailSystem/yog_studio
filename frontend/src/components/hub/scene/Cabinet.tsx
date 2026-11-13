@@ -100,7 +100,12 @@ export function Cabinet({ group, at, state, ui, hits, calm, fonts, enter }: Cabi
     t.hover = damp(t.hover, ui.current.hoverBox === group && !someOpen ? 1 : 0, 7 * k, dt)
     openAmt.current = t.open
     r.position.copy(at).addScaledVector(AWAY, t.hide * 9)
-    r.position.y = t.hover * 0.05
+    // never quite still, like the reference: a slow turn of about ±3° (±1.5° once open, so the cards stay readable)
+    // and a tiny float, each cabinet out of step with its neighbours
+    const now = performance.now() / 1000, phase = idx * 1.7
+    const sway = calm ? 0 : Math.sin(now * 0.7 + phase) * (0.052 - t.open * 0.026) * (1 - t.hover * 0.85)   // holds still under the cursor
+    r.rotation.y = sway
+    r.position.y = t.hover * 0.05 + (calm ? 0 : Math.sin(now * 0.9 + phase) * 0.012)
     r.visible = t.hide < 0.98
     // the lid swings on its hinges: a crack on hover, ~100° with a small overshoot when opened
     l.rotation.x = -(1.78 * ease.outBack(Math.min(1, t.open * 1.05)) + t.hover * 0.15)

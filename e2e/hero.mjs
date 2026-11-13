@@ -174,7 +174,7 @@ await how.goto(BASE + '/how-it-works'); await how.waitForTimeout(1500)
 check('How it works is black and gold too', (await how.evaluate(() => getComputedStyle(document.querySelector('.mkt')).backgroundColor)) === 'rgb(0, 0, 0)')
 const studio = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage(); watchErrors(studio)
 await studio.goto(BASE + '/studio/workbench'); await studio.waitForSelector('[data-testid=workbench]')
-check('the Studio workbench keeps its own dark blue look', (await studio.evaluate(() => getComputedStyle(document.querySelector('.studio-dark')).backgroundColor)) === 'rgb(5, 11, 22)')
+check('the Studio workbench is black like the rest of the site', (await studio.evaluate(() => getComputedStyle(document.querySelector('.studio-dark')).backgroundColor)) === 'rgb(0, 0, 0)')
 
 check('no page or console errors', errors.length === 0, errors.slice(0, 3).join(' | '))
 await b.close()

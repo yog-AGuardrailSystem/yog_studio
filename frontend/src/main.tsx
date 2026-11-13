@@ -3,8 +3,12 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
+import { installHoverScramble } from './lib/hoverScramble'
 import { MotionProvider } from './lib/motion'
 import { AppStateProvider } from './state'
+
+// Every button and link scrambles its label on hover or focus, then settles back (off when motion is calm).
+installHoverScramble()
 
 // MotionProvider: transform animations switch off for the OS "reduce motion" setting or the in-app pause button.
 createRoot(document.getElementById('root')!).render(

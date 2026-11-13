@@ -70,7 +70,9 @@ export function HubSection({ status }: { status: ReactNode }) {
 
   return (
     <section className="hub-stage" data-testid="hub-stage" aria-labelledby="hub-title" data-state={state.mode}
-      data-ready={ready ? 'scene' : projected ? 'loading' : 'fallback'} {...m('hub:stage')}>
+      data-ready={ready ? 'scene' : projected ? 'loading' : 'fallback'} {...m('hub:stage')}
+      onPointerMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); ui.current.pointer = { x: e.clientX - r.left, y: e.clientY - r.top } }}
+      onPointerLeave={() => { ui.current.pointer = null }}>
       <h1 id="hub-title" className="sr-only">Studio: five stages, {TOOLS.length} tools</h1>
 
       <div className="hub-world" data-aside={aside ? 'true' : 'false'} data-entering={state.mode === 'enter' ? 'true' : 'false'}>

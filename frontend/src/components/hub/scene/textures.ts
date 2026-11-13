@@ -41,9 +41,9 @@ export const streak = () => cached('streak', () => canvasTexture(256, 64, (g) =>
 /** The dark floor overlay: almost opaque at the edges, thinner in the middle, so the mirror shows only near the cabinets. */
 export const floorFade = () => cached('floorFade', () => canvasTexture(256, 256, (g) => {
   const r = g.createRadialGradient(128, 128, 10, 128, 128, 128)
-  r.addColorStop(0, 'rgba(0,0,0,0.62)'); r.addColorStop(0.4, 'rgba(0,0,0,0.86)'); r.addColorStop(1, 'rgba(0,0,0,1)')
+  r.addColorStop(0, 'rgba(26,25,22,0.66)'); r.addColorStop(0.35, 'rgba(14,13,12,0.86)'); r.addColorStop(0.7, 'rgba(5,5,4,0.96)'); r.addColorStop(1, 'rgba(0,0,0,1)')   // a lit grey floor round the cabinets, fading to black
   g.fillStyle = r; g.fillRect(0, 0, 256, 256)
-}, false))
+}, true))   // sRGB: the greys are meant as seen, not as linear light
 
 /** The smoked-glass inside of the lid: a faint vertical sheen. */
 export const lidGlass = () => cached('lidGlass', () => canvasTexture(64, 256, (g) => {
@@ -55,7 +55,7 @@ export const lidGlass = () => cached('lidGlass', () => canvasTexture(64, 256, (g
 /** The far backdrop: a dim warm glow behind the cabinets fading to black, like the reference's vignette. */
 export const backdrop = () => cached('backdrop', () => canvasTexture(256, 256, (g) => {
   const r = g.createRadialGradient(128, 150, 0, 128, 150, 140)
-  r.addColorStop(0, '#16120a'); r.addColorStop(0.5, '#080705'); r.addColorStop(1, '#000000')
+  r.addColorStop(0, '#211e18'); r.addColorStop(0.45, '#0d0c0a'); r.addColorStop(1, '#000000')
   g.fillStyle = r; g.fillRect(0, 0, 256, 256)
 }))
 

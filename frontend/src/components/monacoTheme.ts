@@ -12,7 +12,13 @@ export const defineYogTheme: BeforeMount = (monaco) => {
     inherit: true,
     rules: [{ token: 'comment', foreground: '8fbf7a' }],
     colors: {
-      'editor.background': '#0a1424',
+      // black and gold, like the rest of the site
+      'editor.background': '#0b0a08',
+      'editor.lineHighlightBackground': '#1a17120f',
+      'editor.selectionBackground': '#f5b94240',
+      'editorCursor.foreground': '#f5b942',
+      'editorLineNumber.foreground': '#8f897e',   // 5:1 on the editor background (axe)
+      'editorLineNumber.activeForeground': '#f5b942',
       'diffEditor.insertedLineBackground': '#16a34a0f',
       'diffEditor.insertedTextBackground': '#16a34a1c',
       'diffEditor.removedLineBackground': '#dc26260f',

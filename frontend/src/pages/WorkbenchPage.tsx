@@ -113,7 +113,7 @@ export default function WorkbenchPage() {
         {ai.mode === 'offline' && <span className="chip" data-testid="offline-chip" title="No AI model is used; Assist copies the nearest example">Offline demo mode</span>}
         <span className="flex-1" />
         <AiModeToggle compact />
-        <button type="button" className="btn-secondary" onClick={() => setPalette(true)} data-testid="open-palette">Commands <kbd className="ml-1 text-xs" style={{ color: '#475569' }}>Ctrl K</kbd></button>
+        <button type="button" className="btn-secondary" onClick={() => setPalette(true)} data-testid="open-palette">Commands <kbd className="ml-1 text-xs text-slate-400">Ctrl K</kbd></button>
         <button type="button" className="btn-secondary" onClick={copyShare} data-testid="share">Share link</button>
         <button type="button" className="btn-secondary" onClick={() => downloadText('policy.yog', source)}>Download .yog</button>
         <button type="button" className="btn-secondary" onClick={() => setTour(true)}>Tour</button>
