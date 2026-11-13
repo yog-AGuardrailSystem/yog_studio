@@ -93,7 +93,7 @@ export function CompilerExplorer({ initial }: { initial?: string }) {
           <div className="h-[17rem] overflow-auto pr-1 text-sm" role="tabpanel" data-testid="explorer-output">
             {tab === 'Decisions' && (
               !run ? <p className="text-slate-400">Waiting for the compiler…</p> :
-              !run.ok ? <ul className="space-y-2">{run.diagnostics.map((d, i) => <li key={i} className="rounded border border-red-500/50 bg-red-950/40 p-2 text-red-200">{d.line ? `Line ${d.line}: ` : ''}{d.hint ?? d.message}</li>)}</ul> :
+              !run.ok ? <ul className="space-y-2">{run.diagnostics.map((d, i) => <li key={i} className="rounded border border-red-500/50 bg-red-950/40 p-2 text-red-200">{d.line ? `Line ${d.line}${d.column ? `:${d.column}` : ''}: ` : ''}{d.hint ?? d.message}</li>)}</ul> :
               <ul className="space-y-1.5">
                 {run.results.map((r) => {
                   const label = r.kind === 'decision' ? r.decision : r.answer ? 'TRUE' : 'FALSE'

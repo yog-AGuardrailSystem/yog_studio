@@ -5,6 +5,7 @@ export interface Diagnostic {
   code: string
   severity: 'error' | 'warning'
   line: number | null
+  column?: number | null
   message: string
   hint?: string | null
   suggestion?: string | null
@@ -50,7 +51,7 @@ export interface CLexerResponse {
 }
 export interface TeamGroup { id: string; title: string; english: string; source: string; queries: number; uses_context: boolean }
 export interface Info {
-  provider: string; model: string | null; offline_demo: boolean; engine: string; c_lexer: boolean; commit: string
+  provider: string; model: string | null; offline_demo: boolean; engine: string; engine_roles?: string; c_lexer: boolean; commit: string
   default_mode: 'real' | 'offline'
   live_available: boolean; live_allowed: boolean; live_ready: boolean; live_reason: string | null; live_provider: string | null
 }

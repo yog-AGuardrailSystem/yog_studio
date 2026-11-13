@@ -78,7 +78,7 @@ export function ChecksPanel({ info, source, onFix, onJump }: {
             return (
               <li key={i} className="shake rounded border border-red-700 bg-red-50 p-3 text-sm" data-testid="diagnostic" data-motion={`wb:diagnostic:${i}`}>
                 <div className="font-semibold text-red-800">
-                  {d.line ? <button type="button" className="underline" onClick={() => onJump(d.line!)}>Line {d.line}</button> : 'Program'}: {d.hint ?? d.message}
+                  {d.line ? <button type="button" className="underline" onClick={() => onJump(d.line!)}>Line {d.line}{d.column ? `:${d.column}` : ''}</button> : 'Program'}: {d.hint ?? d.message}
                 </div>
                 {d.hint && <div className="mt-1 font-mono text-xs text-slate-500">engine said: {d.message}</div>}
                 {d.suggestion && <div className="mt-1 text-slate-700">{d.suggestion}</div>}
