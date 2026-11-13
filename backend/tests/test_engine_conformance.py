@@ -69,3 +69,13 @@ def test_c_and_python_agree_on_decision_and_reason_for_every_gold_scenario():
             assert (got.decision, got.reason) == (want.decision, want.reason), (ex.id, s)
             n += 1
     assert n >= 250
+
+
+@pytest.mark.skipif(not CEngineAdapter.available(), reason="needs the C engine")
+def test_the_landing_page_cross_engine_figures_match_the_corpus():
+    """The landing page quotes these counts; this keeps them true (update LandingPage.tsx if the corpus grows)."""
+    from app.core.config import REPO_ROOT
+    page = (REPO_ROOT / "frontend" / "src" / "pages" / "LandingPage.tsx").read_text(encoding="utf-8")
+    scenarios = sum(len(ex.scenarios) for ex in CASES)
+    assert f"'{scenarios} / {scenarios}'" in page, f"landing page should say {scenarios} / {scenarios}"
+    assert f"['{len(CASES)}', 'gold policies compiled by both engines']" in page, len(CASES)

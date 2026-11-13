@@ -1,5 +1,6 @@
 import { motion } from 'motion/react'
 import type { EvalReport, ScenarioResult } from '../api/evaluate'
+import { EngineBadge } from './EngineBadge'
 import { DecisionBadge } from './ResultCard'
 
 interface Props {
@@ -22,6 +23,7 @@ export function EvalTable({ report, onConfirm, onFlip }: Props) {
         )}
         <span className="text-slate-500">{s.unconfirmed} unconfirmed probes (not counted)</span>
         {s.errors > 0 && <span className="text-red-700">{s.errors} row error(s)</span>}
+        <EngineBadge />
       </div>
 
       {report.warnings.length > 0 && (

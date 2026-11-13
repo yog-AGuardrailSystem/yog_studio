@@ -24,10 +24,10 @@ const PIPELINE = [
   { name: 'Parser', sample: 'Decision(deny, can_access)' },
   { name: 'Semantic analysis', sample: 'arity, variables, no cycles' },
   { name: 'IR', sample: 'clauses as instructions' },
-  { name: 'Bytecode', sample: 'compact, loadable program' },
+  { name: 'Clause table', sample: 'constants, predicates, goals' },
   { name: 'VM', sample: 'DENY + reason + trace' },
   { name: 'C ABI', sample: 'yog_check(...)' },
-  { name: 'Python', sample: 'yog.check(...)' },
+  { name: 'Studio', sample: 'yogc check … → ALLOW / DENY' },
 ] as const
 
 // Quoted from the engine repository's own lexer test report (see the section's source link). Scoped to the lexer.
@@ -38,6 +38,13 @@ const LEXER_FACTS: [string, string][] = [
   ['22 / 22', 'deliberately injected bugs (mutants) caught'],
   ['6,023', 'differential comparisons against the Python reference'],
   ['0', 'mismatches in those comparisons'],
+]
+
+// Measured by Studio on every commit: backend/tests/test_engine_conformance.py runs these through both engines and
+// fails if the counts below stop matching the corpus.
+const CROSS_ENGINE_FACTS: [string, string][] = [
+  ['298 / 298', 'gold scenarios get the same decision and the same reason from the C engine and the Python reference'],
+  ['95', 'gold policies compiled by both engines'],
 ]
 
 const FALLBACK_GROUPS: Pick<TeamGroup, 'id' | 'title' | 'english'>[] = [
@@ -194,7 +201,7 @@ export default function LandingPage() {
       </Section>
 
       {/* 6. Trust */}
-      <Section eyebrow="A compiler you can trust" title="The lexer is tested like critical software.">
+      <Section eyebrow="A compiler you can trust" title="Tested like critical software.">
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="lexer-facts">
           {LEXER_FACTS.map(([n, label]) => (
             <Spotlight key={label} as="li" className="p-5">
@@ -205,7 +212,18 @@ export default function LandingPage() {
         </ul>
         <p className="mt-6 max-w-3xl text-sm text-slate-400">
           These figures describe the lexer only, from the engine team’s test report in{' '}
-          <a className="link" href={ENGINE_REPO} target="_blank" rel="noreferrer">the engine repository</a>. In the explorer’s Tokens tab you can compare any program against the real C lexer yourself.
+          <a className="link" href={ENGINE_REPO} target="_blank" rel="noreferrer">the engine repository</a>. In the explorer you can compare any program against the real C lexer, and see the clause table the C compiler builds, yourself.
+        </p>
+        <ul className="mt-6 grid gap-4 sm:grid-cols-2" data-testid="cross-engine-facts">
+          {CROSS_ENGINE_FACTS.map(([n, label]) => (
+            <Spotlight key={label} as="li" className="p-5">
+              <p className="font-display text-4xl font-extrabold text-glow">{n}</p>
+              <p className="mt-1 text-sm text-slate-300">{label}</p>
+            </Spotlight>
+          ))}
+        </ul>
+        <p className="mt-3 max-w-3xl text-sm text-slate-400">
+          Measured by Studio itself: every gold scenario runs through both engines on each change, and the C engine makes the decisions in the deployed Studio.
         </p>
       </Section>
 

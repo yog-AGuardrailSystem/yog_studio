@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { mapSuggest, why, type MapSuggest, type WhyResponse } from '../../api/tools'
+import { EngineBadge } from '../../components/EngineBadge'
 import { PolicyPicker, usePolicyChoice } from '../../components/tool/PolicyPicker'
 import { DecisionPill, ErrorBox, msg, PolicyLines, ToolPage } from '../../components/tool/ToolPage'
 
@@ -101,7 +102,7 @@ export default function WhyPage() {
           <div className={`rounded-xl border p-4 ${r.decision === 'ALLOW' ? 'border-green-300 bg-green-50 text-green-800' : 'border-red-300 bg-red-50 text-red-800'}`} role="status">
             <div className="flex items-center gap-2"><DecisionPill d={r.decision} /><span className="font-display text-lg font-bold" data-testid="why-verdict">{r.verdict}</span></div>
             {!out.consistent && <p className="mt-1 text-sm">The step-by-step explanation did not agree with the engine and is hidden. The engine’s answer above is the one that counts.</p>}
-            <p className="mt-1 text-xs opacity-80">Engine reason: {r.reason}</p>
+            <p className="mt-1 text-xs opacity-80">Engine reason: {r.reason} <EngineBadge className="ml-1" /></p>
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
             <div className="min-w-0 space-y-2" data-testid="why-clauses">

@@ -2,6 +2,7 @@ import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { deviceState, resetDevice, runDemo, sendCommand, setClock, type DeviceSnapshot } from '../api/device'
+import { EngineBadge } from '../components/EngineBadge'
 import { DenyStamp } from '../components/motion/DenyStamp'
 import { PageIntro } from '../components/PageIntro'
 import { Skeleton } from '../components/Skeleton'
@@ -148,6 +149,7 @@ export default function DevicePage() {
         ))}
       </div>
 
+      <p className="text-xs text-slate-500">Every command below is checked against the approved policy before the device moves. <EngineBadge className="ml-1" /></p>
       <div className="max-h-96 overflow-auto rounded border border-slate-200 bg-white" data-testid="device-log">
         <table className="w-full text-left text-xs">
           <thead className="sticky top-0 bg-slate-100 uppercase text-slate-500">
