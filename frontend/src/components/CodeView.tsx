@@ -1,4 +1,5 @@
 import Editor, { type OnMount } from '@monaco-editor/react'
+import '../lib/monacoSetup'
 import { useEffect, useRef } from 'react'
 import { defineYogTheme, YOG_DARK } from './monacoTheme'
 

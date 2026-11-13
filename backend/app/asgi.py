@@ -25,12 +25,12 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="YOG Studio (production)", lifespan=lifespan)
 
-# What the built app really loads: its own files, Monaco (jsdelivr CDN, runs workers from blob: URLs) and Google Fonts.
+# What the built app really loads: its own files (Monaco is bundled, its worker is a same-origin file) and Google Fonts.
 CSP = "; ".join([
     "default-src 'self'",
-    "script-src 'self' https://cdn.jsdelivr.net",
-    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com",
-    "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
     "img-src 'self' data: blob:",
     "worker-src 'self' blob:",
     "connect-src 'self'",
