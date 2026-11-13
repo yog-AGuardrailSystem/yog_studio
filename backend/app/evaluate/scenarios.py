@@ -7,7 +7,7 @@ Two kinds, deliberately kept apart so a policy is never graded against itself:
 """
 import json
 import re
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
@@ -22,14 +22,14 @@ MAX_PER_ACTION = 14
 
 
 class Scenario(BaseModel):
-    actor: str
-    action: str
-    resource: str
-    context: list[str] = Field(default_factory=list)
+    actor: str = Field(max_length=200)
+    action: str = Field(max_length=200)
+    resource: str = Field(max_length=200)
+    context: list[Annotated[str, Field(max_length=200)]] = Field(default_factory=list, max_length=60)
     expected: Literal["ALLOW", "DENY"]
     source: Literal["generated", "user"] = "generated"
     unconfirmed: bool = False          # characterization row: expected == engine output, not independent
-    note: str = ""
+    note: str = Field(default="", max_length=500)
 
 
 class ScenarioResult(Scenario):
@@ -98,7 +98,13 @@ def characterization(adapter: EngineAdapter, policy: str) -> tuple[list[Scenario
     arg_keys = _arg_keys(info)
     uses_hour = "hour" in used
 
+    per_action: dict[str, int] = {}
+
     def add(actor, action, resource, ctx, note):
+        # rows past the per-action cap are dropped below anyway; stop paying one engine check for each of them
+        if per_action.get(action, 0) >= MAX_PER_ACTION + 10:
+            return None
+        per_action[action] = per_action.get(action, 0) + 1
         try:
             r = adapter.check(policy, actor, action, resource, ctx)
         except EngineError:

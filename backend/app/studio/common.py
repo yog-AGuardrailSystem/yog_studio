@@ -12,6 +12,7 @@ MAX_SOURCE_CHARS = 200_000
 DEMO_ID = "demo"
 DEMO_POLICY_PATH = EXAMPLES_DIR / "policies" / "demo_smart_home.yog"
 MAX_CHECKS = 2_000                      # engine checks one request may spend
+MAX_ARG_KEYS = 60                       # (tool, param) pairs the probe generators expand; a pasted policy can name thousands
 
 
 def policy_sha256(text: str) -> str:
@@ -140,7 +141,7 @@ def shape(info: dict) -> Shape:
             if k not in keys and k[0] != "placeholder":
                 keys.append(k)
     return Shape(actions=actions, actors=actors or ["agent"], resources=resources[:3], constants=sorted(nums),
-                 arg_keys=keys, uses_hour="hour" in used, uses_day="day" in used)
+                 arg_keys=keys[:MAX_ARG_KEYS], uses_hour="hour" in used, uses_day="day" in used)
 
 
 def boundary_values(constants: list[int], limit: int = 25) -> list[int]:

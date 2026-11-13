@@ -11,6 +11,20 @@ def get_llm():
     return get_provider()
 
 
+def enforce_live_default(provider, request) -> None:
+    """The live-AI protections (ALLOW_LIVE_LLM kill switch, per-client rate limit, daily budget) must follow the provider
+    that actually makes the call, not only the per-request `mode=real` flag. When the operator makes a live provider the
+    server default (LLM_PROVIDER=gemini|claude), a request that simply omits `mode` would otherwise skip all three."""
+    if getattr(provider, "name", "fake") == "fake":
+        return
+    from fastapi import HTTPException
+    from app.core import guard
+    from app.llm.factory import live_allowed
+    if not live_allowed():
+        raise HTTPException(status_code=409, detail="Live AI is switched off on this server. Use Offline mode.")
+    guard.live_guard(request)
+
+
 @lru_cache(maxsize=1)
 def get_adapter() -> EngineAdapter:
     """The ONE place that chooses the engine. YOG_ENGINE=python (default) | c.

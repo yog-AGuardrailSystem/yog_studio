@@ -11,6 +11,7 @@ from app.studio.gaps import targeted_probes
 
 MAX_MUTANTS = 40
 MAX_SCENARIOS = 150
+MAX_SITES = 2000           # edit sites listed before the evenly spread max_mutants selection
 CMP = re.compile(r"^(\s+)(\S+)\s+(>=|<=|==|!=|>|<)\s+(\S+)\s*(#.*)?$")
 HEAD = re.compile(r"^(allow|deny|rule)\s")
 FLIP = {">=": ">", ">": ">=", "<=": "<", "<": "<=", "==": "!=", "!=": "=="}
@@ -62,14 +63,24 @@ def _clause_end(lines: list[str], start: int) -> int:
     return i
 
 
-def generate(source: str) -> list[tuple[int, str, str, str, str, str]]:
-    """(line, kind, description, before, after, mutated source), deterministic and in source order."""
+def generate(source: str) -> list[tuple]:
+    """(line, kind, description, before, after, build), deterministic and in source order.
+
+    `build` is a zero-argument function that makes the mutated source text; it has a `.key` identifying the edit. The
+    text is NOT built here: a policy near the size limit has thousands of edit sites and a full copy of the source for
+    each one is quadratic memory, while only max_mutants of them are ever used. At most MAX_SITES sites are listed."""
     lines = source.split("\n")
-    out: list[tuple[int, str, str, str, str, str]] = []
+    out: list[tuple] = []
 
     def add(i: int, kind: str, desc: str, before: str, after_lines: list[str], span: tuple[int, int]):
-        new = lines[:span[0]] + after_lines + lines[span[1]:]
-        out.append((i + 1, kind, desc, before.strip(), " / ".join(a.strip() for a in after_lines) or "(removed)", "\n".join(new)))
+        if len(out) >= MAX_SITES or list(after_lines) == lines[span[0]:span[1]]:
+            return
+
+        def build(span=span, after=tuple(after_lines)) -> str:
+            return "\n".join(lines[:span[0]] + list(after) + lines[span[1]:])
+
+        build.key = (span, tuple(after_lines))          # type: ignore[attr-defined]
+        out.append((i + 1, kind, desc, before.strip(), " / ".join(a.strip() for a in after_lines) or "(removed)", build))
 
     body_count: dict[int, int] = {}
     start = -1
@@ -124,11 +135,11 @@ def run(adapter: EngineAdapter, source: str, sh: Shape, tests: list[TestCase], m
             usable.append(t)
     excluded = len(tests) - len(usable)
 
-    seen = {source}
+    seen: set = set()
     cand = []
     for item in generate(source):
-        if item[5] not in seen:
-            seen.add(item[5])
+        if item[5].key not in seen:
+            seen.add(item[5].key)
             cand.append(item)
     if len(cand) > max_mutants:                      # spread the cap evenly over the file instead of taking the first few
         step = len(cand) / max_mutants
@@ -136,7 +147,8 @@ def run(adapter: EngineAdapter, source: str, sh: Shape, tests: list[TestCase], m
 
     mutants: list[Mutant] = []
     try:
-        for n, (line, kind, desc, before, after, msrc) in enumerate(cand, 1):
+        for n, (line, kind, desc, before, after, build) in enumerate(cand, 1):
+            msrc = build()                           # only the chosen edits are ever turned into text
             if adapter.validate(msrc):
                 mutants.append(Mutant(id=n, line=line, kind=kind, description=desc, before=before, after=after, status="invalid"))
                 continue

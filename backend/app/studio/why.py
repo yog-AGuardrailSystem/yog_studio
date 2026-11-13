@@ -1,4 +1,6 @@
 """Why-Explainer: the proof behind one decision, checked against the engine's own answer."""
+from typing import Annotated
+
 from pydantic import BaseModel, Field
 
 from app.engine.adapter import EngineAdapter, WhyResult
@@ -9,7 +11,7 @@ class WhyRequest(PolicyRef):
     actor: str = Field(max_length=200)
     action: str = Field(max_length=200)
     resource: str = Field(max_length=200)
-    context: list[str] = Field(default_factory=list, max_length=60)
+    context: list[Annotated[str, Field(max_length=200)]] = Field(default_factory=list, max_length=60)
 
 
 class WhyResponse(BaseModel):

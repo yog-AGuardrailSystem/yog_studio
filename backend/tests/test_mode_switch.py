@@ -222,7 +222,42 @@ def test_forwarded_header_is_trusted_only_when_configured(monkeypatch):
     monkeypatch.delenv("TRUST_PROXY", raising=False)
     assert client_ip(Request(scope)) == "1.2.3.4"                                  # a spoofable header is ignored by default
     monkeypatch.setenv("TRUST_PROXY", "1")
-    assert client_ip(Request(scope)) == "9.9.9.9"
+    # the RIGHT-MOST entry is the one the trusted proxy appended; everything left of it was written by the client
+    assert client_ip(Request(scope)) == "10.0.0.1"
+
+
+def _req(xff: str | None, peer: str = "1.2.3.4"):
+    from starlette.requests import Request
+    headers = [(b"x-forwarded-for", xff.encode())] if xff is not None else []
+    return Request({"type": "http", "headers": headers, "client": (peer, 1)})
+
+
+def test_regression_a_client_cannot_choose_its_rate_limit_key(monkeypatch):
+    """Found by the security audit: the left-most X-Forwarded-For entry was used as the bucket key, so rotating it gave
+    a fresh bucket per request (bypass), naming a victim drained the victim's bucket, and long unique values filled the
+    key table. Only the proxy-appended right-most address counts, it must be an IP address, and junk falls back."""
+    from app.core.guard import client_ip
+    monkeypatch.setenv("TRUST_PROXY", "1")
+    # a client prepending any value in front of the proxy's own entry changes nothing
+    assert client_ip(_req("203.0.113.7, 198.51.100.9")) == client_ip(_req("1.1.1.1, 2.2.2.2, 198.51.100.9")) == "198.51.100.9"
+    assert client_ip(_req("198.51.100.9")) == "198.51.100.9"
+    assert client_ip(_req("2001:db8::1")) == "2001:db8::1"
+    # not an address: no unbounded key, fall back to the socket peer
+    assert client_ip(_req("x" * 8000)) == "1.2.3.4"
+    assert client_ip(_req("1.1.1.1, not-an-ip")) == "1.2.3.4"
+    assert client_ip(_req("")) == "1.2.3.4" and client_ip(_req(None)) == "1.2.3.4"
+    assert client_ip(_req("1.1.1.1,")) == "1.2.3.4"
+
+
+def test_regression_chunked_bodies_cannot_skip_the_size_cap(client):
+    """Found by the security audit: only Content-Length was checked, so a chunked body skipped the 1.5 MB cap and was
+    buffered whole. Write requests now need a length."""
+    r = client.post("/check", content=b'{"x":1}', headers={"Transfer-Encoding": "chunked", "Content-Type": "application/json"})
+    assert r.status_code == 411
+    assert client.post("/check", content=b"x", headers={"Content-Length": "abc"}).status_code in (400, 411, 422)
+    big = client.post("/check", content=b"{}", headers={"Content-Length": "9999999"})
+    assert big.status_code in (400, 413)
+    assert client.post("/check", json={"policy": "fact a(b)\n", "actor": "a", "action": "can_x", "resource": "r"}).status_code == 200
 
 
 # ------------------------------------------------------------------ approving an ungrounded draft

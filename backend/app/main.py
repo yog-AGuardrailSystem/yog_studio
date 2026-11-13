@@ -43,11 +43,12 @@ app.add_middleware(
 async def visitor_session(request: Request, call_next):
     """Give every browser its own anonymous id (HttpOnly cookie) so visitors never share policies or devices."""
     sid = request.cookies.get(session.COOKIE)
-    fresh = not session.valid(sid)
+    fresh = not session.acceptable_cookie(sid)
     if fresh:
         sid = session.new_sid()
         session.maybe_cleanup()
     request.state.sid = sid
+    request.state.fresh = fresh            # a session minted by this very request (no cookie, or a malformed one)
     response = await call_next(request)
     if fresh:
         https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
@@ -59,7 +60,13 @@ async def visitor_session(request: Request, call_next):
 async def protect(request: Request, call_next):
     """Refuse oversized bodies and rate-limit every write request per client (see app/core/guard.py)."""
     if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+        if request.headers.get("transfer-encoding"):
+            # A chunked body has no Content-Length, so the cap below could not see it and the whole stream would be
+            # buffered in memory. Browsers and the supplied clients always send a length; refuse the rest.
+            return JSONResponse(status_code=411, content={"detail": "Send a Content-Length header; chunked uploads are not accepted."})
         length = request.headers.get("content-length", "")
+        if length and not length.isdigit():
+            return JSONResponse(status_code=400, content={"detail": "Bad Content-Length header."})
         if length.isdigit() and int(length) > guard._num("MAX_BODY_BYTES", 1_500_000):
             return JSONResponse(status_code=413, content={"detail": "That request is too large."})
         ok, wait = guard.limiter.allow("write", guard.client_ip(request), guard._num("RATE_LIMIT_PER_MIN", 120))

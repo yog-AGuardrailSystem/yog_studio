@@ -9,6 +9,7 @@ All limits come from the environment (defaults are generous for a single user an
   RATE_LIMIT_PER_MIN (120)   LIVE_RATE_PER_MIN (6)   LIVE_LLM_DAILY_CAP (300)   MAX_BODY_BYTES (1_500_000)
   TRUST_PROXY (on when running on Render): use the first X-Forwarded-For address as the client
 """
+import ipaddress
 import os
 import threading
 import time
@@ -86,12 +87,22 @@ budget = LiveBudget()
 
 
 def client_ip(request: Request) -> str:
+    """The client address used as the rate-limit key.
+
+    Behind a trusted proxy the proxy appends the address it saw to X-Forwarded-For, so the RIGHT-MOST entry is the one
+    the proxy vouches for; everything to its left was written by the client and is ignored (taking the left-most entry
+    let a client rotate it for a fresh bucket per request, or name a victim's address). The value must parse as an IP
+    address, which also bounds the key's length; anything else falls back to the socket peer."""
     trust = os.getenv("TRUST_PROXY")
     trusted = (trust.strip().lower() in ("1", "true", "yes", "on")) if trust is not None else bool(os.getenv("RENDER"))
     if trusted:
         fwd = request.headers.get("x-forwarded-for", "")
-        if fwd.strip():
-            return fwd.split(",")[0].strip()
+        last = fwd.rsplit(",", 1)[-1].strip()
+        if last:
+            try:
+                return str(ipaddress.ip_address(last))
+            except ValueError:
+                pass
     return request.client.host if request.client else "unknown"
 
 

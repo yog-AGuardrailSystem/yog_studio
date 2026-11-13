@@ -51,6 +51,8 @@ TOOLS = {
 }
 DAYS = facts.DAYS
 MAX_LOG = 500
+MAX_ARGS = 12              # keys in one command
+MAX_ARG_CHARS = 200        # characters in one text value (ids, a pin): log and audit entries stay small
 
 
 class DeviceSim:
@@ -75,7 +77,15 @@ class DeviceSim:
     def _validate(self, tool: str, args: dict) -> dict:
         if tool not in TOOLS:
             raise DeviceError(f"unknown tool '{tool}'. Known: {', '.join(TOOLS)}")
+        if len(args) > MAX_ARGS:
+            raise DeviceError(f"too many arguments (at most {MAX_ARGS})")
         a = {k: v for k, v in args.items() if k in TOOLS[tool]}
+        for k, v in a.items():                       # values land in the log and the audit file: bound them in bytes
+            if isinstance(v, str):
+                if len(v) > MAX_ARG_CHARS:
+                    raise DeviceError(f"argument '{k}' is too long (at most {MAX_ARG_CHARS} characters)")
+            elif v is not None and not isinstance(v, (int, float, bool)):
+                raise DeviceError(f"argument '{k}' must be text or a number")
         optional = {"unlock_door": {"pin"}, "open_valve": {"percent"}}.get(tool, set())
         need = [k for k in TOOLS[tool] if k not in optional]
         for k in need:

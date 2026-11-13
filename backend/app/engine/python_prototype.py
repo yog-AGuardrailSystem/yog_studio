@@ -86,26 +86,84 @@ def _predicates(prog) -> list[PredicateInfo]:
     return list(out.values())
 
 
+MAX_SOLVE_STEPS = 400_000      # goal evaluations allowed for ONE decision; honest policies need a few hundred
+MAX_TRACE_STEPS = 200_000      # entries the shared trace list may hold
+
+
+class EvaluationLimit(Exception):
+    """A policy needed more work than one decision is allowed. check/explain/ask treat it as DENY (fail closed)."""
+
+
+def _bounded(engine) -> None:
+    """Put a step budget on this engine instance without touching the vendored engine/yog.py.
+
+    The engine only guarantees that evaluation terminates (rules cannot recurse); a non-recursive join over a few
+    facts still enumerates exponentially many proofs when its last goal fails, and every step appends to an in-memory
+    trace. Engine.solve calls itself through `self.solve`, so replacing the instance attribute counts every goal."""
+    original = engine.solve
+    steps = [0]
+
+    def solve(goal, s, trace, depth=0):
+        # One unit per goal PLUS one per stored fact it must be tried against: the engine has no index, so a goal over a
+        # predicate with many facts costs that many unifications. Counting only goals let a big fact table through.
+        key = getattr(goal, "key", None) or getattr(getattr(goal, "goal", None), "key", None)
+        steps[0] += 1 + (len(engine.facts.get(key, ())) if key is not None else 0)
+        if steps[0] > MAX_SOLVE_STEPS or len(trace) > MAX_TRACE_STEPS:
+            raise EvaluationLimit(f"evaluation budget exceeded ({MAX_SOLVE_STEPS} steps)")
+        yield from original(goal, s, trace, depth)
+
+    engine.solve = solve
+
+
+def _parse_text(policy: str):
+    yog = _load_yog()
+    try:
+        return yog.Parser(yog.tokenize(policy)).parse()
+    except yog.YogError as e:
+        raise EngineError(str(e)) from e
+    except (IndexError, AttributeError) as e:      # parser edge cases on truncated input
+        raise EngineError(f"syntax error: could not parse policy ({type(e).__name__})") from e
+    except (RecursionError, ValueError) as e:       # absurdly nested text, or a number literal Python cannot convert
+        raise EngineError(f"could not parse policy ({type(e).__name__}): it is too large or too deeply nested") from e
+
+
+# Tokenize and parse a policy once per distinct text. A tool that makes thousands of checks against one policy used to
+# re-tokenize and re-parse the whole text for every check, so a request budget counted calls but the real cost was
+# calls x policy size. The Program is read-only (each Engine copies what it changes), so sharing it is safe, and
+# exceptions are not cached. Only policy texts go through the cache; one-line context facts do not (they would evict it).
+_parse_small = lru_cache(maxsize=16)(_parse_text)
+CACHE_MAX_CHARS = 30_000       # a parsed policy is ~50x its text; larger ones are parsed per call so the cache stays small
+
+
+def _parse_cached(policy: str):
+    return _parse_small(policy) if len(policy) <= CACHE_MAX_CHARS else _parse_text(policy)
+
+
+_parse_cached.cache_info = _parse_small.cache_info          # type: ignore[attr-defined]
+_parse_cached.cache_clear = _parse_small.cache_clear        # type: ignore[attr-defined]
+
+
+LIMIT_REASON = "evaluation budget exceeded, failing closed: the policy needs more work than one decision is allowed"
+
+
 class PythonPrototypeAdapter(EngineAdapter):
     def __init__(self) -> None:
         self.yog = _load_yog()
 
     # -- helpers ---------------------------------------------------------
     def _parse(self, policy: str):
-        yog = self.yog
-        try:
-            return yog.Parser(yog.tokenize(policy)).parse()
-        except yog.YogError as e:
-            raise EngineError(str(e)) from e
-        except (IndexError, AttributeError) as e:      # parser edge cases on truncated input
-            raise EngineError(f"syntax error: could not parse policy ({type(e).__name__})") from e
+        return _parse_cached(policy)
 
     def _engine(self, policy: str):
         prog = self._parse(policy)
         try:
-            return self.yog.Engine(prog)
+            engine = self.yog.Engine(prog)
         except self.yog.YogError as e:
             raise EngineError(str(e)) from e
+        except RecursionError as e:                 # a chain of thousands of rules overflows the semantic checker
+            raise EngineError("the policy's rules are nested too deeply to check") from e
+        _bounded(engine)
+        return engine
 
     def _context_atoms(self, context: list[str]) -> list:
         atoms = []
@@ -114,7 +172,7 @@ class PythonPrototypeAdapter(EngineAdapter):
             if not text:
                 continue
             try:
-                facts = self._parse("fact " + text).facts
+                facts = _parse_text("fact " + text).facts
             except EngineError as e:
                 raise EngineError(f"bad context fact {text!r}: {e}") from e
             if len(facts) != 1:
@@ -133,6 +191,10 @@ class PythonPrototypeAdapter(EngineAdapter):
             # A guardrail must fail closed, so report DENY rather than propagate a 500.
             return CheckResult(decision="DENY", trace=[],
                                reason=f"engine error, failing closed: comparison between incompatible types ({e})")
+        except EvaluationLimit:
+            return CheckResult(decision="DENY", trace=[], reason=LIMIT_REASON)
+        except RecursionError:                      # a very long clause body: fail closed, never a 500 or an ALLOW
+            return CheckResult(decision="DENY", trace=[], reason="engine error, failing closed: the policy is nested too deeply")
         return CheckResult(decision=raw["decision"], reason=raw["reason"], trace=list(raw["trace"]))
 
     # -- why: the proof behind a decision ---------------------------------------
@@ -217,6 +279,9 @@ class PythonPrototypeAdapter(EngineAdapter):
                 return WhyResult(decision="DENY", error=True, clauses=out, context=ctx_text,
                                  reason=f"engine error, failing closed: comparison between incompatible types ({e})",
                                  verdict="DENY: the engine hit an error comparing a number with a name, so it failed closed.")
+            except EvaluationLimit:
+                return WhyResult(decision="DENY", error=True, clauses=out, context=ctx_text, reason=LIMIT_REASON,
+                                 verdict="DENY: this policy needs more work than one decision is allowed, so it failed closed.")
             deny = next((c for c in out if c.kind == "deny" and c.status == "matched"), None)
             allow = next((c for c in out if c.kind == "allow" and c.status == "matched"), None)
             if deny:
@@ -312,6 +377,8 @@ class PythonPrototypeAdapter(EngineAdapter):
             ok, sols, trace = engine.ask(goal)
         except TypeError as e:           # engine bug #7 (int vs name comparison): fail closed, never a 500
             return AskResult(answer=False, trace=[f"engine error, failing closed: {e}"])
+        except EvaluationLimit:
+            return AskResult(answer=False, trace=[LIMIT_REASON])
         shown = []
         for s in sols:
             b = {k: (v.val if isinstance(v, yog.Const) else repr(v)) for k, v in s.items()

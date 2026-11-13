@@ -22,9 +22,15 @@ MAX_SIMS = 500
 
 
 def get_sim(request: Request) -> DeviceSim:
-    """Each visitor drives their own device (state, clock and log); the least recently used are dropped."""
+    """Each visitor drives their own device (state, clock and log); the least recently used are dropped.
+
+    A GET never creates or refreshes an entry for an unknown session: GETs are not rate limited and a session costs
+    nothing to mint, so otherwise ~500 cookie-less GETs would push every real visitor's simulator out of the LRU. An
+    unknown session just sees a fresh, unstored device until its first write (POST) creates one."""
     sid = session.session_id(request)
     with _SIMS_LOCK:
+        if request.method == "GET" and sid not in _SIMS:
+            return DeviceSim()
         sim = _SIMS.pop(sid, None) or DeviceSim()
         _SIMS[sid] = sim
         while len(_SIMS) > MAX_SIMS:
