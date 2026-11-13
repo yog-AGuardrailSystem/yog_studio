@@ -112,6 +112,7 @@ def health() -> dict:
 def info() -> dict:
     """What this server is really running, so the UI can say so (e.g. an offline demo mode banner)."""
     from app.api.deps import get_adapter
+    from app.engine.c_build import engine_commit, find_tool
     from app.engine.c_lexer import find_binary
     from app.llm.factory import get_provider, live_status
     from app.llm.provider import LLMError
@@ -132,6 +133,8 @@ def info() -> dict:
                          if adapter.__class__.__name__ == "PythonPrototypeAdapter"
                          else "decisions: C · structure: reference parser"),
         "c_lexer": find_binary(build=False) is not None,
+        "c_ir": find_tool("yogc", build=False) is not None,
+        "engine_commit": engine_commit(),
         "commit": os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("GIT_COMMIT") or "unknown",
     }
 

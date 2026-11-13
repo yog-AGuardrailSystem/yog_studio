@@ -9,13 +9,13 @@ import { YogEditor } from '../components/YogEditor'
 import { AiModeToggle, useAiMode } from '../lib/aiMode'
 import { CommandPalette, Tour, type Command } from '../components/workbench/Overlays'
 import {
-  AssistPanel, AstPanel, BenchmarkPanel, CLexerPanel, ChecksPanel, ReadbackPanel, TestsPanel, TokensPanel,
+  AssistPanel, AstPanel, BenchmarkPanel, CIRPanel, CLexerPanel, ChecksPanel, ReadbackPanel, TestsPanel, TokensPanel,
 } from '../components/workbench/Panels'
 import {
   STARTER, decisionPredicates, downloadText, safeGet, safeSet, shareUrl, sourceFromHash, traceLines,
 } from '../lib/workbench'
 
-const TABS = ['Checks', 'Tests', 'Tokens', 'AST', 'Readback', 'C lexer', 'Assist', 'Evidence'] as const
+const TABS = ['Checks', 'Tests', 'Tokens', 'AST', 'Readback', 'C lexer', 'C IR', 'Assist', 'Evidence'] as const
 type Tab = (typeof TABS)[number]
 const SRC_KEY = 'yog.workbench.source'
 const TOUR_KEY = 'yog.workbench.tour'
@@ -159,6 +159,7 @@ export default function WorkbenchPage() {
             {tab === 'AST' && <AstPanel info={info} />}
             {tab === 'Readback' && <ReadbackPanel source={source} ok={!!info?.ok} />}
             {tab === 'C lexer' && <CLexerPanel source={source} available={!!ai.info?.c_lexer} />}
+            {tab === 'C IR' && <CIRPanel source={source} available={!!ai.info?.c_ir} />}
             {tab === 'Assist' && <AssistPanel current={source} onInsert={insert} onReplace={(y) => { setSource(y); setTab('Checks') }} />}
             {tab === 'Evidence' && <BenchmarkPanel />}
           </div>

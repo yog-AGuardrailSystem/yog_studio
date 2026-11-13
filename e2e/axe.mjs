@@ -34,7 +34,7 @@ await page.waitForSelector('[data-testid=yog-editor] .monaco-editor', { timeout:
 await page.getByTestId('tour-skip').click().catch(() => {})
 await settle(1200)
 await scan('workbench (tour closed)')
-for (const tab of ['Checks', 'Tests', 'Tokens', 'AST', 'Readback', 'C lexer', 'Assist', 'Evidence']) {
+for (const tab of ['Checks', 'Tests', 'Tokens', 'AST', 'Readback', 'C lexer', 'C IR', 'Assist', 'Evidence']) {
   await page.getByTestId(`tab-${tab.replace(' ', '-')}`).click()
   await settle(tab === 'Tokens' || tab === 'AST' ? 2400 : 900)       // tokens and tree nodes fade in one after another
   await scan(`workbench ${tab}`)

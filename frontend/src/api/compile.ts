@@ -51,7 +51,7 @@ export interface CLexerResponse {
 }
 export interface TeamGroup { id: string; title: string; english: string; source: string; queries: number; uses_context: boolean }
 export interface Info {
-  provider: string; model: string | null; offline_demo: boolean; engine: string; engine_roles?: string; c_lexer: boolean; commit: string
+  provider: string; model: string | null; offline_demo: boolean; engine: string; engine_roles?: string; engine_commit?: string | null; c_lexer: boolean; c_ir?: boolean; commit: string
   default_mode: 'real' | 'offline'
   live_available: boolean; live_allowed: boolean; live_ready: boolean; live_reason: string | null; live_provider: string | null
 }
@@ -81,6 +81,11 @@ export interface JobView {
 export const compile = (source: string) => postJson<CompileInfo>('/compile', { source })
 export const runProgram = (source: string, adhoc?: AdHoc) => postJson<RunResponse>('/run', { source, adhoc })
 export const compareCLexer = (source: string) => postJson<CLexerResponse>('/compile/c-lexer', { source })
+export interface CIRResponse {
+  available: boolean; ok: boolean; text: string; truncated: boolean
+  counts: Record<string, number>; error: string | null; line: number | null; column: number | null
+}
+export const cIr = (source: string) => postJson<CIRResponse>('/compile/c-ir', { source })
 export const teamExamples = () => getJson<TeamGroup[]>('/examples/team')
 export const getInfo = () => getJson<Info>('/info')
 export const retrieve = (english: string, tools: string[] = [], k = 3, mode?: Mode) =>

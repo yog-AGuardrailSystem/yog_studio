@@ -6,6 +6,7 @@ We never edit the vendored sources; a new pinned commit changes VERSION, which t
 """
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -37,6 +38,15 @@ def _stamp() -> str:
         return hashlib.sha256((C_FRONT / "VERSION").read_bytes()).hexdigest()
     except OSError:
         return "unknown"
+
+
+def engine_commit() -> str | None:
+    """Short commit of the vendored C engine (engine/c_front/VERSION), for the UI's engine badge."""
+    try:
+        m = re.search(r"^commit:\s*([0-9a-f]{7,40})", (C_FRONT / "VERSION").read_text(), re.M)
+    except OSError:
+        return None
+    return m.group(1)[:7] if m else None
 
 
 def _sources(patterns: list[str]) -> list[str]:

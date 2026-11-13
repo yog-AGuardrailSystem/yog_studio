@@ -248,3 +248,23 @@ def test_studio_tools_give_the_same_report_on_both_engines_and_are_fast_on_c(c):
     on_c = reports(c)
     assert time.time() - t < 3
     assert on_c == reports(p)
+
+
+def test_c_ir_endpoint_shows_the_clause_table_and_errors_with_position():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    cl = TestClient(app)
+    r = cl.post("/compile/c-ir", json={"source": POLICY + "query can_x(alice, db)\n"}).json()
+    assert r["available"] and r["ok"] and "clause[" in r["text"]
+    assert r["counts"] == {"values": r["counts"]["values"], "predicates": 4, "clauses": 5, "queries": 1}
+    bad = cl.post("/compile/c-ir", json={"source": "allow x(:"}).json()
+    assert not bad["ok"] and bad["line"] == 1 and bad["column"] and bad["error"]
+    info = cl.get("/info").json()
+    assert info["c_ir"] is True and info["engine_commit"] == "200e481"
+
+
+def test_c_ir_unavailable_is_reported_not_raised(monkeypatch):
+    from app.engine import c_ir
+    monkeypatch.setattr(c_ir, "find_tool", lambda name, build=True: None)
+    r = c_ir.run_c_ir("fact a(b)\n")
+    assert not r.available and not r.ok and "not built" in r.error

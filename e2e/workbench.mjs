@@ -45,6 +45,10 @@ await page.getByTestId('tab-AST').click(); await page.waitForSelector('[data-tes
 check('AST tab renders a tree', (await page.getByTestId('ast-panel').innerText()).includes('program'))
 await page.getByTestId('tab-Readback').click(); await page.waitForSelector('[data-testid=readback-panel]')
 check('Readback tab explains actions in English', /Allowed when|Denied when/.test(await page.getByTestId('readback-panel').innerText()))
+await page.getByTestId('tab-C-IR').click(); await page.waitForSelector('[data-testid=cir-panel]')
+await page.getByTestId('cir-panel').getByRole('button').click()
+await page.waitForSelector('[data-testid=cir-text], [data-testid=cir-error], [data-testid=cir-panel] [role=alert]')
+check('C IR tab shows the C compiler\'s clause table', /clause\[0\]=/.test(await page.getByTestId('cir-panel').innerText()))
 
 // friendly error for a broken program
 await page.getByTestId('tab-Checks').click()
