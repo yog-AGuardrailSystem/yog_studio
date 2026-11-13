@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { listPolicies } from '../api/policies'
+import { HubSection } from '../components/hub/HubSection'
 import { Reveal } from '../components/motion/Reveal'
 import { Spotlight } from '../components/motion/Spotlight'
 import { GROUPS, TOOLS, type StudioTool } from '../lib/tools'
@@ -53,19 +54,23 @@ export default function StudioHubPage() {
   }, [])
   return (
     <main>
-      <section className="mx-auto max-w-6xl px-5 pb-6 pt-14">
+      <HubSection status={
+        <>
+          <p data-testid="tool-count">{planned === 0 ? `${ready} tools, all ready.` : `${ready} ready, ${planned} planned.`}</p>
+          {approvedId && (
+            <p className="mt-1.5" data-testid="hub-approved">
+              You have an approved policy ({approvedId.slice(-8)}). <Link to="/studio/scorecard" className="link">See its scorecard</Link>, or{' '}
+              <Link to="/studio/map" className="link">draw its map</Link>.
+            </p>
+          )}
+        </>
+      } />
+      <section id="all-tools" className="mx-auto max-w-6xl px-5 pb-2 pt-16" aria-labelledby="all-tools-title">
         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-glow">Studio</p>
-        <h1 className="font-display max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">Pick a tool.</h1>
+        <h2 id="all-tools-title" className="font-display max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">Every tool, explained.</h2>
         <p className="mt-4 max-w-2xl text-lg text-slate-300">
           Every tool works on the same YOG policy. Use one on its own, or go left to right: build, understand, test, ship, operate.
         </p>
-        <p className="mt-3 text-sm text-slate-400" data-testid="tool-count">{planned === 0 ? `${ready} tools, all ready.` : `${ready} ready, ${planned} planned.`}</p>
-        {approvedId && (
-          <p className="mt-4 max-w-2xl rounded-lg border border-white/15 bg-white/5 p-3 text-sm text-slate-200" data-testid="hub-approved">
-            You have an approved policy ({approvedId.slice(-8)}). <Link to="/studio/scorecard" className="link">See its scorecard</Link>, or{' '}
-            <Link to="/studio/map" className="link">draw its map</Link>.
-          </p>
-        )}
       </section>
 
       {GROUPS.map((g) => {

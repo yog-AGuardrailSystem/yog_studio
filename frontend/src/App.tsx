@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { Skeleton } from './components/Skeleton'
+import HubLayout from './layouts/HubLayout'
 import MarketingLayout from './layouts/MarketingLayout'
 import StudioLayout from './layouts/StudioLayout'
 import AnalyzePage from './pages/AnalyzePage'
@@ -44,7 +45,9 @@ export default function App() {
       <Route element={<MarketingLayout />}>
         <Route path="/" element={<Suspense fallback={<div className="min-h-screen" />}><LandingPage /></Suspense>} />
         <Route path="/how-it-works" element={<Suspense fallback={<div className="min-h-screen" />}><HowItWorksPage /></Suspense>} />
-        <Route path="/studio" element={<Suspense fallback={<div className="min-h-screen" />}><StudioHubPage /></Suspense>} />
+      </Route>
+      <Route element={<HubLayout />}>
+        <Route path="/studio" element={<Suspense fallback={<div className="min-h-screen bg-black" />}><StudioHubPage /></Suspense>} />
       </Route>
       <Route element={<StudioLayout />}>
         <Route path="/studio/workbench" element={<WorkbenchPage />} />

@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test:mirror": "node --test --experimental-strip-types tests/yogMirror.test.ts tests/globe.test.ts tests/tools.test.ts"
+    "test:mirror": "node --test --experimental-strip-types tests/yogMirror.test.ts tests/globe.test.ts tests/tools.test.ts tests/hub.test.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

@@ -1,0 +1,137 @@
+// The Studio hub model (boxes, cards, states): pure code, run with `npm run test:mirror`.
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import { ACCENTS, REST, accentFor, boxLabel, boxPlaces, cardIndex, cardSlots, hashFor, hubReducer, parseHash, toolsIn } from '../src/lib/hubModel.ts'
+import { GROUPS, TOOLS } from '../src/lib/tools.ts'
+
+test('five boxes, named as the stages, and together they hold every tool exactly once', () => {
+  assert.deepEqual(GROUPS.map((g) => g.title), ['Build a policy', 'Understand it', 'Test it', 'Ship it', 'Operate it'])
+  const all = GROUPS.flatMap((g) => toolsIn(g.id).map((t) => t.id))
+  assert.equal(all.length, TOOLS.length)
+  assert.equal(new Set(all).size, TOOLS.length)
+})
+
+test('every tool has an accent, and no two cards in one box share it', () => {
+  for (const t of TOOLS) assert.ok((ACCENTS as readonly string[]).includes(accentFor(t.id)), t.id)
+  for (const g of GROUPS) {
+    const a = toolsIn(g.id).map((t) => accentFor(t.id))
+    assert.equal(new Set(a).size, a.length, `${g.id}: repeated accent`)
+  }
+  for (const c of ACCENTS) assert.match(c, /^#[0-9a-f]{6}$/)
+})
+
+test('card slots: one per card, inside the tray, in order, none on top of another', () => {
+  for (const n of [1, 2, 3, 4, 6]) {
+    const s = cardSlots(n)
+    assert.equal(s.length, n)
+    for (const p of s) assert.ok(Math.abs(p.x) <= 1.4)
+    for (let i = 1; i < n; i++) assert.ok(s[i].x > s[i - 1].x && s[i].z <= s[i - 1].z)
+  }
+  assert.deepEqual(cardSlots(0), [])
+})
+
+test('box places: five distinct spots, centred; two columns on a phone', () => {
+  const wide = boxPlaces(5)
+  assert.equal(wide.length, 5)
+  assert.equal(new Set(wide.map((p) => `${p.x}|${p.z}`)).size, 5)
+  assert.ok(Math.abs(wide.reduce((s, p) => s + p.x, 0)) < 1e-9)
+  const phone = boxPlaces(5, 2)
+  assert.equal(new Set(phone.map((p) => `${p.x}|${p.z}`)).size, 5)
+  assert.ok(Math.max(...phone.map((p) => Math.abs(p.x))) < 3)
+})
+
+test('states: open a box, enter one of its cards, go back from anywhere', () => {
+  let s = hubReducer(REST, { type: 'open', group: 'test' })
+  assert.deepEqual(s, { mode: 'box', group: 'test' })
+  assert.deepEqual(hubReducer(REST, { type: 'enter', tool: 'redteam' }), REST)             // cannot enter from rest
+  assert.deepEqual(hubReducer(s, { type: 'enter', tool: 'why' }), s)                       // a tool from another box is ignored
+  s = hubReducer(s, { type: 'enter', tool: 'redteam' })
+  assert.deepEqual(s, { mode: 'enter', group: 'test', tool: 'redteam' })
+  assert.deepEqual(hubReducer(s, { type: 'back' }), REST)
+  assert.deepEqual(hubReducer(REST, { type: 'back' }), REST)
+  assert.deepEqual(hubReducer(REST, { type: 'open', group: 'nope' as never }), REST)
+})
+
+test('deep link: #box=<group> opens it; the old #p= share links and junk stay at rest', () => {
+  assert.deepEqual(parseHash('#box=ship'), { mode: 'box', group: 'ship' })
+  for (const h of ['', '#', '#p=abc', '#box=', '#box=nope', '#box=ship&x=1', '#BOX=ship']) assert.deepEqual(parseHash(h), REST, h)
+  assert.equal(hashFor({ mode: 'box', group: 'ship' }), '#box=ship')
+  assert.equal(hashFor(REST), '')
+  for (const g of GROUPS) assert.deepEqual(parseHash(hashFor({ mode: 'box', group: g.id })), { mode: 'box', group: g.id })
+})
+
+test('every tool has its own line icon, written as plain SVG path data', async () => {
+  const { ICONS } = await import('../src/lib/hubIcons.ts')
+  for (const t of TOOLS) {
+    const d = ICONS[t.id]
+    assert.ok(d && d.length > 8, `${t.id}: no icon`)
+    assert.match(d, /^M[0-9MmLlHhVvCcSsQqTtAaZz.,\s-]+$/, `${t.id}: not path data`)
+  }
+  assert.equal(new Set(TOOLS.map((t) => ICONS[t.id])).size, TOOLS.length)       // no two tools share an icon
+  assert.deepEqual(Object.keys(ICONS).sort(), TOOLS.map((t) => t.id).sort())   // and no icon for a tool that does not exist
+})
+
+test('caption under the stage: index, name and accent of what is pointed at', async () => {
+  const { captionFor } = await import('../src/lib/hubModel.ts')
+  assert.deepEqual(captionFor(REST, null, null), { index: '', name: 'Pick a box', arrow: false, text: 'Each one holds the tools for one stage.', color: null })
+  const box = captionFor(REST, 'test', null)
+  assert.equal(box.index, '03'); assert.equal(box.name, 'Test it'); assert.ok(box.arrow && box.text.startsWith('4 tools.'))
+  const card = captionFor({ mode: 'box', group: 'test' }, null, 'redteam')
+  assert.equal(card.index, '02'); assert.equal(card.name, 'Red-Team'); assert.equal(card.color, accentFor('redteam'))
+  const open = captionFor({ mode: 'box', group: 'ship' }, null, null)
+  assert.equal(open.name, 'Ship it'); assert.equal(open.arrow, false)
+  assert.equal(captionFor({ mode: 'box', group: 'ship' }, null, 'nope').name, 'Ship it')       // an unknown id never breaks it
+})
+
+test('labels: box title with a count, cards numbered from 01', () => {
+  assert.deepEqual(boxLabel('test'), { title: 'Test it', count: 4 })
+  assert.equal(cardIndex('test', toolsIn('test')[0].id), '01')
+  assert.equal(cardIndex('test', toolsIn('test')[3].id), '04')
+})
+
+test('scramble: nothing at 0, the exact text at 1, same length and spaces in between', async () => {
+  const { scrambleFrame, revealProgress, GLYPHS } = await import('../src/lib/scramble.ts')
+  const text = 'DENY always beats ALLOW.'
+  assert.equal(scrambleFrame(text, 1), text)
+  assert.equal(scrambleFrame(text, 2), text)
+  assert.equal(scrambleFrame(text, 0).trim(), '')
+  const mid = scrambleFrame(text, 0.5, () => 0)
+  assert.equal(mid.length, text.length)
+  assert.equal(mid.slice(0, 12), text.slice(0, 12))                 // the revealed half is the real text
+  for (let i = 0; i < text.length; i++) if (text[i] === ' ') assert.ok(mid[i] === ' ' || mid[i] === '\u00a0')
+  assert.ok(mid.slice(12, 17).split('').every((c) => GLYPHS.includes(c)))   // a few flickering glyphs ahead of it
+  assert.equal(revealProgress(0, 100, 500), 0)
+  assert.equal(revealProgress(350, 100, 500), 0.5)
+  assert.equal(revealProgress(9999, 100, 500), 1)
+  assert.equal(revealProgress(5, 0, 0), 1)
+})
+
+test('hover scramble: flickers, then lands exactly on the original text, and never fights React', async () => {
+  const { ScrambleRun, scrambleable, scrambleWithLead } = await import('../src/lib/hoverScramble.ts')
+  const slot = (v: string) => { let s = v; return { get: () => s, set: (x: string) => { s = x } } }
+  const a = slot('All 17 tools explained '), b = slot('↓')
+  const run = new ScrambleRun([a, b], 0, 380, () => 0.5)
+  assert.equal(run.step(100), false)
+  assert.notEqual(a.get(), 'All 17 tools explained ')              // scrambled mid-way
+  assert.equal(a.get().length, 'All 17 tools explained '.length)  // same length: nothing collapses
+  assert.equal(run.step(400), true)
+  assert.equal(a.get(), 'All 17 tools explained '); assert.equal(b.get(), '↓')   // exact original at the end
+
+  // React re-renders the label mid-run: the run stops and leaves React's text alone
+  const c = slot('Motion on')
+  const r2 = new ScrambleRun([c], 0, 380, () => 0.1)
+  r2.step(50)
+  c.set('Motion off')
+  assert.equal(r2.step(120), true)
+  assert.equal(c.get(), 'Motion off')
+
+  // finish() restores at once (motion switched off mid-run)
+  const d = slot('Home')
+  const r3 = new ScrambleRun([d], 0, 380, () => 0.9)
+  r3.step(60); r3.finish()
+  assert.equal(d.get(), 'Home')
+
+  assert.ok(scrambleable('Home') && scrambleable('How it works'))
+  assert.ok(!scrambleable('x') && !scrambleable('  ') && !scrambleable('→') && !scrambleable('a'.repeat(61)))
+  assert.ok(!scrambleWithLead('Home', 0, () => 0.3).includes('\u00a0'))           // never blank, always glyphs
+})
