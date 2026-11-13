@@ -12,19 +12,16 @@ lexer_week4.md). Those are listed in KNOWN_DIFFERENCES and are not reported as m
 """
 import os
 import re
-import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from app.core.config import DATA_DIR, REPO_ROOT
+from app.engine.c_build import C_FRONT, find_tool
 
-C_FRONT = REPO_ROOT / "engine" / "c_front"
 MAX_SOURCE_BYTES = 64 * 1024
 RUN_TIMEOUT_S = 5
-BUILD_TIMEOUT_S = 60
 
 # C token type -> the reference interpreter's token kind
 KIND_MAP = {
@@ -75,37 +72,9 @@ class CLexerResult(BaseModel):
 
 
 # ---------------------------------------------------------------- locating / building the binary
-def _exe_name() -> str:
-    return "lexdump.exe" if os.name == "nt" else "lexdump"
-
-
-def _compiler() -> str | None:
-    for name in (os.environ.get("CC"), "cc", "gcc", "clang"):
-        if name and shutil.which(name):
-            return shutil.which(name)
-    return None
-
-
 def find_binary(build: bool = True) -> Path | None:
-    env = os.environ.get("YOG_LEXDUMP")
-    if env:
-        return Path(env) if Path(env).is_file() else None
-    out = DATA_DIR / "c_front" / _exe_name()
-    if out.is_file():
-        return out
-    if not build:
-        return None
-    cc = _compiler()
-    if not cc:
-        return None
-    out.parent.mkdir(parents=True, exist_ok=True)
-    cmd = [cc, "-std=c11", "-O2", "-I", str(C_FRONT / "src"),
-           str(C_FRONT / "src" / "lexer" / "lexer.c"), str(C_FRONT / "tools" / "lexdump.c"), "-o", str(out)]
-    try:
-        subprocess.run(cmd, check=True, capture_output=True, timeout=BUILD_TIMEOUT_S)
-    except (subprocess.SubprocessError, OSError):
-        return None
-    return out if out.is_file() else None
+    """The `lexdump` tool ($YOG_LEXDUMP, or built from the vendored sources; see c_build)."""
+    return find_tool("lexdump", build=build)
 
 
 # ---------------------------------------------------------------- parsing lexdump output
