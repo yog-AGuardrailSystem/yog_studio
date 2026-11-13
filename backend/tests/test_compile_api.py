@@ -1,4 +1,5 @@
 """POST /compile, /run, /compile/c-lexer, GET /examples/team, GET /info, and the bundle guard."""
+import os
 from fastapi.testclient import TestClient
 
 from app.core.team_examples import TEAM_FILE, load_groups
@@ -143,7 +144,7 @@ def test_team_examples_endpoint():
 
 def test_info_reports_the_offline_fake_provider():
     j = client.get("/info").json()
-    assert j["provider"] == "fake" and j["offline_demo"] is True and j["engine"] == "python-reference"
+    assert j["provider"] == "fake" and j["offline_demo"] is True and j["engine"] == ("c" if os.environ.get("YOG_ENGINE") == "c" else "python-reference")
 
 
 def test_c_lexer_endpoint_degrades_gracefully_without_a_binary(monkeypatch):

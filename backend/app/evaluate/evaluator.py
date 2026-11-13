@@ -23,14 +23,27 @@ class Report(BaseModel):
     warnings: list[str]
 
 
+def _result(s: Scenario, r) -> ScenarioResult:
+    passed = True if s.unconfirmed else r.decision == s.expected
+    return ScenarioResult(**s.model_dump(), actual=r.decision, reason=r.reason, trace=r.trace, passed=passed)
+
+
 def run_scenario(adapter: EngineAdapter, policy: str, s: Scenario) -> ScenarioResult:
-    base = s.model_dump()
     try:
         r = adapter.check(policy, s.actor, s.action, s.resource, s.context)
     except EngineError as e:                                  # bad context in ONE row must not sink the run
-        return ScenarioResult(**base, actual=None, reason="", passed=False, error=str(e))
-    passed = True if s.unconfirmed else r.decision == s.expected
-    return ScenarioResult(**base, actual=r.decision, reason=r.reason, trace=r.trace, passed=passed)
+        return ScenarioResult(**s.model_dump(), actual=None, reason="", passed=False, error=str(e))
+    return _result(s, r)
+
+
+def run_scenarios(adapter: EngineAdapter, policy: str, scenarios: list[Scenario]) -> list[ScenarioResult]:
+    """All rows through the engine in one call (one process for the C engine). If any row is malformed the batch
+    raises, and we fall back to row by row so only that row reports the error."""
+    try:
+        got = adapter.check_many(policy, [(s.actor, s.action, s.resource, s.context) for s in scenarios])
+    except EngineError:
+        return [run_scenario(adapter, policy, s) for s in scenarios]
+    return [_result(s, r) for s, r in zip(scenarios, got)]
 
 
 def summarise(results: list[ScenarioResult]) -> Summary:
@@ -63,7 +76,7 @@ def evaluate(adapter: EngineAdapter, policy: str, *, rules: list[str] | None = N
         if decision_name(t.name) not in covered:
             warnings.append(f"tool '{t.name}' is not covered by any rule: every call to it is denied by default.")
 
-    results = [run_scenario(adapter, policy, s) for s in scenarios]
+    results = run_scenarios(adapter, policy, scenarios)
     summary = summarise(results)
     if summary.independent_total == 0:
         warnings.append("No independent scenarios: nothing here checks the policy against what you meant. "

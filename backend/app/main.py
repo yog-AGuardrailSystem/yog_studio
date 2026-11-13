@@ -128,6 +128,9 @@ def info() -> dict:
         "default_mode": "offline" if provider in ("fake", "error") else "real",
         **live_status(),                         # live_available / live_allowed / live_ready / live_reason / live_provider
         "engine": "python-reference" if adapter.__class__.__name__ == "PythonPrototypeAdapter" else "c",
+        "engine_roles": ("decisions: python-reference · structure: python-reference"
+                         if adapter.__class__.__name__ == "PythonPrototypeAdapter"
+                         else "decisions: C · structure: reference parser"),
         "c_lexer": find_binary(build=False) is not None,
         "commit": os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("GIT_COMMIT") or "unknown",
     }
@@ -150,7 +153,9 @@ def status(request: Request) -> dict:
         provider = get_provider().name
     except LLMError:
         provider = "error"
-    out = {"status": "ok" if engine_ok else "degraded", "engine_ok": engine_ok, "live_ready": live_status()["live_ready"]}
+    out = {"status": "ok" if engine_ok else "degraded", "engine_ok": engine_ok,
+           "engine": "python-reference" if adapter.__class__.__name__ == "PythonPrototypeAdapter" else "c",
+           "live_ready": live_status()["live_ready"]}
     token = os.environ.get("STATUS_TOKEN", "")
     if token and hmac.compare_digest(request.headers.get("x-status-token", "").encode(), token.encode()):
         cap = int(guard._num("LIVE_LLM_DAILY_CAP", 300))

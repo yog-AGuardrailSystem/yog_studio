@@ -18,7 +18,8 @@ class Diagnostic(BaseModel):
     """One problem found while compiling. `message` is the engine's own text; `hint` explains it in plain English."""
     code: str                          # stable id, e.g. "undefined_predicate" (the UI keys fixes off this)
     severity: Literal["error", "warning"] = "error"
-    line: int | None = None            # 1-based; the reference engine reports lines only (no columns)
+    line: int | None = None            # 1-based
+    column: int | None = None          # 1-based; only the C engine reports columns (the reference engine does not)
     message: str
     hint: str | None = None
     suggestion: str | None = None      # e.g. "Did you mean role/2?"
@@ -97,6 +98,11 @@ class EngineAdapter(ABC):
               context: list[str] | None = None) -> CheckResult:
         """Decide one request. `context` = extra per-request facts, e.g. 'hour(now, 3)'.
         Raises EngineError if the policy does not compile."""
+
+    def check_many(self, policy: str, requests: list[tuple]) -> list[CheckResult]:
+        """Decide several requests against one policy: [(actor, action, resource, context), ...] -> results in order.
+        Default loops `check`; the C engine overrides it with one process for the whole batch."""
+        return [self.check(policy, a, act, r, ctx) for a, act, r, ctx in requests]
 
     @abstractmethod
     def validate(self, policy: str) -> list[str]:
