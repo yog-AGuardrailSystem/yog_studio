@@ -62,7 +62,7 @@ export function YogEditor({ value, onChange, diagnostics, decidingLine, supportL
         return {
           severity: d.severity === 'error' ? m.MarkerSeverity.Error : m.MarkerSeverity.Warning,
           message: d.message + (d.hint ? `\n${d.hint}` : ''),
-          startLineNumber: line, startColumn: 1, endLineNumber: line, endColumn: model.getLineMaxColumn(line),
+          startLineNumber: line, startColumn: d.column ? Math.min(d.column, model.getLineMaxColumn(line)) : 1, endLineNumber: line, endColumn: model.getLineMaxColumn(line),
         }
       }),
     )

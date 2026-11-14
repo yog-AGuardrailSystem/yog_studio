@@ -1,0 +1,15 @@
+# A small YOG policy to try yogc on.
+#   yogc check policy.yog alice can_delete database_1     -> ALLOW (an admin)
+#   yogc check policy.yog bob   can_delete database_1     -> DENY  (the deny rule matches)
+#   yogc check policy.yog bob   can_delete database_2     -> DENY  (default deny: no allow rule holds)
+fact role(alice, admin)
+fact role(bob, developer)
+fact environment(database_1, production)
+fact environment(database_2, staging)
+
+allow can_delete(User, DB):
+    role(User, admin)
+
+deny can_delete(User, DB):
+    environment(DB, production)
+    not role(User, admin)

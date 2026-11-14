@@ -1,5 +1,5 @@
-"""The compiler explorer API: tokens, AST, diagnostics (/compile), running a program's queries (/run), and the
-real C lexer side by side with the reference (/compile/c-lexer)."""
+"""The compiler explorer API: tokens, AST, diagnostics (/compile), running a program's queries (/run), the
+real C lexer side by side with the reference (/compile/c-lexer) and the C compiler's clause table (/compile/c-ir)."""
 import re
 from typing import Annotated, Literal
 
@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from app.api.deps import get_adapter
 from app.engine.adapter import CheckResult, CompileInfo, Diagnostic, EngineAdapter, EngineError
+from app.engine.c_ir import CIRResult, run_c_ir
 from app.engine.c_lexer import CLexerResult, run_c_lexer
 
 router = APIRouter()
@@ -50,6 +51,12 @@ def compare_c_lexer(req: SourceRequest, adapter: EngineAdapter = Depends(get_ada
         out.python_ok = False
         out.python_error = info.diagnostics[0].message
     return out
+
+
+# ---------------------------------------------------------------- the C compiler's IR (clause table)
+@router.post("/compile/c-ir", response_model=CIRResult)
+def c_ir(req: SourceRequest) -> CIRResult:
+    return run_c_ir(req.source)
 
 
 # ---------------------------------------------------------------- running a program's queries

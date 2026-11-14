@@ -96,3 +96,63 @@ def test_group_r_deny_overrides_allow():
 def test_the_vendored_file_matches_its_recorded_commit_note():
     version = (TEAM_FILE.parent / "VERSION").read_text(encoding="utf-8")
     assert re.search(r"commit: [0-9a-f]{40}", version)
+
+
+# --------------------------------------------------------------- the card diagrams are drawn from the real structure
+def _graph(gid):
+    g = next(x for x in load_groups() if x.id == gid)
+    assert g.graph is not None
+    return g.graph
+
+
+def _kinds(g):
+    return ({n.pred: (n.count, n.used) for n in g.facts}, {n.pred: (n.allow, n.deny, n.compares) for n in g.decisions})
+
+
+def test_graph_reflects_each_policy_not_a_template():
+    # A: two role facts feed one allow
+    facts, dec = _kinds(_graph("A"))
+    assert facts == {"role": (2, True)} and dec == {"can_delete": (1, 0, 0)}
+    # E / G / J / I: facts the policy never reads are marked unused (the old picture hid them)
+    assert _kinds(_graph("E"))[0]["sensitivity"] == (1, False)
+    assert _kinds(_graph("G"))[0]["service"] == (1, False)
+    assert {k for k, v in _kinds(_graph("J"))[0].items() if not v[1]} == {"command", "environment"}
+    assert _kinds(_graph("I"))[0]["account"] == (1, False)
+    # I: the transfer limit comparison is counted on the decision
+    assert _kinds(_graph("I"))[1] == {"can_transfer": (2, 0, 1)}
+    # R is the ONLY group with a deny; all others have none
+    assert {g.id for g in load_groups() if any(d.deny for d in g.graph.decisions)} == {"R"}
+    assert _kinds(_graph("R"))[1] == {"can_access": (1, 1, 0)}
+    # M/N/O/P/Q: five separate decisions, all fed by the role facts
+    g = _graph("M/N/O/P/Q")
+    assert len(g.decisions) == 5 and _kinds(g)[0] == {"role": (5, True)}
+    assert {e.dst.split("/")[0] for e in g.edges} == {d.pred for d in g.decisions}
+
+
+def test_graph_has_no_invented_nodes_and_every_edge_connects_real_nodes():
+    for grp in load_groups():
+        g = grp.graph
+        ids = {n.id for n in g.facts + g.rules + g.decisions}
+        assert not g.rules, grp.id                                   # none of the team's policies defines a rule
+        assert all(e.src in ids and e.dst in ids for e in g.edges), grp.id
+        # every fact predicate that is "used" is the source of at least one edge, and unused ones of none
+        sources = {e.src for e in g.edges}
+        assert all((n.id in sources) == n.used for n in g.facts), grp.id
+        # the counts equal what a plain reading of the source says
+        code = [ln for ln in grp.source.splitlines() if ln.strip() and not ln.lstrip().startswith("#")]
+        assert sum(n.count for n in g.facts) == sum(1 for ln in code if ln.startswith("fact ")), grp.id
+        assert sum(n.allow for n in g.decisions) == sum(1 for ln in code if ln.startswith("allow ")), grp.id
+        assert sum(n.deny for n in g.decisions) == sum(1 for ln in code if ln.startswith("deny ")), grp.id
+
+
+def test_graph_marks_negation_and_rules_when_a_policy_has_them():
+    from app.core.policy_graph import build_graph
+    from app.engine.python_prototype import PythonPrototypeAdapter
+    src = ("fact role(alice, admin)\nfact banned(bob)\nrule ok(U):\n    role(U, admin)\n"
+           "allow can_x(U, R):\n    ok(U)\n    not banned(U)\ndeny can_x(U, R):\n    banned(U)\n")
+    g = build_graph(PythonPrototypeAdapter().program_info(src))
+    assert [r.pred for r in g.rules] == ["ok"] and g.rules[0].count == 1
+    assert {(e.src, e.dst, e.negated, e.via) for e in g.edges} == {
+        ("role/2", "ok/1", False, "rule"), ("ok/1", "can_x/2", False, "allow"),
+        ("banned/1", "can_x/2", True, "allow"), ("banned/1", "can_x/2", False, "deny")}
+    assert (g.decisions[0].allow, g.decisions[0].deny) == (1, 1)

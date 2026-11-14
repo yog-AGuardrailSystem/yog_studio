@@ -32,7 +32,12 @@ def get_adapter() -> EngineAdapter:
     Asking for `c` when it is unavailable is an error, never a silent fallback: a guardrail must not quietly
     run on a different engine than the operator asked for.
     """
-    which = os.environ.get("YOG_ENGINE", "python").lower()
+    return make_adapter(os.environ.get("YOG_ENGINE", "python"))
+
+
+def make_adapter(which: str) -> EngineAdapter:
+    """An adapter by name ('python' | 'c'), for the server (above) and the command-line tools (benchmark --engine)."""
+    which = which.lower()
     if which == "python":
         return PythonPrototypeAdapter()
     if which == "c":

@@ -8,8 +8,11 @@ export function traceLines(source: string, reason: string, trace: string[]): { d
   const lines = source.split('\n')
   const support = new Set<number>()
   for (const t of trace) {
-    const f = /matched fact (.+)$/.exec(t.trim())
-    if (!f) continue
+    // Python reference: "matched fact role(alice, admin)". C engine: "?- role(alice, admin)" for each goal it asks; a
+    // ground goal that is literally a fact line was answered by that fact. (C's "try fact role/2 (line N)" names the
+    // first fact of the predicate, not the one used, so it is not used here.)
+    const f = /matched fact (.+)$/.exec(t.trim()) ?? /^\?-\s*(.+)$/.exec(t.trim())
+    if (!f || /(^|[(,\s])(_|[A-Z])/.test(f[1])) continue
     const want = 'fact' + norm(f[1])
     lines.forEach((ln, i) => {
       if (norm(ln.split('#')[0]) === want) support.add(i + 1)

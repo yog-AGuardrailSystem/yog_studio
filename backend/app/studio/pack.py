@@ -92,6 +92,8 @@ def build(adapter: EngineAdapter, rec: PolicyRecord, *, agent_source: str | None
             f"  YOG_POLICY_SHA256={pin}\n"
             "                             refuse to run if policy.yog is not exactly the approved one\n"
             "  YOG_LOG=decisions.jsonl    write every decision to a file (Trace Replay can read it)\n"
+            "  YOG_YOGC=/path/to/yogc     let the engine team's C compiler decide instead of yog.py (the Python\n"
+            "                             reference); any problem with it is a DENY, never a fallback\n"
             "Self-test:  python yog_runtime.py --selftest\n").encode("utf-8")
     manifest = {
         "policy_id": rec.id, "policy_sha256": pin, "approved_at": rec.approved_at,

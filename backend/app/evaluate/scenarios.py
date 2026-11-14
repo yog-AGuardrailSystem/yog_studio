@@ -99,27 +99,19 @@ def characterization(adapter: EngineAdapter, policy: str) -> tuple[list[Scenario
     uses_hour = "hour" in used
 
     per_action: dict[str, int] = {}
+    pending: list[tuple] = []          # (actor, action, resource, ctx, note, warn_if_allowed): decided in one engine call
 
-    def add(actor, action, resource, ctx, note):
+    def add(actor, action, resource, ctx, note, warn=False):
         # rows past the per-action cap are dropped below anyway; stop paying one engine check for each of them
         if per_action.get(action, 0) >= MAX_PER_ACTION + 10:
-            return None
+            return
         per_action[action] = per_action.get(action, 0) + 1
-        try:
-            r = adapter.check(policy, actor, action, resource, ctx)
-        except EngineError:
-            return None
-        out.append(Scenario(actor=actor, action=action, resource=resource, context=ctx, expected=r.decision,
-                            source="generated", unconfirmed=True, note=note))
-        return r
+        pending.append((actor, action, resource, ctx, note, warn))
 
     for p in preds:
         for a in actors:
             for res in resources[:2]:
-                r = add(a, p, res, [], "no context supplied")
-                if r and r.decision == "ALLOW" and (uses_hour or arg_keys) and a != "stranger":
-                    warnings.append(f"{p}: ALLOWED for '{a}' with no time/argument information. "
-                                    f"Deny rules that need hour/arg do not fire without it.")
+                add(a, p, res, [], "no context supplied", warn=bool(uses_hour or arg_keys) and a != "stranger")
         if uses_hour:
             hours = sorted({h for h in HOURS} | {h for n in nums for h in (n - 1, n, n + 1) if 0 <= h <= 23})
             for h in hours:
@@ -127,6 +119,24 @@ def characterization(adapter: EngineAdapter, policy: str) -> tuple[list[Scenario
         for tool, param in arg_keys:
             for n in sorted({0} | {x for c in nums for x in (c - 1, c, c + 1) if x >= 0}):
                 add(actors[0], p, resources[0], [f"arg({tool}, {param}, {n})"], f"{param} = {n}")
+    reqs = [(a, act, res, ctx) for a, act, res, ctx, _, _ in pending]
+    try:
+        results: list = adapter.check_many(policy, reqs)
+    except EngineError:                # a malformed row: decide row by row and skip only that one
+        results = []
+        for q in reqs:
+            try:
+                results.append(adapter.check(policy, *q))
+            except EngineError:
+                results.append(None)
+    for (actor, action, resource, ctx, note, warn), r in zip(pending, results):
+        if r is None:
+            continue
+        out.append(Scenario(actor=actor, action=action, resource=resource, context=ctx, expected=r.decision,
+                            source="generated", unconfirmed=True, note=note))
+        if warn and r.decision == "ALLOW":
+            warnings.append(f"{action}: ALLOWED for '{actor}' with no time/argument information. "
+                            f"Deny rules that need hour/arg do not fire without it.")
     # drop exact duplicates
     seen, uniq = set(), []
     for s in out:

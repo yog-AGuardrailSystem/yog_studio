@@ -390,7 +390,6 @@ def log_test_run(res: dict, base: Path = RESULTS_DIR) -> None:
 
 
 def main() -> int:
-    from app.engine.python_prototype import PythonPrototypeAdapter
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--split", choices=["dev", "test", "all"], default="dev")
     ap.add_argument("--configs", help=f"comma list from: {', '.join(CONFIGS)} (default: all)")
@@ -399,6 +398,8 @@ def main() -> int:
     ap.add_argument("--robustness", action="store_true", help="also run the prompt-injection set")
     ap.add_argument("--no-cache", action="store_true", help="do not reuse cached LLM answers")
     ap.add_argument("--out", type=Path, default=RESULTS_DIR)
+    ap.add_argument("--engine", choices=["python", "c"], default=os.environ.get("YOG_ENGINE", "python"),
+                    help="which YOG engine decides (default: $YOG_ENGINE or python)")
     args = ap.parse_args()
     if not args.no_cache:
         os.environ.setdefault("LLM_CACHE_GENERATE", "1")         # identical prompts are free and reproducible
@@ -414,8 +415,10 @@ def main() -> int:
     out.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     partial = args.resume or out / f".partial-{args.split}-{provider.name}-{stamp}.jsonl"
-    res = run(PythonPrototypeAdapter(), provider, split_name=args.split, config_names=names, limit=args.limit,
+    from app.api.deps import make_adapter
+    res = run(make_adapter(args.engine), provider, split_name=args.split, config_names=names, limit=args.limit,
               partial=partial, with_robustness=args.robustness, progress=print)
+    res["engine"] = args.engine
     if args.split in ("test", "all"):
         log_test_run(res, args.out)
     base = f"eval-{args.split}-{provider.name}-{stamp}"

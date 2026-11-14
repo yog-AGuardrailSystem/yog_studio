@@ -5,6 +5,7 @@ Run:  cd backend && uv run python -m app.benchmark.runner [--limit N]
 """
 import argparse
 import json
+import os
 import re
 import sys
 import tempfile
@@ -132,13 +133,16 @@ def to_markdown(res: dict) -> str:
 
 
 def main() -> int:
-    from app.engine.python_prototype import PythonPrototypeAdapter
+    from app.api.deps import make_adapter
     from app.llm.factory import get_provider
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int)
+    ap.add_argument("--engine", choices=["python", "c"], default=os.environ.get("YOG_ENGINE", "python"),
+                    help="which YOG engine decides (default: $YOG_ENGINE or python)")
     args = ap.parse_args()
     provider = get_provider()
-    res = run(PythonPrototypeAdapter(), provider, args.limit)
+    res = run(make_adapter(args.engine), provider, args.limit)
+    res["engine"] = args.engine
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     (RESULTS_DIR / f"{provider.name}-{stamp}.json").write_text(json.dumps(res, indent=2), encoding="utf-8")

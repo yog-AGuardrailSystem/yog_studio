@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.engine.adapter import EngineAdapter
-from app.studio.common import Budget, BudgetExceeded, PolicyRef, Shape, safe_check
+from app.studio.common import Budget, BudgetExceeded, PolicyRef, Shape, safe_check_many
 from app.studio.gaps import targeted_probes
 
 MAX_MUTANTS = 40
@@ -125,14 +125,13 @@ def run(adapter: EngineAdapter, source: str, sh: Shape, tests: list[TestCase], m
     if not tests:
         baseline = True
         probes = targeted_probes(sh)[:MAX_SCENARIOS]
-        tests = [TestCase(actor=a, action=act, resource=r, context=c,
-                          expected=safe_check(adapter, source, a, act, r, c).decision) for a, act, r, c in probes]
+        tests = [TestCase(actor=a, action=act, resource=r, context=c, expected=res.decision)
+                 for (a, act, r, c), res in zip(probes, safe_check_many(adapter, source, probes))]
     # tests the original policy already fails cannot tell us anything about a change
-    usable: list[TestCase] = []
-    for t in tests:
-        budget.spend()
-        if safe_check(adapter, source, t.actor, t.action, t.resource, t.context).decision == t.expected:
-            usable.append(t)
+    budget.spend(len(tests))
+    rows = [(t.actor, t.action, t.resource, t.context) for t in tests]
+    usable = [t for t, res in zip(tests, safe_check_many(adapter, source, rows)) if res.decision == t.expected]
+    usable_rows = [(t.actor, t.action, t.resource, t.context) for t in usable]
     excluded = len(tests) - len(usable)
 
     seen: set = set()
@@ -153,11 +152,13 @@ def run(adapter: EngineAdapter, source: str, sh: Shape, tests: list[TestCase], m
                 mutants.append(Mutant(id=n, line=line, kind=kind, description=desc, before=before, after=after, status="invalid"))
                 continue
             caught = None
-            for t in usable:
-                budget.spend()
-                if safe_check(adapter, msrc, t.actor, t.action, t.resource, t.context).decision != t.expected:
-                    caught = f"{t.action}({t.actor}, {t.resource}) {' '.join(t.context)}".strip()
-                    break
+            # one engine call for all tests; the budget is charged as if they ran one by one up to the first catch
+            results = safe_check_many(adapter, msrc, usable_rows) if budget.room() else []
+            first = next((k for k, (t, res) in enumerate(zip(usable, results)) if res.decision != t.expected), None)
+            budget.spend(len(usable) if first is None else first + 1)
+            if first is not None:
+                t = usable[first]
+                caught = f"{t.action}({t.actor}, {t.resource}) {' '.join(t.context)}".strip()
             mutants.append(Mutant(id=n, line=line, kind=kind, description=desc, before=before, after=after,
                                   status="killed" if caught else "survived", caught_by=caught))
     except BudgetExceeded:

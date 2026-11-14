@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  benchmarkLatest, cancelTranslate, compareCLexer, explain, pollTranslate, retrieve, startTranslate,
-  type CLexerResponse, type CompileInfo, type Diagnostic, type QueryResult, type Readback, type Retrieved, type RetrieveResult, type RunResponse,
+  benchmarkLatest, cancelTranslate, cIr, compareCLexer, explain, pollTranslate, retrieve, startTranslate,
+  type CIRResponse, type CLexerResponse, type CompileInfo, type Diagnostic, type QueryResult, type Readback, type Retrieved, type RetrieveResult, type RunResponse,
 } from '../../api/compile'
 import type { PolicyDraft } from '../../api/types'
 import { Burst } from '../motion/Burst'
@@ -78,7 +78,7 @@ export function ChecksPanel({ info, source, onFix, onJump }: {
             return (
               <li key={i} className="shake rounded border border-red-700 bg-red-50 p-3 text-sm" data-testid="diagnostic" data-motion={`wb:diagnostic:${i}`}>
                 <div className="font-semibold text-red-800">
-                  {d.line ? <button type="button" className="underline" onClick={() => onJump(d.line!)}>Line {d.line}</button> : 'Program'}: {d.hint ?? d.message}
+                  {d.line ? <button type="button" className="underline" onClick={() => onJump(d.line!)}>Line {d.line}{d.column ? `:${d.column}` : ''}</button> : 'Program'}: {d.hint ?? d.message}
                 </div>
                 {d.hint && <div className="mt-1 font-mono text-xs text-slate-500">engine said: {d.message}</div>}
                 {d.suggestion && <div className="mt-1 text-slate-700">{d.suggestion}</div>}
@@ -227,6 +227,35 @@ export function CLexerPanel({ source, available }: { source: string; available: 
       <button type="button" className="btn-secondary" onClick={go} disabled={busy}>{busy ? 'Comparing…' : 'Compare with the C lexer'}</button>
       {error && <p className="mt-2 text-red-700" role="alert">{error}</p>}
       {res && <pre className="mt-3 max-h-80 overflow-auto rounded bg-slate-100 p-2 font-mono text-xs">{JSON.stringify(res, null, 2)}</pre>}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------- C compiler: the clause table it really runs
+export function CIRPanel({ source, available }: { source: string; available: boolean }) {
+  const [res, setRes] = useState<CIRResponse | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  async function go() {
+    setBusy(true); setError(null)
+    try { setRes(await cIr(source)) } catch (e) { setError(err(e)) } finally { setBusy(false) }
+  }
+  return (
+    <div className="text-sm" data-testid="cir-panel">
+      <p className="mb-2 text-slate-600">Compiles your program with the engine team’s C compiler and shows what it really runs: a constant pool, a predicate table and a clause table (no bytecode: each clause is a list of goals the VM walks).</p>
+      {!available && <p className="mb-2 rounded border border-amber-600 bg-amber-50 p-2 text-amber-900">The C compiler is not built on this server yet; it is built on first use if a C compiler is installed.</p>}
+      <button type="button" className="btn-secondary" onClick={go} disabled={busy}>{busy ? 'Compiling…' : 'Compile with the C compiler'}</button>
+      {error && <p className="mt-2 text-red-700" role="alert">{error}</p>}
+      {res && !res.ok && <p className="mt-2 text-red-700" role="alert" data-testid="cir-error">{res.line ? `Line ${res.line}${res.column ? `:${res.column}` : ''}: ` : ''}{res.error}</p>}
+      {res?.ok && (
+        <>
+          <ul className="mt-3 flex flex-wrap gap-2" data-testid="cir-counts">
+            {Object.entries(res.counts).map(([k, v]) => <li key={k} className="chip">{v} {k}</li>)}
+          </ul>
+          <pre className="mt-3 max-h-96 overflow-auto rounded bg-slate-100 p-2 font-mono text-xs" data-testid="cir-text">{res.text}</pre>
+          {res.truncated && <p className="mt-1 text-xs text-slate-500">Output truncated.</p>}
+        </>
+      )}
     </div>
   )
 }

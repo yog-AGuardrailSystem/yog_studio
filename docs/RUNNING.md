@@ -7,6 +7,7 @@ cd backend ; uv sync --extra dev
 cd ../frontend ; npm install
 ```
 Run both (Windows): `.\scripts\dev.ps1`  -> backend http://localhost:8000/docs, frontend http://localhost:5173
+Linux/macOS: run the two commands below in two terminals (`uv run python -m uvicorn …` and `npm run dev`).
 
 Or separately:
 ```
@@ -16,13 +17,16 @@ cd frontend ; npm run dev
 (`uv run uvicorn` can be blocked by Windows Application Control; `python -m uvicorn` is not.)
 
 Tests: `cd backend ; uv run pytest -q` (offline; forces the fake LLM). Frontend: `cd frontend ; npm run build`.
-Benchmark (needs a real key for numbers that mean anything): `cd backend ; uv run python -m app.benchmark.evaluation --split dev --robustness`, retrieval: `uv run python -m app.benchmark.retrieval_eval`, one-off key check: `uv run python ../scripts/llm_smoke.py`.
+Benchmark (needs a real key for numbers that mean anything): `cd backend ; uv run python -m app.benchmark.evaluation --split dev --robustness` (add `--engine c` to have the C engine decide; the default is `$YOG_ENGINE`, and the engine is recorded in the results), retrieval: `uv run python -m app.benchmark.retrieval_eval`, one-off key check: `uv run python ../scripts/llm_smoke.py`.
 Team review of drafted examples: `uv run python -m app.benchmark.review pack --reviewers A,B,C`, then `... review apply review/A.md ...`.
 Claims the site makes that are not yet demonstrable: `python scripts/claims_check.py`.
 
 ## Configuration (`backend/.env`, see `.env.example`)
 - `LLM_PROVIDER=fake` (default, offline), `gemini` with `GEMINI_API_KEY`, or `claude` with `ANTHROPIC_API_KEY`; `EMBED_PROVIDER` for embeddings. Every setting is documented in `.env.example`.
-- `YOG_ENGINE=python` (default) or `c` (not yet available, see app/engine/c_engine.py).
+- `YOG_ENGINE=python` (default locally) or `c` (default in the Docker image). `c` runs the engine team's `yogc` (vendored in `engine/c_front/`, pinned commit in its VERSION): Studio builds it on first use with `cc`/`gcc`/`clang` into `backend/data/c_front/`, or use `YOG_YOGC=/path/to/yogc`. A missing `yogc` is an error, never a silent fallback. `YOG_REQUIRE_C=1` makes the tests fail instead of skip when C is unavailable (CI sets it).
+- The workbench's **C IR** tab shows the clause table `yogc ir` builds (works whichever engine decides). The shipped runtime guard decides with `yog.py` unless `YOG_YOGC` is set in the agent's environment.
+- **Downloads (`/download` page):** the Docker image builds `yogc` for users from `engine/c_front` with `scripts/build_downloads.sh` (stage `dist`): a Windows installer (NSIS, per-user, adds yogc to PATH, uninstalls cleanly), a Windows zip, a static Linux tarball, `SHA256SUMS.txt` and `manifest.json`. The backend serves only the files named in that manifest (`/downloads`). Locally, build them into `backend/data/downloads` (git-ignored) with the Docker one-liner at the top of the script; without them the page says how. The Windows files are not code-signed (SmartScreen warns; Smart App Control blocks them), and the page says so.
+- Run the suite on the C engine: `cd backend && YOG_ENGINE=c YOG_REQUIRE_C=1 uv run pytest`. Re-vendoring: replace `engine/c_front/` from `yog_engine` and update both VERSION files (a changed VERSION triggers a rebuild).
 
 ## Data
 Approved policies are saved to `backend/data/policies/` (git-ignored). The retrieval index is `backend/data/index.npz`.

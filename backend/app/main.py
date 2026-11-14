@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.core import guard, log, metrics, quota, session
 
-from app.api import analyze, benchmark, check, compile, device, evaluate, examples, modify, policies, retrieve, samples, studio, translate
+from app.api import analyze, benchmark, check, compile, device, downloads, evaluate, examples, modify, policies, retrieve, samples, studio, translate
 
 app = FastAPI(title="YOG Studio")
 log.setup()
@@ -112,6 +112,7 @@ def health() -> dict:
 def info() -> dict:
     """What this server is really running, so the UI can say so (e.g. an offline demo mode banner)."""
     from app.api.deps import get_adapter
+    from app.engine.c_build import engine_commit, find_tool
     from app.engine.c_lexer import find_binary
     from app.llm.factory import get_provider, live_status
     from app.llm.provider import LLMError
@@ -128,7 +129,12 @@ def info() -> dict:
         "default_mode": "offline" if provider in ("fake", "error") else "real",
         **live_status(),                         # live_available / live_allowed / live_ready / live_reason / live_provider
         "engine": "python-reference" if adapter.__class__.__name__ == "PythonPrototypeAdapter" else "c",
+        "engine_roles": ("decisions: python-reference · structure: python-reference"
+                         if adapter.__class__.__name__ == "PythonPrototypeAdapter"
+                         else "decisions: C · structure: reference parser"),
         "c_lexer": find_binary(build=False) is not None,
+        "c_ir": find_tool("yogc", build=False) is not None,
+        "engine_commit": engine_commit(),
         "commit": os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("GIT_COMMIT") or "unknown",
     }
 
@@ -150,7 +156,9 @@ def status(request: Request) -> dict:
         provider = get_provider().name
     except LLMError:
         provider = "error"
-    out = {"status": "ok" if engine_ok else "degraded", "engine_ok": engine_ok, "live_ready": live_status()["live_ready"]}
+    out = {"status": "ok" if engine_ok else "degraded", "engine_ok": engine_ok,
+           "engine": "python-reference" if adapter.__class__.__name__ == "PythonPrototypeAdapter" else "c",
+           "live_ready": live_status()["live_ready"]}
     token = os.environ.get("STATUS_TOKEN", "")
     if token and hmac.compare_digest(request.headers.get("x-status-token", "").encode(), token.encode()):
         cap = int(guard._num("LIVE_LLM_DAILY_CAP", 300))
@@ -178,3 +186,4 @@ app.include_router(evaluate.router)
 app.include_router(modify.router)
 app.include_router(device.router)
 app.include_router(studio.router)
+app.include_router(downloads.router)

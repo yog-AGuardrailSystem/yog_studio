@@ -9,13 +9,13 @@ import { YogEditor } from '../components/YogEditor'
 import { AiModeToggle, useAiMode } from '../lib/aiMode'
 import { CommandPalette, Tour, type Command } from '../components/workbench/Overlays'
 import {
-  AssistPanel, AstPanel, BenchmarkPanel, CLexerPanel, ChecksPanel, ReadbackPanel, TestsPanel, TokensPanel,
+  AssistPanel, AstPanel, BenchmarkPanel, CIRPanel, CLexerPanel, ChecksPanel, ReadbackPanel, TestsPanel, TokensPanel,
 } from '../components/workbench/Panels'
 import {
   STARTER, decisionPredicates, downloadText, safeGet, safeSet, shareUrl, sourceFromHash, traceLines,
 } from '../lib/workbench'
 
-const TABS = ['Checks', 'Tests', 'Tokens', 'AST', 'Readback', 'C lexer', 'Assist', 'Evidence'] as const
+const TABS = ['Checks', 'Tests', 'Tokens', 'AST', 'Readback', 'C lexer', 'C IR', 'Assist', 'Evidence'] as const
 type Tab = (typeof TABS)[number]
 const SRC_KEY = 'yog.workbench.source'
 const TOUR_KEY = 'yog.workbench.tour'
@@ -111,6 +111,7 @@ export default function WorkbenchPage() {
         <h1 className="font-display text-xl font-bold">YOG workbench</h1>
         <span className={`compile-ring ${busy ? 'is-busy' : ''}`} aria-hidden data-motion="wb:compile-ring" title={busy ? 'Compiling…' : 'Up to date'} />
         {ai.mode === 'offline' && <span className="chip" data-testid="offline-chip" title="No AI model is used; Assist copies the nearest example">Offline demo mode</span>}
+        {ai.info?.engine === 'c' && <span className="chip" data-testid="engine-chip" title={ai.info.engine_roles}>Engine: C</span>}
         <span className="flex-1" />
         <AiModeToggle compact />
         <button type="button" className="btn-secondary" onClick={() => setPalette(true)} data-testid="open-palette">Commands <kbd className="ml-1 text-xs text-slate-400">Ctrl K</kbd></button>
@@ -158,6 +159,7 @@ export default function WorkbenchPage() {
             {tab === 'AST' && <AstPanel info={info} />}
             {tab === 'Readback' && <ReadbackPanel source={source} ok={!!info?.ok} />}
             {tab === 'C lexer' && <CLexerPanel source={source} available={!!ai.info?.c_lexer} />}
+            {tab === 'C IR' && <CIRPanel source={source} available={!!ai.info?.c_ir} />}
             {tab === 'Assist' && <AssistPanel current={source} onInsert={insert} onReplace={(y) => { setSource(y); setTab('Checks') }} />}
             {tab === 'Evidence' && <BenchmarkPanel />}
           </div>

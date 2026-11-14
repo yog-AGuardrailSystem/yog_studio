@@ -1,6 +1,7 @@
 """Regression tests for the problems the security audit (run-1) confirmed or could not rule out. Each test names the
 finding it covers. All inputs are small dummy data; the pathological-policy tests rely on the new work budget to end
 quickly, which is exactly what they check."""
+import os
 import time
 
 import pytest
@@ -204,7 +205,11 @@ def test_regression_deep_rule_chains_are_a_compile_error_not_a_crash():
     from app.engine.adapter import EngineError
     with pytest.raises(EngineError):
         A.check(chain, "a", "can_x", "r")
-    assert client().post("/check", json={"policy": chain, "actor": "a", "action": "can_x", "resource": "r"}).status_code == 422
+    resp = client().post("/check", json={"policy": chain, "actor": "a", "action": "can_x", "resource": "r"})
+    if os.environ.get("YOG_ENGINE") == "c":   # C compiles it but stops at its evaluation depth limit: DENY, fail closed
+        assert resp.status_code == 200 and resp.json()["decision"] == "DENY" and "depth limit" in resp.json()["reason"]
+    else:
+        assert resp.status_code == 422
 
 
 def test_regression_a_huge_digit_run_is_a_compile_error_not_a_500():

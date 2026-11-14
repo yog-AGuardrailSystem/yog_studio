@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from app.engine.adapter import EngineAdapter
 from app.policies.store import PolicyRecord, PolicyStore
-from app.studio.common import Budget, BudgetExceeded, safe_check, shape
+from app.studio.common import Budget, BudgetExceeded, safe_check_many, shape
 from app.studio.gaps import targeted_probes
 
 MAX_FLIPS = 200
@@ -76,11 +76,13 @@ def diff(adapter: EngineAdapter, a: PolicyRecord, b: PolicyRecord, budget: Budge
             uniq.append(p)
     flips: list[Flip] = []
     total = 0
+    n = min(len(uniq), budget.room() // 2)                # the probes the budget allows (2 checks each)
+    budget.spend(2 * n)
+    ra = safe_check_many(adapter, a.yog_source, uniq[:n])
+    rb = safe_check_many(adapter, b.yog_source, uniq[:n])
     try:
-        for actor, action, resource, ctx in uniq:
-            budget.spend(2)
-            da = safe_check(adapter, a.yog_source, actor, action, resource, ctx).decision
-            db = safe_check(adapter, b.yog_source, actor, action, resource, ctx).decision
+        for (actor, action, resource, ctx), x, y in zip(uniq[:n], ra, rb):
+            da, db = x.decision, y.decision
             if da != db:
                 total += 1
                 if len(flips) < MAX_FLIPS:

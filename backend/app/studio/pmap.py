@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from app.core import facts
 from app.engine.adapter import EngineAdapter
-from app.studio.common import Budget, PolicyRef, Shape, boundary_values, safe_check
+from app.studio.common import Budget, PolicyRef, Shape, boundary_values, safe_check_many
 
 MAX_AXIS_VALUES = 60
 
@@ -71,12 +71,13 @@ def build_map(adapter: EngineAdapter, source: str, req: MapRequest, budget: Budg
     cells: list[list[str]] = []
     reasons: list[list[str]] = []
     allow = deny = 0
+    budget.spend(len(xf) * len(yf))
+    grid = [base + [fx] + ([fy] if fy else []) for fy in yf for fx in xf]
+    results = iter(safe_check_many(adapter, source, [(req.actor, req.action, req.resource, ctx) for ctx in grid]))
     for fy in yf:
         row, rrow = [], []
         for fx in xf:
-            budget.spend()
-            ctx = base + [fx] + ([fy] if fy else [])
-            r = safe_check(adapter, source, req.actor, req.action, req.resource, ctx)
+            r = next(results)
             row.append("A" if r.decision == "ALLOW" else "D")
             rrow.append(r.reason)
             allow += r.decision == "ALLOW"

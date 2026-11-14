@@ -16,6 +16,7 @@ const ENV = `YOG_POLICY=policy.yog          # which policy file (default: next t
 YOG_POLICY_SHA256=<hash>       # refuse to run if the file is not exactly the approved one
 YOG_NOW="3,sat"                # pin the clock for testing
 YOG_LOG=decisions.jsonl        # write every decision, for Trace Replay
+YOG_YOGC=/path/to/yogc         # decide with the C engine instead of yog.py (any problem = DENY)
 python yog_runtime.py --selftest`
 
 export default function SdkPage() {
@@ -57,7 +58,7 @@ export default function SdkPage() {
         <section className="min-w-0 space-y-3 rounded border border-slate-200 bg-white p-3 text-sm">
           <h2 className="font-semibold">1. Put the guard in your agent</h2>
           <pre className="overflow-auto rounded bg-slate-50 p-2 font-mono text-xs" data-testid="sdk-snippet">{SNIPPET}</pre>
-          <p>The <b>Patch agent</b> tool adds these lines for you. The guard needs three files next to your agent: <code>yog_runtime.py</code>, <code>yog.py</code> and <code>policy.yog</code>. <b>Export Pack</b> bundles all three.</p>
+          <p>The <b>Patch agent</b> tool adds these lines for you. The guard needs three files next to your agent: <code>yog_runtime.py</code>, <code>yog.py</code> and <code>policy.yog</code>. <b>Export Pack</b> bundles all three. By default the guard decides with <code>yog.py</code>, the Python reference; set <code>YOG_YOGC</code> to a built <code>yogc</code> and the engine team’s C compiler decides instead. The two agree on every gold scenario. The “try it” box on this page answers with this server’s engine.</p>
           <h2 className="font-semibold">2. Settings (environment variables)</h2>
           <pre className="overflow-auto rounded bg-slate-50 p-2 font-mono text-xs">{ENV}</pre>
           <h2 className="font-semibold">What it guarantees</h2>

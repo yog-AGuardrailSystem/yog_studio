@@ -13,6 +13,54 @@ from app.engine.adapter import Diagnostic
 _LINE = re.compile(r"^line (\d+):\s*(.*)$", re.S)
 
 
+_C_PREFIX = re.compile(r"^Lexical error:\s*")
+_C_EXPECTED = re.compile(r"^Expected (.+?),? found (\S+)$")
+
+
+def _classify_c(body: str) -> tuple[str, str] | None:
+    """Wording that only the C engine uses (engine/c_front, docs/COMPILER.md) -> (stable code, plain-English hint).
+    Wording shared with the reference engine falls through to the patterns in classify()."""
+    if body.startswith("tab characters are not allowed"):
+        return ("bad_indentation", "Indent with spaces, never tabs (4 spaces is conventional).")
+    if body.startswith("integer literal out of range"):
+        return ("int_out_of_range", "Numbers must fit in 64 bits (about +/-9.2 quintillion).")
+    if re.match(r"variable \S+ is not bound before `not`", body):
+        return ("unbound_in_not", "Variables inside `not` must already be bound by an earlier condition. "
+                                  "Move the `not` line below the line that binds them.")
+    if re.match(r"variable \S+ is not bound before a comparison", body):
+        return ("unbound_in_comparison", "A comparison can only use variables that an earlier condition has bound. "
+                                         "Put the line that binds them above the comparison.")
+    if body.startswith("wildcard is not allowed"):
+        return ("wildcard_not_allowed", "`_` means 'anything' and cannot appear where a value must be produced "
+                                        "(for example a rule head). Use a named variable instead.")
+    m = _C_EXPECTED.match(body)
+    if not m:
+        return None
+    want, got = m.group(1), m.group(2)
+    if want.startswith("fact, rule, allow") and got == "NOT":
+        return ("unexpected_keyword", "`not` only goes in front of a condition inside a body; a statement starts "
+                                      "with fact, rule, allow, deny or query.")
+    if want == "a term":
+        return ("expected_term", "An argument was expected here: a name, a quoted string, a number, a variable or _.")
+    if want.startswith("an indented body"):
+        return ("empty_body", "A rule, allow or deny needs at least one condition on an indented line below it.")
+    if want.startswith("':'"):
+        return ("expected_token", "The head of a rule, allow or deny ends with a colon. The conditions go on the "
+                                  "next lines, indented.")
+    if want.startswith("newline"):
+        return ("expected_token", "Put each fact, query and condition on its own line (something extra follows "
+                                  "this one).")
+    if want.startswith("predicate identifier"):
+        return ("expected_token", "A predicate name was expected here (lowercase, like role or can_delete). "
+                                  "Capitalised names are variables.")
+    if want.startswith("fact, rule"):
+        return ("expected_token", "Each statement starts with fact, rule, allow, deny or query. Conditions belong "
+                                  "on indented lines under a head.")
+    if want in ("')'", "'('"):
+        return ("expected_token", "Check the parentheses and the commas between arguments.")
+    return ("expected_token", f"Expected {want} here but found {got}.")
+
+
 def _split(message: str) -> tuple[int | None, str]:
     m = _LINE.match(message)
     return (int(m.group(1)), m.group(2)) if m else (None, message)
@@ -43,13 +91,19 @@ def _locate(line: int | None, needle: str, source_lines: list[str] | None) -> in
 
 
 def classify(message: str, known: dict[tuple[str, int], str] | None = None,
-             source_lines: list[str] | None = None) -> Diagnostic:
-    """`known` maps (predicate, arity) -> role for 'did you mean'. `source_lines` lets a fix target exact text."""
+             source_lines: list[str] | None = None, column: int | None = None) -> Diagnostic:
+    """`known` maps (predicate, arity) -> role for 'did you mean'. `source_lines` lets a fix target exact text.
+    `column` is the C engine's 1-based column (the reference engine has none)."""
     known = known or {}
     line, body = _split(message)
+    body = _C_PREFIX.sub("", body)
+    c_diag = _classify_c(body)
 
     def d(code: str, hint: str | None = None, suggestion: str | None = None, fix: dict | None = None) -> Diagnostic:
-        return Diagnostic(code=code, line=line, message=message, hint=hint, suggestion=suggestion, fix=fix)
+        return Diagnostic(code=code, line=line, column=column, message=message, hint=hint, suggestion=suggestion, fix=fix)
+
+    if c_diag:
+        return d(*c_diag)
 
     if body.startswith("inconsistent indentation"):
         return d("bad_indentation",

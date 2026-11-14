@@ -1,4 +1,5 @@
 """POST /compile, /run, /compile/c-lexer, GET /examples/team, GET /info, and the bundle guard."""
+import os
 from fastapi.testclient import TestClient
 
 from app.core.team_examples import TEAM_FILE, load_groups
@@ -143,7 +144,7 @@ def test_team_examples_endpoint():
 
 def test_info_reports_the_offline_fake_provider():
     j = client.get("/info").json()
-    assert j["provider"] == "fake" and j["offline_demo"] is True and j["engine"] == "python-reference"
+    assert j["provider"] == "fake" and j["offline_demo"] is True and j["engine"] == ("c" if os.environ.get("YOG_ENGINE") == "c" else "python-reference")
 
 
 def test_c_lexer_endpoint_degrades_gracefully_without_a_binary(monkeypatch):
@@ -170,3 +171,12 @@ def test_bundle_refuses_the_offline_placeholder_policy(tmp_path, monkeypatch):
         assert good.status_code == 200 and good.headers["content-type"] == "application/zip"
     finally:
         app.dependency_overrides.pop(get_store, None)
+
+
+def test_regression_a_wildcard_query_is_answered_not_a_500():
+    """`query role(_, admin)` crashed /run with a KeyError (the explorer sends wildcards as {"wildcard": true})."""
+    r = client.post("/run", json={"source": "fact role(alice, admin)\nquery role(_, admin)\nquery role(X, _)\nquery role(_, user)\n"})
+    assert r.status_code == 200, r.text
+    res = [q for q in r.json()["results"] if q["kind"] == "fact-query"]
+    assert [q["answer"] for q in res] == [True, True, False]
+    assert res[0]["bindings"] == [] and res[1]["bindings"] == [{"X": "alice"}]

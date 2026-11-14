@@ -1,13 +1,14 @@
 """Red-Team: try to slip past a policy. Deterministic edge cases, judged against invariants the user states
 ("this must be DENY when the hour is 23 to 5"). Without invariants it can only list suspicious ALLOWs, and says so."""
 import re
+from itertools import islice
 from typing import Literal
 
 from pydantic import BaseModel, Field
 
 from app.core import facts
 from app.engine.adapter import EngineAdapter
-from app.studio.common import Budget, BudgetExceeded, PolicyRef, Shape, boundary_values, safe_check
+from app.studio.common import Budget, BudgetExceeded, PolicyRef, Shape, boundary_values, safe_check_many
 
 MAX_INVARIANTS = 20
 MAX_ROWS = 300
@@ -173,10 +174,12 @@ def run(adapter: EngineAdapter, source: str, sh: Shape, invariants: list[Invaria
     rows: list[Attack] = []
     counts: dict[str, list[int]] = {}
     checked = 0
+    # take only as many candidates as the budget allows (never materialise the rest), then decide them in one call
+    batch = list(islice(candidates(sh), budget.room()))
+    budget.spend(len(batch))
+    results = safe_check_many(adapter, source, [(a, act, res, ctx) for _, _, a, act, res, ctx in batch])
     try:
-        for family, note, actor, action, resource, ctx in candidates(sh):
-            budget.spend()
-            r = safe_check(adapter, source, actor, action, resource, ctx)
+        for (family, note, actor, action, resource, ctx), r in zip(batch, results):
             checked += 1
             c = counts.setdefault(family, [0, 0])
             c[0] += 1
