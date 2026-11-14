@@ -83,6 +83,7 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
+          prune-cache: false          # the servers this job starts with `uv run` can still hold the cache at cleanup
       - name: Install
         run: |
           (cd frontend && npm ci)
@@ -126,6 +127,9 @@ jobs:
       - name: Server logs on failure
         if: failure()
         run: tail -n 80 /tmp/backend.log /tmp/frontend.log /tmp/prod.log
+      - name: Stop the servers started above
+        if: always()
+        run: pkill -f "uvicorn app" || true; pkill -f vite || true
 
   audit:
     name: Dependency audit (npm and Python)
