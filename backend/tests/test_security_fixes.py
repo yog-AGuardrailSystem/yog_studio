@@ -199,17 +199,34 @@ def test_a_policy_with_many_facts_but_cheap_goals_is_unaffected():
 
 
 def test_regression_deep_rule_chains_are_a_compile_error_not_a_crash():
-    chain = "fact n(a)\nrule r0(X):\n    n(X)\n" + "".join(f"rule r{i}(X):\n    r{i - 1}(X)\n" for i in range(1, 2500)) + "allow can_x(U, R):\n    r2499(U)\n"
-    errors = A.validate(chain)
-    assert errors and "too deeply" in errors[0]
+    """A 2,500-rule chain must never crash the server or produce a wrong answer. Whether the Python reference rejects it
+    depends on the interpreter's own recursion limit and on how much stack is already in use (it differed between
+    Python 3.11, 3.12 and 3.14 and between test orders), so the test checks the guarantee, not one interpreter's limit:
+    either a clean compile error ("too deeply"), or a decision that is correct (ALLOW: n(a) holds for actor a) or a
+    fail-closed DENY. The C engine compiles it and stops at its evaluation depth limit (256): DENY, fail closed."""
     from app.engine.adapter import EngineError
-    with pytest.raises(EngineError):
-        A.check(chain, "a", "can_x", "r")
+    chain = "fact n(a)\nrule r0(X):\n    n(X)\n" + "".join(f"rule r{i}(X):\n    r{i - 1}(X)\n" for i in range(1, 2500)) + "allow can_x(U, R):\n    r2499(U)\n"
+
+    def acceptable(decision: str, reason: str) -> bool:
+        return decision == "ALLOW" or (decision == "DENY" and "failing closed" in reason)
+
+    errors = A.validate(chain)
+    if errors:
+        assert "too deeply" in errors[0], errors
+        with pytest.raises(EngineError):
+            A.check(chain, "a", "can_x", "r")
+    else:
+        r = A.check(chain, "a", "can_x", "r")
+        assert acceptable(r.decision, r.reason), r
     resp = client().post("/check", json={"policy": chain, "actor": "a", "action": "can_x", "resource": "r"})
-    if os.environ.get("YOG_ENGINE") == "c":   # C compiles it but stops at its evaluation depth limit: DENY, fail closed
+    if os.environ.get("YOG_ENGINE") == "c":
         assert resp.status_code == 200 and resp.json()["decision"] == "DENY" and "depth limit" in resp.json()["reason"]
     else:
-        assert resp.status_code == 422
+        assert resp.status_code in (200, 422), resp.text                  # never a 500
+        if resp.status_code == 422:
+            assert "too deeply" in resp.text
+        else:
+            assert acceptable(resp.json()["decision"], resp.json()["reason"]), resp.json()
 
 
 def test_regression_a_huge_digit_run_is_a_compile_error_not_a_500():

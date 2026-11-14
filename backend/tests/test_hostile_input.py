@@ -93,8 +93,17 @@ def test_unhandled_errors_return_a_request_id_and_no_internals(monkeypatch):
 def test_dotted_handles_chains_far_beyond_the_recursion_limit():
     import ast
     from app.core.pyast import dotted
+    import sys
     chain = "a" + ".b" * 5000
-    assert dotted(ast.parse(chain, mode="eval").body) == chain
+    # Building the test input needs a deep parse, which some interpreters (3.11) refuse at the default limit. Raise the
+    # limit only while PARSING; dotted() itself then runs at the normal limit, which is what this test is about.
+    old = sys.getrecursionlimit()
+    sys.setrecursionlimit(max(old, 30000))
+    try:
+        tree = ast.parse(chain, mode="eval").body
+    finally:
+        sys.setrecursionlimit(old)
+    assert dotted(tree) == chain
     assert dotted(ast.parse("f().x.y", mode="eval").body) is None          # not a plain dotted name
     assert dotted(ast.parse("x", mode="eval").body) == "x"
 
